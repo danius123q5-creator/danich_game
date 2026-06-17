@@ -95,6 +95,9 @@ public class GameRoot : MonoBehaviour
         State = GState.Playing;
         Time.timeScale = 1f;
         FreeCursor(false);
+
+        // Fresh start: ride in on the insertion chopper. (Continue resumes mid-run, so skip it.)
+        if (!continueProgress) IntroCinematic.Begin();
     }
 
     void Resume()
