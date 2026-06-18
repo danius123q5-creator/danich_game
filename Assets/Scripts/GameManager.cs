@@ -92,7 +92,7 @@ public class GameManager : MonoBehaviour
     void StartWave()
     {
         WaveNumber++;
-        if (WaveNumber >= EvacWave) { EndgameCinematic.Begin(); return; } // evacuation instead of wave 75
+        if (WaveNumber >= EvacWave) { EndgameCinematic.Begin(); return; } // evacuation instead of a normal wave
         zombiesToSpawn = BaseZombies + WaveNumber * PerWave;
         IsPrep = false;
         nextBird = Time.time + BirdEvery();

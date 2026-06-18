@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// End-game evacuation cutscene (wave 75):
+/// End-game evacuation cutscene (wave 60):
 ///  1. EVAC   — sky darkens, siren, a chopper descends; the player runs to it through a final crowd.
 ///  2. LIFTOFF— on boarding the camera detaches from the player and rises high over the base.
 ///  3. BOMBARD— from up high, rockets rain and shred the whole base into PHYSICAL debris (rigidbodies).
