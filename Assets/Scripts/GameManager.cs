@@ -48,7 +48,6 @@ public class GameManager : MonoBehaviour
         // On a LAN client the host owns the wave/zombie sim — keep the client's world calm.
         if (LanManager.Instance != null && LanManager.Instance.Active && !LanManager.Instance.IsHost) return;
 
-        if (Input.GetKeyDown(KeyCode.F10)) EndgameCinematic.Begin(); // debug: trigger the ending now
         if (EndgameCinematic.Active) return;                          // the cutscene owns the world
 
         if (player == null)
