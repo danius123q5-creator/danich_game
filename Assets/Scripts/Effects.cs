@@ -282,13 +282,14 @@ public class ShockwaveFx : MonoBehaviour
     }
 }
 
-/// <summary>The bomber: builds a simple plane shape, flies straight over the target and
-/// releases a falling bomb on each point with a short stagger (carpet-bombing run).</summary>
+/// <summary>The bomber: a large Tu-95 "Bear" built from primitives that flies straight over the
+/// target and releases a falling bomb on each point with a short stagger (carpet-bombing run).</summary>
 public class Bomber : MonoBehaviour
 {
     Vector3 dir, pos;
     List<Vector3> points;
     System.Action<Vector3> onImpact;
+    readonly List<Transform> props = new List<Transform>();
     float radius, life, nextDrop = 0.45f, speed = 75f;
     int dropped;
 
@@ -296,29 +297,77 @@ public class Bomber : MonoBehaviour
     {
         points = pts; onImpact = cb; radius = r;
         dir = new Vector3(1f, 0f, 0.22f).normalized;
-        pos = center - dir * 90f + Vector3.up * 42f;
+        pos = center - dir * 105f + Vector3.up * 46f; // bigger plane, a touch higher & further out
 
-        var body = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        Destroy(body.GetComponent<Collider>());
-        body.transform.SetParent(transform, false);
-        body.transform.localScale = new Vector3(5f, 1.1f, 1.4f);
-        GameBootstrap.SetColor(body, new Color(0.25f, 0.27f, 0.3f));
-
-        var wing = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        Destroy(wing.GetComponent<Collider>());
-        wing.transform.SetParent(transform, false);
-        wing.transform.localScale = new Vector3(1.3f, 0.3f, 8f);
-        GameBootstrap.SetColor(wing, new Color(0.22f, 0.24f, 0.27f));
-
-        var tail = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        Destroy(tail.GetComponent<Collider>());
-        tail.transform.SetParent(transform, false);
-        tail.transform.localPosition = new Vector3(-2.3f, 0.5f, 0f);
-        tail.transform.localScale = new Vector3(0.8f, 1.2f, 0.3f);
-        GameBootstrap.SetColor(tail, new Color(0.22f, 0.24f, 0.27f));
+        BuildTu95();
 
         transform.position = pos;
         transform.rotation = Quaternion.LookRotation(dir);
+    }
+
+    // Tu-95 silhouette from primitives. Local +Z = nose (LookRotation aligns it to the flight dir):
+    // long fuselage, swept mid-wings, four turboprop nacelles with spinning props, swept tail.
+    void BuildTu95()
+    {
+        Color metal = new Color(0.62f, 0.64f, 0.67f);
+        Color metalDark = new Color(0.42f, 0.44f, 0.48f);
+        Color glass = new Color(0.22f, 0.32f, 0.42f);
+        Color propC = new Color(0.10f, 0.10f, 0.12f);
+
+        // fuselage (capsule laid along Z) + cockpit glass
+        Prim(PrimitiveType.Capsule, new Vector3(0f, 0f, 0f), new Vector3(1.6f, 8.5f, 1.6f), metal, new Vector3(90f, 0f, 0f));
+        Prim(PrimitiveType.Sphere, new Vector3(0f, 0.45f, 6.9f), new Vector3(1.3f, 1.0f, 1.7f), glass);
+
+        // swept mid-mounted wings
+        Prim(PrimitiveType.Cube, new Vector3(5.6f, -0.1f, -0.3f), new Vector3(10f, 0.35f, 2.6f), metal, new Vector3(0f, 22f, 0f));
+        Prim(PrimitiveType.Cube, new Vector3(-5.6f, -0.1f, -0.3f), new Vector3(10f, 0.35f, 2.6f), metal, new Vector3(0f, -22f, 0f));
+
+        // four turboprop engines (inner + outer per wing), each with a spinning prop disc
+        float[] ex = { 3.2f, 6.4f, -3.2f, -6.4f };
+        foreach (float x in ex)
+        {
+            float z = 1.4f - Mathf.Abs(x) * 0.3f; // sit the nacelle along the wing's swept leading edge
+            Prim(PrimitiveType.Cylinder, new Vector3(x, -0.5f, z), new Vector3(0.75f, 1.7f, 0.75f), metalDark, new Vector3(90f, 0f, 0f));
+            MakeProp(new Vector3(x, -0.5f, z + 2.0f), propC);
+        }
+
+        // swept tail: tall vertical fin + horizontal stabilisers
+        Prim(PrimitiveType.Cube, new Vector3(0f, 1.7f, -6.6f), new Vector3(0.35f, 3.4f, 2.4f), metal, new Vector3(-25f, 0f, 0f));
+        Prim(PrimitiveType.Cube, new Vector3(2.2f, 0.3f, -6.8f), new Vector3(4.0f, 0.3f, 1.6f), metal, new Vector3(0f, 24f, 0f));
+        Prim(PrimitiveType.Cube, new Vector3(-2.2f, 0.3f, -6.8f), new Vector3(4.0f, 0.3f, 1.6f), metal, new Vector3(0f, -24f, 0f));
+    }
+
+    // A propeller disc facing forward (+Z): two crossed blades for a 4-blade look, spun about Z.
+    void MakeProp(Vector3 localPos, Color c)
+    {
+        var hub = new GameObject("Prop").transform;
+        hub.SetParent(transform, false);
+        hub.localPosition = localPos;
+
+        var b1 = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        Destroy(b1.GetComponent<Collider>());
+        b1.transform.SetParent(hub, false);
+        b1.transform.localScale = new Vector3(0.22f, 2.9f, 0.12f);
+        GameBootstrap.SetColor(b1, c);
+
+        var b2 = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        Destroy(b2.GetComponent<Collider>());
+        b2.transform.SetParent(hub, false);
+        b2.transform.localScale = new Vector3(2.9f, 0.22f, 0.12f);
+        GameBootstrap.SetColor(b2, c);
+
+        props.Add(hub);
+    }
+
+    void Prim(PrimitiveType type, Vector3 localPos, Vector3 scale, Color c, Vector3 euler = default)
+    {
+        var g = GameObject.CreatePrimitive(type);
+        Destroy(g.GetComponent<Collider>());
+        g.transform.SetParent(transform, false);
+        g.transform.localPosition = localPos;
+        g.transform.localEulerAngles = euler;
+        g.transform.localScale = scale;
+        GameBootstrap.SetColor(g, c);
     }
 
     void Update()
@@ -326,6 +375,10 @@ public class Bomber : MonoBehaviour
         life += Time.deltaTime;
         pos += dir * speed * Time.deltaTime;
         transform.position = pos;
+
+        float spin = 2200f * Time.deltaTime; // turboprop blur
+        for (int i = 0; i < props.Count; i++)
+            if (props[i] != null) props[i].Rotate(0f, 0f, spin, Space.Self);
 
         if (dropped < points.Count && life >= nextDrop)
         {
