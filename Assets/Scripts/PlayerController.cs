@@ -32,6 +32,8 @@ public class PlayerController : MonoBehaviour
     Camera cam;
     float pitch;
     float vSpeed;
+    float coyote;     // grace time after leaving the ground when a jump still counts
+    float jumpBuffer; // grace time after pressing jump before landing, so early presses still fire
     float deathTime;
 
     GameObject preview;
@@ -276,13 +278,23 @@ public class PlayerController : MonoBehaviour
         clp.y = Mathf.Lerp(clp.y, crouch ? 0.3f : 0.7f, 12f * Time.deltaTime);
         cam.transform.localPosition = clp;
 
-        if (cc.isGrounded)
-        {
-            vSpeed = -1f;
-            if (Input.GetKeyDown(KeyCode.Space) && !crouch) vSpeed = JumpSpeed;
-        }
-        else vSpeed -= Gravity * Time.deltaTime;
+        // Jump with coyote time + an input buffer so a press never gets eaten by the
+        // frame where the controller is still settling on the ground ("works every other time").
+        bool grounded = cc.isGrounded;
+        coyote = grounded ? 0.1f : coyote - Time.deltaTime;
+        if (Input.GetKeyDown(KeyCode.Space)) jumpBuffer = 0.1f;
+        else jumpBuffer -= Time.deltaTime;
 
+        if (grounded && vSpeed < 0f) vSpeed = -1f; // stick to the ground while settling
+
+        if (jumpBuffer > 0f && coyote > 0f && !crouch)
+        {
+            vSpeed = JumpSpeed;
+            jumpBuffer = 0f;
+            coyote = 0f; // consume, so one press = one jump
+        }
+
+        vSpeed -= Gravity * Time.deltaTime;
         cc.Move((dir * speed + Vector3.up * vSpeed) * Time.deltaTime);
     }
 
