@@ -21,7 +21,6 @@ public class GameRoot : MonoBehaviour
     public static int PvpTeam = 0; // 0 = Team A, 1 = Team B (PvP friendly-fire / colours)
     public static bool Hardcore = false; // die = restart from wave 1, pricier builds, 170 metal cap
 
-    static readonly string[] MapNames = { "Лес", "Холмы", "Арена" };
     static readonly string[] TeamNames = { "Команда A", "Команда Б" };
 
     Camera menuCam;
@@ -282,13 +281,19 @@ public class GameRoot : MonoBehaviour
         float bw = 320f, x = cx - bw * 0.5f;
 
         // ---- Map selector (host's choice; joiners auto-adopt the host's map) ----
-        GUI.Label(new Rect(x, cy - 202f, bw, 22f), "Карта (хост)", lab);
-        float mw = bw / 3f;
-        for (int i = 0; i < MapNames.Length; i++)
+        // Wraps to a grid so all maps fit (originally a single row of three).
+        GUI.Label(new Rect(x, cy - 206f, bw, 20f), "Карта (хост)", lab);
+        int mapCount = GameBootstrap.MapCount;
+        const int mapCols = 4;
+        float mw = bw / mapCols, mh = 24f;
+        var mapBtn = new GUIStyle(GUI.skin.button) { fontSize = 12, fontStyle = FontStyle.Bold };
+        for (int i = 0; i < mapCount; i++)
         {
+            int row = i / mapCols, col = i % mapCols;
             bool sel = GameBootstrap.MapVariant == i;
             GUI.color = sel ? new Color(0.55f, 0.85f, 0.5f) : Color.white;
-            if (GUI.Button(new Rect(x + i * mw, cy - 178f, mw - 4f, 38f), MapNames[i], small)) GameBootstrap.MapVariant = i;
+            if (GUI.Button(new Rect(x + col * mw, cy - 184f + row * (mh + 2f), mw - 3f, mh), GameBootstrap.Maps[i].name, mapBtn))
+                GameBootstrap.MapVariant = i;
         }
         GUI.color = Color.white;
 

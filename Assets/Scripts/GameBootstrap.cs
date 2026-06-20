@@ -28,25 +28,36 @@ public static class GameBootstrap
         if (World != null) return;
         World = new GameObject("World").transform;
 
+        var m = Cur;
         var sun = new GameObject("Sun");
         sun.transform.SetParent(World);
         var light = sun.AddComponent<Light>();
         light.type = LightType.Directional;
-        light.intensity = 1.1f;
+        light.intensity = m.sunInt;
+        light.color = m.sun;
         sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
-        RenderSettings.ambientLight = new Color(0.35f, 0.37f, 0.4f);
+        RenderSettings.ambientLight = m.ambient;
+
+        // Per-map fog (off when density is 0) sets the mood: desert haze, snow whiteout, etc.
+        RenderSettings.fog = m.fogDensity > 0f;
+        if (m.fogDensity > 0f)
+        {
+            RenderSettings.fogMode = FogMode.ExponentialSquared;
+            RenderSettings.fogColor = m.fog;
+            RenderSettings.fogDensity = m.fogDensity;
+        }
 
         BuildTerrain();
-        if (MapHasRiver) BuildRiver();
+        if (m.waterPlane != 0) BuildWater();
 
-        int treeCount = MapVariant == 2 ? 60 : 220; // arena map is open for PvP
-        for (int i = 0; i < treeCount; i++)
+        for (int i = 0; i < m.trees; i++)
         {
             float ang = i * 2.39996f; // golden-angle scatter
             float r = 12f + (i % 30) * 8f;
             float tx = Mathf.Cos(ang) * r, tz = Mathf.Sin(ang) * r;
-            if (MapHasRiver && Mathf.Abs(tx - RiverX) < RiverHalf + 2f) continue; // keep the river clear
-            BuildTree(new Vector3(tx, 0f, tz), i);
+            if (m.channel && Mathf.Abs(tx - RiverX) < RiverHalf + 2f) continue;     // keep the trench clear
+            if (m.waterPlane == 2 && Hill(tx, tz) < m.water + 0.3f) continue;       // islands: trees on land only
+            BuildTree(new Vector3(tx, 0f, tz), i, m.treeStyle);
         }
 
         var player = new GameObject("Player");
@@ -68,26 +79,93 @@ public static class GameBootstrap
 
     public const float MapSize = 500f;     // square map side (units)
     public const float HillAmp = 3.5f;
-    public const float RiverX = 40f;       // river centreline (runs along Z, off to one side)
-    public const float RiverHalf = 10f;    // half-width of the channel
-    public const float RiverBed = -2.0f;   // riverbed depth at the centre
-    public const float WaterLevel = -0.8f; // water surface height
+    public const float RiverX = 40f;       // trench centreline (runs along Z, off to one side)
+    public const float RiverHalf = 10f;    // half-width of the trench
+    public const float WaterLevel = -0.8f; // default water surface height
 
-    // Selectable map: 0 = Forest (default), 1 = Hills (tall), 2 = Arena (flat, no river).
+    /// <summary>Per-map terrain shape, palette and atmosphere. Picked by MapVariant
+    /// (an int, also synced over the network so co-op/PvP peers share the same map).</summary>
+    public struct MapDef
+    {
+        public string name;
+        public float amp;        // terrain height amplitude
+        public float freq;       // Perlin frequency (smaller = broader features)
+        public float ridge;      // extra sharp ridged-noise amplitude (0 = smooth rolling)
+        public bool channel;     // carve a trench along RiverX (river / canyon)
+        public float channelBed; // trench floor height at the centreline
+        public int waterPlane;   // 0 none, 1 narrow river strip, 2 full-map sea
+        public float water;      // water surface height
+        public Color floor;      // ground colour
+        public Color waterTint;  // water plane colour
+        public int trees;        // scattered prop count
+        public int treeStyle;    // 0 forest, 1 snowy conifer, 2 cactus, 3 dead, 4 palm
+        public Color ambient;    // RenderSettings.ambientLight
+        public Color sun;        // directional light colour
+        public float sunInt;     // sun intensity
+        public Color fog;        // fog colour
+        public float fogDensity; // exponential-squared fog density (0 = no fog)
+    }
+
+    // 0..2 are the original Forest / Hills / Arena; 3..7 are the new maps.
+    public static readonly MapDef[] Maps =
+    {
+        new MapDef { name="Лес", amp=3.5f, freq=0.025f, ridge=0f, channel=true, channelBed=-2f, waterPlane=1, water=-0.8f,
+            floor=new Color(0.22f,0.38f,0.18f), waterTint=new Color(0.2f,0.45f,0.85f,0.6f), trees=220, treeStyle=0,
+            ambient=new Color(0.35f,0.37f,0.4f), sun=new Color(1f,0.96f,0.86f), sunInt=1.1f, fog=new Color(0.6f,0.7f,0.6f), fogDensity=0f },
+
+        new MapDef { name="Холмы", amp=9f, freq=0.02f, ridge=0f, channel=true, channelBed=-2f, waterPlane=1, water=-0.8f,
+            floor=new Color(0.25f,0.42f,0.20f), waterTint=new Color(0.2f,0.45f,0.85f,0.6f), trees=220, treeStyle=0,
+            ambient=new Color(0.35f,0.37f,0.4f), sun=new Color(1f,0.96f,0.86f), sunInt=1.1f, fog=new Color(0.6f,0.7f,0.6f), fogDensity=0f },
+
+        new MapDef { name="Арена", amp=0.5f, freq=0.03f, ridge=0f, channel=false, channelBed=0f, waterPlane=0, water=-0.8f,
+            floor=new Color(0.55f,0.50f,0.32f), waterTint=new Color(0.2f,0.45f,0.85f,0.6f), trees=60, treeStyle=0,
+            ambient=new Color(0.4f,0.4f,0.42f), sun=new Color(1f,0.97f,0.9f), sunInt=1.15f, fog=new Color(0.7f,0.7f,0.65f), fogDensity=0f },
+
+        new MapDef { name="Пустыня", amp=4f, freq=0.014f, ridge=1.4f, channel=false, channelBed=0f, waterPlane=0, water=-0.8f,
+            floor=new Color(0.80f,0.69f,0.42f), waterTint=new Color(0.2f,0.45f,0.85f,0.6f), trees=40, treeStyle=2,
+            ambient=new Color(0.52f,0.46f,0.34f), sun=new Color(1f,0.92f,0.72f), sunInt=1.3f, fog=new Color(0.86f,0.78f,0.58f), fogDensity=0.006f },
+
+        new MapDef { name="Снег", amp=4f, freq=0.022f, ridge=0.6f, channel=true, channelBed=-1.5f, waterPlane=1, water=-0.8f,
+            floor=new Color(0.86f,0.89f,0.93f), waterTint=new Color(0.6f,0.78f,0.85f,0.6f), trees=110, treeStyle=1,
+            ambient=new Color(0.55f,0.58f,0.62f), sun=new Color(0.85f,0.9f,1f), sunInt=1.0f, fog=new Color(0.82f,0.86f,0.92f), fogDensity=0.008f },
+
+        new MapDef { name="Каньон", amp=6f, freq=0.02f, ridge=2.5f, channel=true, channelBed=-6f, waterPlane=0, water=-5f,
+            floor=new Color(0.56f,0.34f,0.22f), waterTint=new Color(0.2f,0.45f,0.85f,0.6f), trees=28, treeStyle=3,
+            ambient=new Color(0.45f,0.38f,0.32f), sun=new Color(1f,0.88f,0.7f), sunInt=1.2f, fog=new Color(0.7f,0.55f,0.42f), fogDensity=0.004f },
+
+        new MapDef { name="Острова", amp=3f, freq=0.03f, ridge=0.4f, channel=false, channelBed=0f, waterPlane=2, water=0.9f,
+            floor=new Color(0.2f,0.46f,0.24f), waterTint=new Color(0.15f,0.5f,0.7f,0.55f), trees=130, treeStyle=4,
+            ambient=new Color(0.42f,0.48f,0.5f), sun=new Color(1f,0.97f,0.85f), sunInt=1.2f, fog=new Color(0.55f,0.72f,0.78f), fogDensity=0.004f },
+
+        new MapDef { name="Горы", amp=12f, freq=0.015f, ridge=3f, channel=true, channelBed=-2f, waterPlane=1, water=-0.8f,
+            floor=new Color(0.5f,0.5f,0.53f), waterTint=new Color(0.3f,0.5f,0.75f,0.6f), trees=80, treeStyle=1,
+            ambient=new Color(0.45f,0.47f,0.52f), sun=new Color(0.95f,0.96f,1f), sunInt=1.05f, fog=new Color(0.7f,0.74f,0.8f), fogDensity=0.005f },
+    };
+
+    // Selectable map index (clamped on read). Networked as an int for co-op/PvP.
     public static int MapVariant = 0;
-    static float MapAmp => MapVariant == 1 ? 9f : (MapVariant == 2 ? 0.5f : HillAmp);
-    public static bool MapHasRiver => MapVariant != 2;
+    public static MapDef Cur => Maps[Mathf.Clamp(MapVariant, 0, Maps.Length - 1)];
+    public static int MapCount => Maps.Length;
+    public static bool MapHasRiver => Cur.channel; // kept for back-compat (trench presence)
 
-    /// <summary>Terrain height at a world (x,z) — Perlin hills, with a carved river on river maps.</summary>
+    /// <summary>Terrain height at a world (x,z): Perlin hills plus optional ridged noise
+    /// (dunes / canyon walls / mountains), with a carved trench on river/canyon maps.</summary>
     public static float Hill(float x, float z)
     {
-        float h = (Mathf.PerlinNoise(x * 0.025f + 100f, z * 0.025f + 100f) - 0.5f) * 2f * MapAmp;
-        if (MapHasRiver)
+        var m = Cur;
+        float h = (Mathf.PerlinNoise(x * m.freq + 100f, z * m.freq + 100f) - 0.5f) * 2f * m.amp;
+        if (m.ridge > 0f)
+        {
+            // Ridged noise: |0.5 - noise| inverted then squared → sharp crests/valleys.
+            float r = 1f - Mathf.Abs(Mathf.PerlinNoise(x * m.freq * 2f + 500f, z * m.freq * 2f + 500f) - 0.5f) * 2f;
+            h += (r * r) * m.ridge;
+        }
+        if (m.channel)
         {
             float d = Mathf.Abs(x - RiverX);
             if (d < RiverHalf)
             {
-                float edge = Mathf.SmoothStep(RiverBed, h, d / RiverHalf); // bed at centre → terrain at banks
+                float edge = Mathf.SmoothStep(m.channelBed, h, d / RiverHalf); // bed at centre → terrain at banks
                 h = Mathf.Min(h, edge);
             }
         }
@@ -97,13 +175,16 @@ public static class GameBootstrap
     /// <summary>A random standing point on the map (off the edges and out of the river).</summary>
     public static Vector3 RandomSpawnPoint()
     {
+        var m = Cur;
         float half = MapSize * 0.4f;
         float x = 0f, z = 0f;
-        for (int t = 0; t < 12; t++)
+        for (int t = 0; t < 24; t++)
         {
             x = Random.Range(-half, half);
             z = Random.Range(-half, half);
-            if (Mathf.Abs(x - RiverX) > RiverHalf + 1.5f) break; // not in the river
+            bool inTrench = m.channel && Mathf.Abs(x - RiverX) < RiverHalf + 1.5f;
+            bool inSea = m.waterPlane == 2 && Hill(x, z) < m.water + 0.5f; // islands: stay on dry land
+            if (!inTrench && !inSea) break;
         }
         return new Vector3(x, Hill(x, z) + 1.5f, z);
     }
@@ -202,34 +283,53 @@ public static class GameBootstrap
         terrainVside = vside; terrainHalf = half; terrainStep = step;
 
         mr.material = new Material(StdShader()); // build-safe (no Shader.Find that can strip to null)
-        Color floor = MapVariant == 2 ? new Color(0.55f, 0.50f, 0.32f)  // arena / dry ground
-                    : MapVariant == 1 ? new Color(0.25f, 0.42f, 0.20f)  // hills
-                    : new Color(0.22f, 0.38f, 0.18f);                   // forest floor
-        SetColor(go, floor);
+        SetColor(go, Cur.floor);
     }
 
-    static void BuildRiver()
+    static void BuildWater()
     {
+        var m = Cur;
         var water = GameObject.CreatePrimitive(PrimitiveType.Plane);
-        water.name = "River";
+        water.name = "Water";
         water.transform.SetParent(World);
         Object.Destroy(water.GetComponent<Collider>()); // walk into water freely
-        water.transform.position = new Vector3(RiverX, WaterLevel, 0f);
-        water.transform.localScale = new Vector3((RiverHalf * 2f) / 10f, 1f, MapSize / 10f); // 10u plane base
-        MakeGhost(water, new Color(0.2f, 0.45f, 0.85f, 0.6f)); // translucent blue
+        if (m.waterPlane == 2) // full-map sea (islands)
+        {
+            water.transform.position = new Vector3(0f, m.water, 0f);
+            water.transform.localScale = new Vector3(MapSize / 10f, 1f, MapSize / 10f); // 10u plane base
+        }
+        else // narrow river strip running along Z at RiverX
+        {
+            water.transform.position = new Vector3(RiverX, m.water, 0f);
+            water.transform.localScale = new Vector3((RiverHalf * 2f) / 10f, 1f, MapSize / 10f);
+        }
+        MakeGhost(water, m.waterTint); // translucent water tint
     }
 
-    // Five tree shapes, picked by seed so the forest is varied but stable per layout:
-    // round deciduous, tall conifer, slim tall, wide bush, and autumn-coloured.
-    static void BuildTree(Vector3 pos, int seed)
+    // Scatter prop: shape depends on the map's tree style (forest mix, snowy conifer,
+    // desert cactus, dead canyon snag, tropical palm). Seed keeps layouts stable.
+    static void BuildTree(Vector3 pos, int seed, int style)
     {
         var root = new GameObject("Tree");
         root.transform.SetParent(World);
         root.transform.position = new Vector3(pos.x, Hill(pos.x, pos.z), pos.z);
         root.transform.rotation = Quaternion.Euler(0f, (seed * 57) % 360, 0f);
 
-        int kind = seed % 5;
         float js = 0.85f + ((seed * 17) % 35) * 0.01f; // 0.85..1.19 size jitter
+        switch (style)
+        {
+            case 1: BuildConifer(root, seed, js); break;  // snow / mountains
+            case 2: BuildCactus(root, seed, js); break;   // desert
+            case 3: BuildDeadTree(root, seed, js); break; // canyon
+            case 4: BuildPalm(root, seed, js); break;     // tropical islands
+            default: BuildForestTree(root, seed, js); break;
+        }
+    }
+
+    // Original five forest shapes: round deciduous, conifer, slim tall, bush, autumn.
+    static void BuildForestTree(GameObject root, int seed, float js)
+    {
+        int kind = seed % 5;
         Color bark = new Color(0.35f, 0.25f, 0.15f);
 
         switch (kind)
@@ -285,6 +385,63 @@ public static class GameBootstrap
         leaf.transform.localPosition = localPos;
         leaf.transform.localScale = new Vector3(scale, scale * flatY, scale);
         SetColor(leaf, c);
+    }
+
+    // A visual cube limb (branch / cactus arm / palm frond) — no collider.
+    static void TreeLimb(GameObject root, Vector3 localPos, Vector3 scale, Vector3 euler, Color c)
+    {
+        var g = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        Object.Destroy(g.GetComponent<Collider>());
+        g.transform.SetParent(root.transform, false);
+        g.transform.localPosition = localPos;
+        g.transform.localEulerAngles = euler;
+        g.transform.localScale = scale;
+        SetColor(g, c);
+    }
+
+    // Snowy conifer: brown trunk, dark-green stacked tiers with snow-capped top tiers.
+    static void BuildConifer(GameObject root, int seed, float js)
+    {
+        TreeTrunk(root, 1.8f * js, 0.3f * js, new Color(0.3f, 0.22f, 0.13f));
+        Color pine = new Color(0.14f, 0.32f, 0.2f);
+        Color snow = new Color(0.9f, 0.93f, 0.96f);
+        for (int i = 0; i < 5; i++)
+        {
+            Color c = i >= 3 ? snow : pine; // upper (smaller) tiers wear snow
+            TreeLeaf(root, new Vector3(0f, (3.0f + i * 0.85f) * js, 0f), (2.3f - i * 0.42f) * js, c, 0.8f);
+        }
+    }
+
+    // Desert cactus: a thick green column (keeps a collider) with an optional raised arm.
+    static void BuildCactus(GameObject root, int seed, float js)
+    {
+        Color green = new Color(0.24f, 0.44f, 0.26f);
+        TreeTrunk(root, 1.5f * js, 0.4f * js, green); // column
+        if (seed % 3 != 0)
+        {
+            int dir = (seed % 2 == 0) ? 1 : -1;
+            TreeLimb(root, new Vector3(0.5f * js * dir, 1.5f * js, 0f), new Vector3(0.3f * js, 0.28f * js, 0.28f * js), Vector3.zero, green); // out
+            TreeLimb(root, new Vector3(0.66f * js * dir, 2.1f * js, 0f), new Vector3(0.28f * js, 1.0f * js, 0.28f * js), Vector3.zero, green); // up
+        }
+    }
+
+    // Canyon snag: a bare leaning trunk with a couple of dead branches, no foliage.
+    static void BuildDeadTree(GameObject root, int seed, float js)
+    {
+        Color dead = new Color(0.34f, 0.27f, 0.2f);
+        TreeTrunk(root, 1.8f * js, 0.26f * js, dead);
+        TreeLimb(root, new Vector3(0.45f * js, 3.0f * js, 0f), new Vector3(0.12f, 1.2f * js, 0.12f), new Vector3(0f, 0f, 52f), dead);
+        TreeLimb(root, new Vector3(-0.4f * js, 3.4f * js, 0.2f), new Vector3(0.1f, 1.0f * js, 0.1f), new Vector3(18f, 0f, -48f), dead);
+    }
+
+    // Tropical palm: tall slim trunk topped with big flat green fronds radiating out.
+    static void BuildPalm(GameObject root, int seed, float js)
+    {
+        Color trunk = new Color(0.45f, 0.36f, 0.22f);
+        Color frond = new Color(0.2f, 0.5f, 0.22f);
+        TreeTrunk(root, 3.0f * js, 0.22f * js, trunk);
+        for (int i = 0; i < 6; i++)
+            TreeLimb(root, new Vector3(0f, 6.0f * js, 0f), new Vector3(0.18f, 0.08f, 2.4f * js), new Vector3(32f, i * 60f, 0f), frond);
     }
 
     /// <summary>Tint a primitive's material (works in both Built-in and URP).</summary>
