@@ -297,9 +297,10 @@ public class Bomber : MonoBehaviour
     {
         points = pts; onImpact = cb; radius = r;
         dir = new Vector3(1f, 0f, 0.22f).normalized;
-        pos = center - dir * 105f + Vector3.up * 46f; // bigger plane, a touch higher & further out
+        pos = center - dir * 120f + Vector3.up * 56f; // bigger plane: higher & further out so the run reads
 
         BuildTu95();
+        transform.localScale = Vector3.one * 1.7f; // scale the whole airframe up (model only — flight/bombs unaffected)
 
         transform.position = pos;
         transform.rotation = Quaternion.LookRotation(dir);
