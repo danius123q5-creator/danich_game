@@ -88,7 +88,7 @@ public class PlayerController : MonoBehaviour
     static readonly string[] BuildCategories = { "СТРОИТЕЛЬНОЕ", "ОБОРОНА", "ОСТАЛЬНОЕ" };
     static readonly int[][] BuildCategoryItems =
     {
-        new[] { 3, 16, 17, 4, 6, 20, 5, 12, 13, 14 }, // WALL, LONG WALL, TALL WALL, DOOR, STAIRS, LADDER, BRIDGE, BRIDGE CORNER/T/CROSS
+        new[] { 3, 16, 17, 4, 6, 20, 5 }, // WALL, LONG WALL, TALL WALL, DOOR, STAIRS, LADDER, BRIDGE
         new[] { 0, 19, 1, 2, 7, 8, 15 },          // SENTRY, RPG, DISPENSER, MINE, LANDMINE, BARBED WIRE, AA TURRET
         new[] { 9, 10, 11, 18 },                  // AIR STRIKE, TESLA COIL, ARTILLERY, CAR
     };
