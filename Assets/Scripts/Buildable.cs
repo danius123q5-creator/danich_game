@@ -114,6 +114,7 @@ public class Buildable : MonoBehaviour
             case 5: AddBox(new Vector3(0f, 2.0f, 0f), new Vector3(2.6f, 0.4f, 3.4f)); break;           // straight bridge deck (walkable)
             case 7: AddBox(new Vector3(0f, 0.12f, 0f), new Vector3(1.2f, 0.24f, 1.2f)); break;         // flat landmine (step over it)
             case 8: AddBox(new Vector3(0f, 0.45f, 0f), new Vector3(2.4f, 0.9f, 0.7f), true); break;    // barbed wire (trigger: walk through)
+            case 20: AddBox(new Vector3(0f, Ladder.Height * 0.5f, 0f), new Vector3(1.4f, Ladder.Height, 1.0f), true); break; // vertical ladder: trigger climb zone
             case 9: AddBox(new Vector3(0f, 1.2f, 0f), new Vector3(1.7f, 2.4f, 1.7f)); break;           // air strike beacon
             case 10: AddBox(new Vector3(0f, 1.2f, 0f), new Vector3(1.4f, 2.4f, 1.4f)); break;          // tesla coil
             case 11: AddBox(new Vector3(0f, 0.7f, 0f), new Vector3(2.0f, 1.4f, 2.0f)); break;          // artillery cannon
@@ -147,6 +148,7 @@ public class Buildable : MonoBehaviour
             case 4: return root.AddComponent<Door>();
             case 5: return root.AddComponent<Bridge>();
             case 6: return root.AddComponent<Stairs>();
+            case 20: return root.AddComponent<Ladder>();
             case 12: case 13: case 14: return root.AddComponent<Bridge>(); // corner / T / cross decks behave like a bridge
             case 8: return root.AddComponent<BarbedWire>();
             case 9: return root.AddComponent<AirStrike>();

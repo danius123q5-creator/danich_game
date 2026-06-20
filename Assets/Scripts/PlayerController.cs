@@ -55,8 +55,8 @@ public class PlayerController : MonoBehaviour
     GameObject viewmodel;
     GameObject playerBody;
 
-    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ" };
-    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 35, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40 };
+    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА" };
+    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 35, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30 };
 
     // Short "what it is / how it works" blurb per build type — shown in the Q menu on hover.
     static readonly string[] BuildDescriptions =
@@ -81,13 +81,14 @@ public class PlayerController : MonoBehaviour
         "Высокая стена: выше — зомби не перелезут и не достанут сверху.",
         "Машина: подойди и нажми E чтобы сесть, рули WASD, F — выйти. Зомби её не трогают.",
         "РПГ: дешёвая ракетная турель. Сама бьёт ракетами по площади — хороша против толпы, но хрупкая и медленно перезаряжается.",
+        "Вертикальная лестница: встань вплотную и лезь вверх/вниз на W/S. Заберись на стены и мосты. Пробел — спрыгнуть.",
     };
 
     // Build-menu sections: each holds the build-type indices shown under that header.
     static readonly string[] BuildCategories = { "СТРОИТЕЛЬНОЕ", "ОБОРОНА", "ОСТАЛЬНОЕ" };
     static readonly int[][] BuildCategoryItems =
     {
-        new[] { 3, 16, 17, 4, 6, 5, 12, 13, 14 }, // WALL, LONG WALL, TALL WALL, DOOR, STAIRS, BRIDGE, BRIDGE CORNER/T/CROSS
+        new[] { 3, 16, 17, 4, 6, 20, 5, 12, 13, 14 }, // WALL, LONG WALL, TALL WALL, DOOR, STAIRS, LADDER, BRIDGE, BRIDGE CORNER/T/CROSS
         new[] { 0, 19, 1, 2, 7, 8, 15 },          // SENTRY, RPG, DISPENSER, MINE, LANDMINE, BARBED WIRE, AA TURRET
         new[] { 9, 10, 11, 18 },                  // AIR STRIKE, TESLA COIL, ARTILLERY, CAR
     };
@@ -278,6 +279,21 @@ public class PlayerController : MonoBehaviour
         clp.y = Mathf.Lerp(clp.y, crouch ? 0.3f : 0.7f, 12f * Time.deltaTime);
         cam.transform.localPosition = clp;
 
+        // Ladder climbing: while standing in a ladder's climb zone, move straight
+        // up/down with W/S (gravity off, hangs in place when idle). A/D still strafes
+        // so you can step off sideways; Space hops off (falls through to a jump).
+        Ladder ladder = NearbyLadder();
+        // Engage only when climbing up (W) or already off the ground mid-climb — so you
+        // can still walk freely around the ladder's base instead of getting stuck on it.
+        if (ladder != null && (v > 0.1f || !cc.isGrounded) && !Input.GetKeyDown(KeyCode.Space))
+        {
+            vSpeed = 0f;
+            float climb = v * MoveSpeed * 0.6f;        // W = up, S = down
+            Vector3 strafe = transform.right * h;
+            cc.Move((strafe * MoveSpeed * 0.5f + Vector3.up * climb) * Time.deltaTime);
+            return;
+        }
+
         // Jump with coyote time + an input buffer so a press never gets eaten by the
         // frame where the controller is still settling on the ground ("works every other time").
         bool grounded = cc.isGrounded;
@@ -296,6 +312,20 @@ public class PlayerController : MonoBehaviour
 
         vSpeed -= Gravity * Time.deltaTime;
         cc.Move((dir * speed + Vector3.up * vSpeed) * Time.deltaTime);
+    }
+
+    // Returns a finished ladder whose climb zone overlaps the player, else null.
+    Ladder NearbyLadder()
+    {
+        var hits = Physics.OverlapBox(transform.position + Vector3.up * 0.9f,
+                                      new Vector3(0.45f, 0.9f, 0.45f), transform.rotation,
+                                      ~0, QueryTriggerInteraction.Collide);
+        foreach (var h in hits)
+        {
+            var l = h.GetComponentInParent<Ladder>();
+            if (l != null && !l.Building && !l.IsPuppet) return l;
+        }
+        return null;
     }
 
     bool RaycastNoSelf(float dist, out RaycastHit best)

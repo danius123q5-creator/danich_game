@@ -32,6 +32,7 @@ public static class Models
             case 4: return BuildDoor(level);
             case 5: return BuildBridge(level);
             case 6: return BuildStairs(level);
+            case 20: return BuildLadder(level);
             case 12: return BuildBridgeCorner(level);
             case 13: return BuildBridgeT(level);
             case 14: return BuildBridgeCross(level);
@@ -315,6 +316,25 @@ public static class Models
         ramp.transform.localEulerAngles = new Vector3(-30f, 0f, 0f); // rises toward +Z
         ramp.transform.localScale = new Vector3(2.4f, 0.3f, 4.0f);
         GameBootstrap.SetColor(ramp, new Color(0.5f, 0.36f, 0.2f));
+        return root;
+    }
+
+    public static GameObject BuildLadder(int level)
+    {
+        // A plain vertical ladder: two upright rails with rungs between them. No
+        // collider of its own (visuals only) — the climb zone is a trigger added in
+        // Buildable.AddColliders, and the player climbs it in PlayerController.
+        var root = new GameObject("LadderModel");
+        var t = root.transform;
+        Color rail = new Color(0.42f, 0.3f, 0.18f); // wood
+        Color rung = new Color(0.55f, 0.4f, 0.24f);
+
+        float h = Ladder.Height;
+        float halfW = 0.55f;
+        Prim(PrimitiveType.Cube, t, new Vector3(-halfW, h * 0.5f, 0f), new Vector3(0.12f, h, 0.12f), rail); // left rail
+        Prim(PrimitiveType.Cube, t, new Vector3(halfW, h * 0.5f, 0f), new Vector3(0.12f, h, 0.12f), rail);  // right rail
+        for (float y = 0.35f; y < h; y += 0.45f)
+            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, 0f), new Vector3(halfW * 2f, 0.08f, 0.1f), rung); // rungs
         return root;
     }
 
