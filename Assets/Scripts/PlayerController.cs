@@ -744,7 +744,7 @@ public class PlayerController : MonoBehaviour
                 Panel(new Rect(cx - 400f, 8f, 800f, 64f));
                 GUI.color = Color.cyan;
                 GUI.Label(new Rect(cx - 400f, 12f, 800f, 28f), "ПОДГОТОВКА — стройте базу!", line);
-                GUI.Label(new Rect(cx - 400f, 42f, 800f, 24f), $"след. волна: {gm.WaveNumber + 1}", sub);
+                GUI.Label(new Rect(cx - 400f, 42f, 800f, 24f), $"след. волна: {gm.WaveNumber + 1}/{gm.EvacWave} волн", sub);
                 var big = new GUIStyle(GUI.skin.label) { fontSize = 52, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
                 GUI.Label(new Rect(cx - 300f, 78f, 600f, 64f), $"{Mathf.CeilToInt(gm.PhaseTimeLeft)}с", big);
                 GUI.color = Color.white;
