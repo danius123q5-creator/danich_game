@@ -463,6 +463,66 @@ public static class Models
         return root;
     }
 
+    // Per-kind shared materials for the Quaternius CC0 zombie model (palette-textured).
+    static readonly Material[] _zMats = new Material[5];
+    static bool _zModelFailed;
+
+    /// <summary>Zombie visual: a Quaternius CC0 model when available, else the procedural
+    /// primitive zombie. Kamikaze (4) stays procedural — it needs its bat wings to read in flight.</summary>
+    public static GameObject BuildZombieVisual(int kind = 0)
+    {
+        if (kind != 4)
+        {
+            var model = TryBuildZombieModel(kind);
+            if (model != null) return model;
+        }
+        return BuildZombie(kind);
+    }
+
+    static Material ZombieMat(int kind)
+    {
+        kind = Mathf.Clamp(kind, 0, 4);
+        if (_zMats[kind] != null) return _zMats[kind];
+        var sh = Shader.Find("Universal Render Pipeline/Lit");
+        var tex = Resources.Load<Texture2D>("Zombies/ZombieTexture");
+        if (sh == null || tex == null) return null;
+        tex.filterMode = FilterMode.Point; // crisp palette colours (no bilinear bleed)
+        var m = new Material(sh);
+        if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", tex);
+        if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", ZombieTint(kind));
+        if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.1f);
+        _zMats[kind] = m;
+        return m;
+    }
+
+    static Color ZombieTint(int kind) => kind switch
+    {
+        2 => new Color(1f, 0.8f, 0.78f),   // tank — slightly bloodied
+        3 => new Color(1f, 0.95f, 0.82f),  // grenadier
+        _ => Color.white,                   // normal/pistol — texture as-is
+    };
+
+    static float ZombieScaleMul(int kind) => kind == 2 ? 1.5f : 1f; // tank is bigger
+
+    static GameObject TryBuildZombieModel(int kind)
+    {
+        if (_zModelFailed) return null;
+        var mat = ZombieMat(kind);
+        var prefab = mat != null ? Resources.Load<GameObject>("Zombies/Zombie") : null;
+        if (prefab == null) { _zModelFailed = true; return null; }
+
+        var root = new GameObject("ZombieModel");
+        var go = Object.Instantiate(prefab, root.transform, false);
+        // Quaternius zombie is ~7 units tall, modelled facing -Z → scale to ~2.1 m and turn to face +Z.
+        float scale = (2.1f / 7f) * ZombieScaleMul(kind);
+        go.transform.localScale = Vector3.one * scale;
+        go.transform.localPosition = Vector3.zero;
+        go.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+        foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = mat;
+        foreach (var c in go.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+        return root;
+    }
+
     // kind: 0 normal, 1 pistol, 2 tank, 3 grenadier
     public static GameObject BuildZombie(int kind = 0)
     {

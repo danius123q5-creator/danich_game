@@ -76,7 +76,7 @@ public class Zombie : MonoBehaviour
         z.kind = kind;
         z.NetId = nextNetId++;
 
-        var vis = Models.BuildZombie((int)kind);
+        var vis = Models.BuildZombieVisual((int)kind);
         vis.transform.SetParent(root.transform, false);
 
         root.SetActive(true); // now Awake runs with the right Kind
@@ -96,7 +96,7 @@ public class Zombie : MonoBehaviour
         z.kind = kind; z.NetId = netId; z.puppet = true;
         z.netPos = pos; z.netInit = true;
 
-        var vis = Models.BuildZombie((int)kind);
+        var vis = Models.BuildZombieVisual((int)kind);
         vis.transform.SetParent(root.transform, false);
 
         root.SetActive(true);
