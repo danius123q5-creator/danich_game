@@ -57,7 +57,7 @@ public class GameManager : MonoBehaviour
         }
 
         // Source of truth: how many zombies actually exist right now.
-        aliveCount = Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None).Length;
+        aliveCount = Zombie.All.Count;
 
         if (IsPrep)
         {

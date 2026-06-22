@@ -84,7 +84,7 @@ public class Rocket : MonoBehaviour
         {
             Effects.Explosion(transform.position);
             float rSq = blastRadius * blastRadius;
-            foreach (var z in Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None))
+            foreach (var z in Zombie.All)
                 if ((z.transform.position - transform.position).sqrMagnitude < rSq) z.TakeDamage(blastDamage);
         }
         Destroy(gameObject);

@@ -35,7 +35,7 @@ public class BarbedWire : Buildable
     protected override void BuildableTick()
     {
         float rSq = radius * radius;
-        foreach (var z in Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None))
+        foreach (var z in Zombie.All)
         {
             Vector3 d = z.transform.position - transform.position;
             d.y = 0f;

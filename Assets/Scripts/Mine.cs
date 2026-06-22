@@ -6,7 +6,6 @@ public class Mine : Buildable
 {
     float wireLength = 8f;
     float tripDist = 1.4f;
-    float blastDamage = 45f;
     float blastRadius = 6f;
     bool exploded;
 
@@ -36,8 +35,8 @@ public class Mine : Buildable
     {
         switch (Mathf.Clamp(Level, 1, 2))
         {
-            case 1: MaxHealth = 80f; blastDamage = 45f; blastRadius = 6f; break;
-            default: MaxHealth = 120f; blastDamage = 90f; blastRadius = 8.5f; break;
+            case 1: MaxHealth = 80f; blastRadius = 6f; break;
+            default: MaxHealth = 120f; blastRadius = 8.5f; break;
         }
         Health = MaxHealth;
     }
@@ -66,7 +65,7 @@ public class Mine : Buildable
     protected override void BuildableTick()
     {
         if (exploded) return;
-        foreach (var z in Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None))
+        foreach (var z in Zombie.All)
         {
             if (DistToSegment2D(z.transform.position, transform.position, wireEnd) < tripDist)
             {
@@ -85,7 +84,7 @@ public class Mine : Buildable
         foreach (var p in ends)
         {
             Effects.Explosion(p + Vector3.up * 0.4f); // spark burst + boom at each charge
-            foreach (var z in Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None))
+            foreach (var z in Zombie.All)
             {
                 if ((z.transform.position - p).magnitude < blastRadius)
                 {

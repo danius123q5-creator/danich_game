@@ -62,7 +62,7 @@ public class Rpg : Buildable
     {
         Zombie best = null;
         float bestSq = range * range;
-        foreach (var z in Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None))
+        foreach (var z in Zombie.All)
         {
             float d = (z.transform.position - transform.position).sqrMagnitude;
             if (d < bestSq) { bestSq = d; best = z; }

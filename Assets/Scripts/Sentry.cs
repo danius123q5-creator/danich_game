@@ -65,7 +65,7 @@ public class Sentry : Buildable
         Zombie best = null;
         float bestSq = range * range;
         Vector3 c = transform.position + Vector3.up * 0.6f;
-        foreach (var z in Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None))
+        foreach (var z in Zombie.All)
         {
             float d = (z.transform.position - c).sqrMagnitude;
             if (d < bestSq && HasLineOfSight(c, z)) { best = z; bestSq = d; }
@@ -100,7 +100,7 @@ public class Sentry : Buildable
     {
         Vector3 loc = z.transform.position;
         Effects.Explosion(loc + Vector3.up * 0.5f); // visible rocket blast
-        foreach (var t in Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None))
+        foreach (var t in Zombie.All)
         {
             if ((t.transform.position - loc).sqrMagnitude < 4f) t.TakeDamage(40f); // 2 m AoE
         }

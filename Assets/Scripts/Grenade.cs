@@ -62,7 +62,7 @@ public class Grenade : MonoBehaviour
             (player.transform.position - transform.position).sqrMagnitude < rSq)
             player.TakeDamage(Damage);
 
-        foreach (var b in Object.FindObjectsByType<Buildable>(FindObjectsSortMode.None))
+        foreach (var b in Buildable.All)
             if ((b.transform.position - transform.position).sqrMagnitude < rSq) b.TakeDamage(Damage);
 
         Destroy(gameObject);

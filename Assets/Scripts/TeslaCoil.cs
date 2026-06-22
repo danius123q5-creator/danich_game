@@ -43,7 +43,7 @@ public class TeslaCoil : Buildable
         Vector3 c = transform.position + Vector3.up * 1.6f;
         float rSq = range * range;
         int zapped = 0;
-        foreach (var z in Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None))
+        foreach (var z in Zombie.All)
         {
             if ((z.transform.position - transform.position).sqrMagnitude > rSq) continue;
             if (!SpendMetal(zapCost)) break; // out of metal — stop arcing

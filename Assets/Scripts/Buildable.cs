@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -26,6 +27,16 @@ public class Buildable : MonoBehaviour
     bool puppet;                       // true on a client: a non-functional visual copy
     public bool IsPuppet => puppet;
     static int nextNetId = 1;
+
+    // Live registry of all buildings (real + puppets). Replaces per-frame / per-message
+    // FindObjectsByType<Buildable>() scene scans in turrets, zombies and the net layer.
+    public static readonly List<Buildable> All = new List<Buildable>();
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetRegistry() => All.Clear();
+
+    protected virtual void OnEnable() { All.Add(this); }
+    protected virtual void OnDisable() { All.Remove(this); }
 
     public bool NeedsRepair => Health < MaxHealth;
     public bool CanUpgrade => Level < MaxLevel && !Building;
@@ -310,7 +321,7 @@ public class Buildable : MonoBehaviour
 
     protected virtual void OnDeath()
     {
-        foreach (var z in Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None))
+        foreach (var z in Zombie.All)
         {
             if ((z.transform.position - transform.position).sqrMagnitude < 2.25f) z.TakeDamage(30f);
         }

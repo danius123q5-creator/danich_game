@@ -269,7 +269,7 @@ public class LanManager : MonoBehaviour
 
     static Buildable FindBuildable(int netId)
     {
-        foreach (var b in UnityEngine.Object.FindObjectsByType<Buildable>(FindObjectsSortMode.None))
+        foreach (var b in Buildable.All)
             if (b.NetId == netId && !b.IsPuppet) return b;
         return null;
     }
@@ -280,7 +280,7 @@ public class LanManager : MonoBehaviour
         var ci = CultureInfo.InvariantCulture;
         var sb = new StringBuilder("S ");
         bool first = true;
-        foreach (var b in UnityEngine.Object.FindObjectsByType<Buildable>(FindObjectsSortMode.None))
+        foreach (var b in Buildable.All)
         {
             if (b.IsPuppet) continue;
             if (!first) sb.Append(';');
@@ -389,7 +389,7 @@ public class LanManager : MonoBehaviour
 
     static Zombie FindZombie(int netId)
     {
-        foreach (var z in UnityEngine.Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None))
+        foreach (var z in Zombie.All)
             if (z.NetId == netId && !z.IsPuppet) return z;
         return null;
     }
@@ -400,7 +400,7 @@ public class LanManager : MonoBehaviour
         var ci = CultureInfo.InvariantCulture;
         var sb = new StringBuilder("Z ");
         bool first = true;
-        foreach (var z in UnityEngine.Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None))
+        foreach (var z in Zombie.All)
         {
             if (z.IsPuppet) continue;
             if (!first) sb.Append(';');

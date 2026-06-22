@@ -5,7 +5,6 @@ public class ProxyMine : Buildable
 {
     float triggerRadius = 1.8f;
     float blastRadius = 5f;
-    float blastDamage = 70f;
     bool exploded;
 
     public override bool IsTrap => true;
@@ -27,7 +26,7 @@ public class ProxyMine : Buildable
     protected override void BuildableTick()
     {
         if (exploded) return;
-        foreach (var z in Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None))
+        foreach (var z in Zombie.All)
         {
             Vector3 d = z.transform.position - transform.position;
             d.y = 0f;
@@ -40,7 +39,7 @@ public class ProxyMine : Buildable
         if (exploded) return;
         exploded = true;
         Effects.Explosion(transform.position + Vector3.up * 0.3f);
-        foreach (var z in Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None))
+        foreach (var z in Zombie.All)
         {
             if ((z.transform.position - transform.position).magnitude < blastRadius)
             {
