@@ -8,11 +8,17 @@ public class AntiAir : Buildable
     const float Range = 40f;
     const float InterceptChance = 0.5f;
 
+    // Unique, stable per-instance id used to let each AA roll once per bird.
+    // Replaces the deprecated GetInstanceID() (made a hard error in Unity 6000.5).
+    static int _nextId = 1;
+    int _myId;
+
     protected override void Awake()
     {
         BuildCost = 120;
         MaxLevel = 1;
         BuildTime = 1.5f;
+        _myId = _nextId++;
         base.Awake();
     }
 
@@ -47,7 +53,7 @@ public class AntiAir : Buildable
 
         // Birds carrying zombies — EACH AA gets its own one-time 50% roll, so multiple
         // emplacements on the base stack their chances (1 - 0.5^N to down the bird).
-        int myId = GetInstanceID();
+        int myId = _myId;
         foreach (var bird in Object.FindObjectsByType<Bird>(FindObjectsSortMode.None))
         {
             if ((bird.transform.position - transform.position).sqrMagnitude > rSq) continue;

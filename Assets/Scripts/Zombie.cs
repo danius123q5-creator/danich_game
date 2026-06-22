@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>Walks toward the nearest player; melee or ranged attack depending on Kind.
@@ -49,6 +50,17 @@ public class Zombie : MonoBehaviour
     Vector3 netPos; float netYaw; bool netInit;
     static int nextNetId = 1;
     public bool IsPuppet => puppet;
+
+    // Live registry of all zombies (real + puppets). Replaces per-frame
+    // FindObjectsByType<Zombie>() scans across many scripts — a huge perf win when
+    // dozens of turrets/traps each scanned the whole scene every frame.
+    public static readonly List<Zombie> All = new List<Zombie>();
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetRegistry() => All.Clear();
+
+    void OnEnable() { All.Add(this); }
+    void OnDisable() { All.Remove(this); }
 
     public static Zombie Create(Vector3 pos, Kind kind = Kind.Normal)
     {
@@ -224,7 +236,7 @@ public class Zombie : MonoBehaviour
     {
         Buildable best = null;
         float bestSq = (AttackRange + 3f) * (AttackRange + 3f);
-        foreach (var b in Object.FindObjectsByType<Buildable>(FindObjectsSortMode.None))
+        foreach (var b in Buildable.All)
         {
             if (b.IsTrap) continue; // mines aren't attacked
             float d = (b.transform.position - transform.position).sqrMagnitude;
@@ -331,7 +343,7 @@ public class Zombie : MonoBehaviour
         if (player != null && !player.IsDead &&
             (player.transform.position - transform.position).sqrMagnitude < BlastRadius * BlastRadius)
             player.TakeDamage(AttackDamage);
-        foreach (var b in Object.FindObjectsByType<Buildable>(FindObjectsSortMode.None))
+        foreach (var b in Buildable.All)
             if (!b.IsTrap && (b.transform.position - transform.position).sqrMagnitude < BlastRadius * BlastRadius)
                 b.TakeDamage(60f);
         Destroy(gameObject);

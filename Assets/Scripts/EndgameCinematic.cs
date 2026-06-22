@@ -30,7 +30,7 @@ public class EndgameCinematic : MonoBehaviour
     PlayerController player;
     Transform heli, rotor, tailRotor;
     Vector3 landingPos, baseCenter, heliVel;
-    bool camTaken, boarded;
+    bool camTaken;
     float fade;                    // 0..1 final fade-to-black
     float creditScroll;
     Color ambient0;
@@ -64,11 +64,11 @@ public class EndgameCinematic : MonoBehaviour
 
     Vector3 ComputeBaseCenter()
     {
-        var all = Object.FindObjectsByType<Buildable>(FindObjectsSortMode.None);
-        if (all.Length == 0) return player != null ? player.transform.position : Vector3.zero;
+        var all = Buildable.All;
+        if (all.Count == 0) return player != null ? player.transform.position : Vector3.zero;
         Vector3 sum = Vector3.zero;
         foreach (var b in all) sum += b.transform.position;
-        return sum / all.Length;
+        return sum / all.Count;
     }
 
     static Vector3 Flat(Vector3 v) { v.y = 0f; return v.sqrMagnitude > 0.001f ? v.normalized : Vector3.forward; }
@@ -113,13 +113,12 @@ public class EndgameCinematic : MonoBehaviour
         heli.position = Vector3.MoveTowards(heli.position, land, 12f * dt);
 
         bool landed = (heli.position - land).sqrMagnitude < 1f;
-        bool reached = player != null && (Flat(player.transform.position - heli.position).sqrMagnitude >= 0f) &&
+        bool reached = player != null &&
                        Vector3.Distance(Horizon(player.transform.position), Horizon(heli.position)) < 6f;
 
         // Board when the player reaches the landed chopper, or after a safety timeout.
         if ((landed && reached) || t > 45f || (player != null && player.IsDead && t > 6f))
         {
-            boarded = true;
             TakeCamera();
             if (player != null) player.enabled = false; // stop control + HUD
             phase = Phase.Liftoff; t = 0f;
@@ -147,7 +146,7 @@ public class EndgameCinematic : MonoBehaviour
         {
             // snapshot the base to shred, then start the bombardment
             baseBuildings.Clear();
-            baseBuildings.AddRange(Object.FindObjectsByType<Buildable>(FindObjectsSortMode.None));
+            baseBuildings.AddRange(Buildable.All);
             phase = Phase.Bombard; t = 0f; rocketTimer = 0f; finalBlast = false;
         }
     }
@@ -177,7 +176,7 @@ public class EndgameCinematic : MonoBehaviour
             Effects.AirBlast(baseCenter + Vector3.up * 1f, 16f);
             for (int i = baseBuildings.Count - 1; i >= 0; i--)
                 if (baseBuildings[i] != null) Shred(baseBuildings[i], baseCenter, 8f);
-            foreach (var z in Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None))
+            foreach (var z in Zombie.All)
                 z.TakeDamage(99999f);
         }
 
@@ -239,7 +238,7 @@ public class EndgameCinematic : MonoBehaviour
         if (heliVel == Vector3.zero) heliVel = (Flat(heli.position - baseCenter) * 18f) + Vector3.up * 7f;
         heli.position += heliVel * dt;
 
-        DriveCamera(cam.position, heli.position, 1.5f * dt); // keep position, swing to face the heli
+        if (cam != null) DriveCamera(cam.position, heli.position, 1.5f * dt); // keep position, swing to face the heli
         creditScroll += dt;
         if (t > 8f) { phase = Phase.Done; t = 0f; }
     }

@@ -42,8 +42,8 @@ public class AirStrike : Buildable
         if (Time.time < next) return;
 
         // Aim at the densest pocket: the zombie with the most neighbours in blast range.
-        var zombies = Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None);
-        if (zombies.Length == 0) return;
+        var zombies = Zombie.All;
+        if (zombies.Count == 0) return;
         Vector3 best = Vector3.zero;
         int bestCount = 0;
         float rSq = blastRadius * blastRadius;
@@ -81,7 +81,7 @@ public class AirStrike : Buildable
         float bd = blastDamage, br = blastRadius, rSq = blastRadius * blastRadius;
         Effects.AirStrikeRun(center, points, br, p =>
         {
-            var zs = Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None);
+            var zs = Zombie.All;
             foreach (var z in zs)
                 if (z != null && (z.transform.position - p).sqrMagnitude < rSq)
                     z.TakeDamage(bd);

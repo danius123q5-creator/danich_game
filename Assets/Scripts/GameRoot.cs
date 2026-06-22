@@ -166,7 +166,7 @@ public class GameRoot : MonoBehaviour
     {
         var ci = CultureInfo.InvariantCulture;
         var parts = new List<string>();
-        foreach (var b in Object.FindObjectsByType<Buildable>(FindObjectsSortMode.None))
+        foreach (var b in Buildable.All)
         {
             var pos = b.transform.position;
             float yaw = b.transform.eulerAngles.y;

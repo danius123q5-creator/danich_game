@@ -67,7 +67,7 @@ public class Artillery : Buildable
         Effects.Explosion(loc + Vector3.up * 0.4f);  // shell impact
 
         float rSq = blastRadius * blastRadius;
-        foreach (var z in Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None))
+        foreach (var z in Zombie.All)
             if ((z.transform.position - loc).sqrMagnitude < rSq) z.TakeDamage(blastDamage);
     }
 
@@ -75,7 +75,7 @@ public class Artillery : Buildable
     {
         Zombie best = null;
         float bestSq = range * range;
-        foreach (var z in Object.FindObjectsByType<Zombie>(FindObjectsSortMode.None))
+        foreach (var z in Zombie.All)
         {
             float d = (z.transform.position - transform.position).sqrMagnitude;
             if (d < bestSq) { bestSq = d; best = z; }
