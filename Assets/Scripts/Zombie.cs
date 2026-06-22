@@ -62,6 +62,9 @@ public class Zombie : MonoBehaviour
     void OnEnable() { All.Add(this); }
     void OnDisable() { All.Remove(this); }
 
+    // Reused by ranged zombies' line-of-fire check (no per-shot array allocation).
+    static readonly RaycastHit[] _shotHits = new RaycastHit[32];
+
     public static Zombie Create(Vector3 pos, Kind kind = Kind.Normal)
     {
         var root = new GameObject("Zombie");
@@ -262,14 +265,17 @@ public class Zombie : MonoBehaviour
         Vector3 from = transform.position + Vector3.up * 1.4f;
         Vector3 toP = player.transform.position + Vector3.up * 0.6f;
         Vector3 dir = toP - from;
-        var hits = Physics.RaycastAll(from, dir.normalized, dir.magnitude);
-        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-        foreach (var h in hits)
+        int n = Physics.RaycastNonAlloc(from, dir.normalized, _shotHits, dir.magnitude);
+
+        // Nearest hit that isn't a zombie (single pass, no sort/alloc).
+        float bestD = float.MaxValue; Collider best = null;
+        for (int i = 0; i < n; i++)
         {
-            if (h.collider.GetComponentInParent<Zombie>() != null) continue; // ignore zombies (incl. self)
-            return h.collider.GetComponentInParent<PlayerController>() != null; // first solid hit must be the player
+            if (_shotHits[i].collider.GetComponentInParent<Zombie>() != null) continue; // ignore zombies (incl. self)
+            if (_shotHits[i].distance < bestD) { bestD = _shotHits[i].distance; best = _shotHits[i].collider; }
         }
-        return true; // open air
+        if (best == null) return true; // open air
+        return best.GetComponentInParent<PlayerController>() != null; // nearest solid blocker must be the player
     }
 
     void FireRanged()

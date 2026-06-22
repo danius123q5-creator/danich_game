@@ -22,40 +22,96 @@ public static class Effects
         if (lan != null && lan.Active) lan.FxPoint(code, p);
     }
 
+    // ───────────────────────── pooling (perf) ─────────────────────────
+    // Tracers and short sounds fire on EVERY bullet — creating/destroying a GameObject
+    // (+ a fresh Material, + a temp AudioSource) per shot churned the GC hard during
+    // sustained fire. We reuse a small pool of each instead.
+
+    static Material _lineMat;
+    // One shared unlit material for all line renderers (tracers, shockwaves). Per-renderer
+    // start/end colours still vary; only the material (shader) is shared, so this is safe.
+    static Material LineMat()
+    {
+        if (_lineMat == null) _lineMat = new Material(GameBootstrap.LineShader());
+        return _lineMat;
+    }
+
+    static readonly Stack<GameObject> _tracerPool = new Stack<GameObject>();
+    internal static void ReturnTracer(GameObject go) { go.SetActive(false); _tracerPool.Push(go); }
+
+    static AudioSource[] _audioPool;
+    static int _audioIdx;
+    // Positional one-shot like AudioSource.PlayClipAtPoint, but reusing a ring of sources
+    // instead of spawning (and destroying) a GameObject for every sound.
+    static void PlayAt(AudioClip clip, Vector3 pos, float vol)
+    {
+        if (clip == null) return;
+        if (_audioPool == null)
+        {
+            _audioPool = new AudioSource[16];
+            for (int i = 0; i < _audioPool.Length; i++)
+            {
+                var go = new GameObject("FxAudio");
+                Object.DontDestroyOnLoad(go);
+                var src = go.AddComponent<AudioSource>();
+                src.playOnAwake = false;
+                src.spatialBlend = 1f; // 3D, matches PlayClipAtPoint
+                _audioPool[i] = src;
+            }
+        }
+        var s = _audioPool[_audioIdx];
+        _audioIdx = (_audioIdx + 1) % _audioPool.Length;
+        s.transform.position = pos;
+        s.PlayOneShot(clip, vol);
+    }
+
     public static void Upgrade(Vector3 pos)
     {
         Burst(pos, new Color(1f, 0.85f, 0.3f), 14);
         if (upgradeClip == null) upgradeClip = MakeTone(700f, 1350f, 0.25f);
-        AudioSource.PlayClipAtPoint(upgradeClip, pos, 0.8f);
+        PlayAt(upgradeClip, pos, 0.8f);
         Net('U', pos);
     }
 
     /// <summary>Visible bullet trail in the Game view (not just a debug line).</summary>
     public static void Tracer(Vector3 a, Vector3 b)
     {
-        var go = new GameObject("Tracer");
-        var lr = go.AddComponent<LineRenderer>();
-        lr.material = new Material(GameBootstrap.LineShader());
-        lr.startWidth = 0.04f;
-        lr.endWidth = 0.04f;
-        lr.startColor = lr.endColor = new Color(1f, 0.9f, 0.4f);
+        GameObject go = null;
+        while (go == null && _tracerPool.Count > 0) go = _tracerPool.Pop(); // skip any destroyed entry
+        LineRenderer lr;
+        if (go == null)
+        {
+            go = new GameObject("Tracer");
+            Object.DontDestroyOnLoad(go);
+            lr = go.AddComponent<LineRenderer>();
+            lr.sharedMaterial = LineMat();
+            lr.startWidth = 0.04f;
+            lr.endWidth = 0.04f;
+            lr.startColor = lr.endColor = new Color(1f, 0.9f, 0.4f);
+            go.AddComponent<TracerFx>();
+        }
+        else
+        {
+            go.SetActive(true);
+            lr = go.GetComponent<LineRenderer>();
+        }
         lr.SetPosition(0, a);
         lr.SetPosition(1, b);
-        go.AddComponent<TracerFx>();
+        go.GetComponent<TracerFx>().Restart();
         if (!NetSuppress) { var lan = LanManager.Instance; if (lan != null && lan.Active) lan.FxLine(a, b); }
     }
 
     public static void GunShot(Vector3 pos)
     {
         if (gunClip == null) gunClip = MakeTone(320f, 90f, 0.08f);
-        AudioSource.PlayClipAtPoint(gunClip, pos, 0.5f);
+        PlayAt(gunClip, pos, 0.5f);
         Net('G', pos);
     }
 
     public static void TurretShot(Vector3 pos)
     {
         if (turretClip == null) turretClip = MakeTone(520f, 130f, 0.09f);
-        AudioSource.PlayClipAtPoint(turretClip, pos, 0.55f); // punchy auto-turret "pew"
+        PlayAt(turretClip, pos, 0.55f); // punchy auto-turret "pew"
         Net('S', pos);
     }
 
@@ -63,7 +119,7 @@ public static class Effects
     public static void Zap(Vector3 pos)
     {
         if (zapClip == null) zapClip = MakeTone(1100f, 320f, 0.10f);
-        AudioSource.PlayClipAtPoint(zapClip, pos, 0.5f);
+        PlayAt(zapClip, pos, 0.5f);
         Net('Z', pos);
     }
 
@@ -72,7 +128,7 @@ public static class Effects
     {
         // Long, low, near-full-amplitude tone → a proper window-rattling boom.
         if (cannonClip == null) cannonClip = MakeTone(120f, 32f, 0.5f, 0.95f);
-        AudioSource.PlayClipAtPoint(cannonClip, pos, 1f);
+        PlayAt(cannonClip, pos, 1f);
         Burst(pos, new Color(1f, 0.7f, 0.25f), 16); // muzzle flash/smoke
         Net('C', pos);
     }
@@ -92,7 +148,7 @@ public static class Effects
         }
         Burst(pos, new Color(1f, 0.5f, 0.15f), 22);
         if (boomClip == null) boomClip = MakeTone(180f, 40f, 0.3f);
-        AudioSource.PlayClipAtPoint(boomClip, pos, 0.7f);
+        PlayAt(boomClip, pos, 0.7f);
         Net('X', pos);
     }
 
@@ -101,7 +157,7 @@ public static class Effects
     {
         Burst(pos, new Color(0.4f, 0.3f, 0.18f), 8);
         if (turretClip == null) turretClip = MakeTone(520f, 130f, 0.09f);
-        AudioSource.PlayClipAtPoint(turretClip, pos, 0.2f); // quiet, reuse a short thud tone
+        PlayAt(turretClip, pos, 0.2f); // quiet, reuse a short thud tone
         Net('I', pos);
     }
 
@@ -129,7 +185,7 @@ public static class Effects
         var go = new GameObject("Bomber");
         go.AddComponent<Bomber>().Init(center, points, radius, onImpact);
         if (planeClip == null) planeClip = MakeTone(230f, 150f, 1.6f, 0.5f); // engine drone
-        AudioSource.PlayClipAtPoint(planeClip, center + Vector3.up * 30f, 1f);
+        PlayAt(planeClip, center + Vector3.up * 30f, 1f);
     }
 
     /// <summary>Big ground detonation: fireball + smoke plume + shockwave ring + sparks + deep boom.</summary>
@@ -141,7 +197,7 @@ public static class Effects
         Burst(pos, new Color(1f, 0.55f, 0.15f), 38);
         Burst(pos, new Color(0.35f, 0.28f, 0.18f), 14); // debris
         if (bigBoomClip == null) bigBoomClip = MakeTone(95f, 26f, 0.65f, 0.95f);
-        AudioSource.PlayClipAtPoint(bigBoomClip, pos, 1f);
+        PlayAt(bigBoomClip, pos, 1f);
         if (!NetSuppress) { var lan = LanManager.Instance; if (lan != null && lan.Active) lan.FxAirBlast(pos, radius); }
     }
 
@@ -173,7 +229,7 @@ public static class Effects
     {
         var go = new GameObject("Shockwave");
         var lr = go.AddComponent<LineRenderer>();
-        lr.material = new Material(GameBootstrap.LineShader());
+        lr.sharedMaterial = LineMat();
         lr.loop = true;
         lr.useWorldSpace = true;
         int seg = 40;
@@ -217,14 +273,15 @@ public class SparkFx : MonoBehaviour
     }
 }
 
-/// <summary>A bullet trail that removes itself after a couple of frames.</summary>
+/// <summary>A bullet trail that returns itself to the pool after a couple of frames.</summary>
 public class TracerFx : MonoBehaviour
 {
     float life;
+    public void Restart() { life = 0f; }
     void Update()
     {
         life += Time.deltaTime;
-        if (life >= 0.05f) Destroy(gameObject);
+        if (life >= 0.05f) Effects.ReturnTracer(gameObject);
     }
 }
 

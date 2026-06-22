@@ -328,18 +328,21 @@ public class PlayerController : MonoBehaviour
         return null;
     }
 
+    // Reused by every aim/fire/interact/preview ray (called several times per frame),
+    // so no fresh RaycastHit[] is allocated per cast.
+    static readonly RaycastHit[] _rayHits = new RaycastHit[32];
+
     bool RaycastNoSelf(float dist, out RaycastHit best)
     {
-        var hits = Physics.RaycastAll(cam.transform.position, cam.transform.forward, dist);
-        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-        foreach (var h in hits)
+        int n = Physics.RaycastNonAlloc(cam.transform.position, cam.transform.forward, _rayHits, dist);
+        // Pick the NEAREST hit that isn't the player's own collider (single pass, no sort).
+        float bestD = float.MaxValue; bool found = false; best = default;
+        for (int i = 0; i < n; i++)
         {
-            if (h.collider.GetComponentInParent<PlayerController>() == this) continue;
-            best = h;
-            return true;
+            if (_rayHits[i].collider.GetComponentInParent<PlayerController>() == this) continue;
+            if (_rayHits[i].distance < bestD) { bestD = _rayHits[i].distance; best = _rayHits[i]; found = true; }
         }
-        best = default;
-        return false;
+        return found;
     }
 
     // ---- Gun ----
@@ -676,10 +679,13 @@ public class PlayerController : MonoBehaviour
     }
 
     // ---- HUD ----
-    static GUIStyle _lbl, _ctr, _sm;
+    static GUIStyle _lbl, _ctr, _sm, _tool16, _line24, _big52;
     static GUIStyle Lbl => _lbl ??= new GUIStyle(GUI.skin.label) { fontSize = 24, fontStyle = FontStyle.Bold };
     static GUIStyle Ctr => _ctr ??= new GUIStyle(GUI.skin.label) { fontSize = 30, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
     static GUIStyle Sm => _sm ??= new GUIStyle(GUI.skin.label) { fontSize = 19, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+    static GUIStyle Tool16 => _tool16 ??= new GUIStyle(GUI.skin.label) { fontSize = 16, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+    static GUIStyle Line24 => _line24 ??= new GUIStyle(GUI.skin.label) { fontSize = 24, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+    static GUIStyle Big52 => _big52 ??= new GUIStyle(GUI.skin.label) { fontSize = 52, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
 
     void Panel(Rect r)
     {
@@ -730,31 +736,27 @@ public class PlayerController : MonoBehaviour
         float bonusRem = nextBonus - Time.time;
         string bonusTxt = bonusRem <= 0f ? "СКМ:+100 металла" : $"бонус {Mathf.FloorToInt(bonusRem / 60f)}:{Mathf.FloorToInt(bonusRem % 60f):00}";
         toolLine += $"     колесо=оружие   {bonusTxt}";
-        var toolStyle = new GUIStyle(GUI.skin.label) { fontSize = 16, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         Panel(new Rect(8f, UI.H - 44f, UI.W - 16f, 34f));
-        GUI.color = Color.white; GUI.Label(new Rect(8f, UI.H - 43f, UI.W - 16f, 30f), toolLine, toolStyle);
+        GUI.color = Color.white; GUI.Label(new Rect(8f, UI.H - 43f, UI.W - 16f, 30f), toolLine, Tool16);
 
         // Top-center wave banner (hidden in PvP — no waves there)
         var gm = GameManager.Instance;
         if (gm != null && !GameRoot.IsPvp)
         {
-            var line = new GUIStyle(GUI.skin.label) { fontSize = 24, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-            var sub = new GUIStyle(GUI.skin.label) { fontSize = 19, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             if (gm.IsPrep)
             {
                 Panel(new Rect(cx - 400f, 8f, 800f, 64f));
                 GUI.color = Color.cyan;
-                GUI.Label(new Rect(cx - 400f, 12f, 800f, 28f), "ПОДГОТОВКА — стройте базу!", line);
-                GUI.Label(new Rect(cx - 400f, 42f, 800f, 24f), $"след. волна: {gm.WaveNumber + 1}/{gm.EvacWave} волн", sub);
-                var big = new GUIStyle(GUI.skin.label) { fontSize = 52, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-                GUI.Label(new Rect(cx - 300f, 78f, 600f, 64f), $"{Mathf.CeilToInt(gm.PhaseTimeLeft)}с", big);
+                GUI.Label(new Rect(cx - 400f, 12f, 800f, 28f), "ПОДГОТОВКА — стройте базу!", Line24);
+                GUI.Label(new Rect(cx - 400f, 42f, 800f, 24f), $"след. волна: {gm.WaveNumber + 1}/{gm.EvacWave} волн", Sm);
+                GUI.Label(new Rect(cx - 300f, 78f, 600f, 64f), $"{Mathf.CeilToInt(gm.PhaseTimeLeft)}с", Big52);
                 GUI.color = Color.white;
             }
             else
             {
                 Panel(new Rect(cx - 360f, 8f, 720f, 40f));
                 GUI.color = new Color(1f, 0.55f, 0.35f);
-                GUI.Label(new Rect(cx - 360f, 11f, 720f, 30f), $"ВОЛНА {gm.WaveNumber}   зомби: {gm.ZombiesLeft}", line);
+                GUI.Label(new Rect(cx - 360f, 11f, 720f, 30f), $"ВОЛНА {gm.WaveNumber}   зомби: {gm.ZombiesLeft}", Line24);
                 GUI.color = Color.white;
             }
         }
@@ -762,10 +764,9 @@ public class PlayerController : MonoBehaviour
         // Driving hint
         if (vehicle != null)
         {
-            var dh = new GUIStyle(GUI.skin.label) { fontSize = 24, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             Panel(new Rect(cx - 320f, UI.H - 96f, 640f, 40f));
             GUI.color = new Color(0.7f, 0.95f, 1f);
-            GUI.Label(new Rect(cx - 320f, UI.H - 92f, 640f, 32f), "WASD — ехать       F — выйти", dh);
+            GUI.Label(new Rect(cx - 320f, UI.H - 92f, 640f, 32f), "WASD — ехать       F — выйти", Line24);
             GUI.color = Color.white;
         }
 
