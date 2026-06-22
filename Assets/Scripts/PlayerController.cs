@@ -791,7 +791,7 @@ public class PlayerController : MonoBehaviour
                 // "Press J when ready" — skips the prep. Hidden for co-op clients (the host owns the waves).
                 if (!NetClient)
                 {
-                    GUI.color = new Color(0.55f, 1f, 0.65f, pulse);
+                    GUI.color = new Color(1f, 0.3f, 0.3f, pulse);
                     GUI.Label(new Rect(cx - 380f, 180f, 760f, 28f), "если вы готовы — нажмите J, чтобы начать волну", Sm);
                 }
                 GUI.color = Color.white;
