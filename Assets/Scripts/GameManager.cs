@@ -11,7 +11,7 @@ public class GameManager : MonoBehaviour
     public static GameManager Instance;
 
     public float FirstPrepTime = 320f; // first prep before wave 1 (build your base)
-    public float PrepTime = 60f;       // prep between later waves
+    public float PrepTime = 120f;      // prep between later waves
     public float SpawnInterval = 0.6f;
     public int MaxAlive = 120;
     public float SpawnRadius = 40f;
@@ -61,6 +61,7 @@ public class GameManager : MonoBehaviour
 
         if (IsPrep)
         {
+            if (Input.GetKeyDown(KeyCode.J)) PhaseTimeLeft = 0f; // "ready" — skip the prep and start the wave now
             PhaseTimeLeft -= Time.deltaTime;
             if (PhaseTimeLeft <= 0f) StartWave();
             return;

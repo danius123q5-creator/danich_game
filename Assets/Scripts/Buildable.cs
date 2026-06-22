@@ -67,6 +67,7 @@ public class Buildable : MonoBehaviour
 
     protected float buildEnd;
     protected PlayerController owner;
+    bool dead;            // set once OnDeath runs, so death/splash can't fire twice
     float upgReady;
     TextMesh label;
     protected Transform visual;
@@ -246,7 +247,7 @@ public class Buildable : MonoBehaviour
             }
             else
             {
-                string hp = NeedsRepair ? $"  {Mathf.RoundToInt(Health)}/{Mathf.RoundToInt(MaxHealth)}" : string.Empty;
+                string hp = NeedsRepair ? $"  {Mathf.Max(0, Mathf.RoundToInt(Health))}/{Mathf.RoundToInt(MaxHealth)}" : string.Empty;
                 label.text = (Level > 1 ? $"LVL {Level}" : string.Empty) + hp;
                 label.color = NeedsRepair ? new Color(1f, 0.5f, 0.3f) : Color.white;
             }
@@ -263,7 +264,8 @@ public class Buildable : MonoBehaviour
             return;
         }
 
-        if (Health > 0f && !IsFunding) BuildableTick(); // special weapons stay dark until funded
+        if (Health <= 0f) { OnDeath(); return; }         // safety net: never linger at <=0 HP
+        if (!IsFunding) BuildableTick();                  // special weapons stay dark until funded
     }
 
     protected virtual void ApplyLevel() { Health = MaxHealth; }
@@ -282,7 +284,7 @@ public class Buildable : MonoBehaviour
         if (hovered && label != null && Camera.main != null)
         {
             label.transform.rotation = Quaternion.LookRotation(label.transform.position - Camera.main.transform.position);
-            string hp = NeedsRepair ? $"  {Mathf.RoundToInt(Health)}/{Mathf.RoundToInt(MaxHealth)}" : string.Empty;
+            string hp = NeedsRepair ? $"  {Mathf.Max(0, Mathf.RoundToInt(Health))}/{Mathf.RoundToInt(MaxHealth)}" : string.Empty;
             label.text = (Building ? "BUILDING" : (Level > 1 ? $"LVL {Level}" : string.Empty)) + hp;
             label.color = NeedsRepair ? new Color(1f, 0.5f, 0.3f) : Color.white;
         }
@@ -321,6 +323,8 @@ public class Buildable : MonoBehaviour
 
     protected virtual void OnDeath()
     {
+        if (dead) return; // idempotent — guards against a second lethal hit the same frame
+        dead = true;
         foreach (var z in Zombie.All)
         {
             if ((z.transform.position - transform.position).sqrMagnitude < 2.25f) z.TakeDamage(30f);

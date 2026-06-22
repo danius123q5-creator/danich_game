@@ -748,6 +748,20 @@ public class PlayerController : MonoBehaviour
                 GUI.Label(new Rect(cx - 400f, 42f, 800f, 24f), $"след. волна: {gm.WaveNumber + 1}/{gm.EvacWave} волн", sub);
                 var big = new GUIStyle(GUI.skin.label) { fontSize = 52, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
                 GUI.Label(new Rect(cx - 300f, 78f, 600f, 64f), $"{Mathf.CeilToInt(gm.PhaseTimeLeft)}с", big);
+
+                // "Press Q to build" prompt — pulses so it's noticeable during prep.
+                var hintStyle = new GUIStyle(GUI.skin.label) { fontSize = 24, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+                float pulse = 0.6f + 0.4f * Mathf.PingPong(Time.unscaledTime * 1.5f, 1f);
+                GUI.color = new Color(1f, 0.9f, 0.3f, pulse);
+                GUI.Label(new Rect(cx - 350f, 146f, 700f, 32f), "нажмите Q для стройки", hintStyle);
+
+                // "Press J when ready" — skips the prep. Hidden for co-op clients (the host owns the waves).
+                if (!NetClient)
+                {
+                    var jStyle = new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+                    GUI.color = new Color(0.55f, 1f, 0.65f, pulse);
+                    GUI.Label(new Rect(cx - 380f, 180f, 760f, 28f), "если вы готовы — нажмите J, чтобы начать волну", jStyle);
+                }
                 GUI.color = Color.white;
             }
             else
@@ -777,7 +791,7 @@ public class PlayerController : MonoBehaviour
             Panel(new Rect(px - 8f, py - 8f, pw + 16f, twoBars ? 116f : 92f));
             GUI.color = Color.white;
             GUI.Label(new Rect(px, py, pw, 22f), $"{BuildNames[aimed.Type]}  -  УР {aimed.Level}  -  ваше", Sm);
-            Bar(px, py + 24f, pw, 20f, aimed.Health / aimed.MaxHealth, new Color(0.2f, 0.8f, 0.25f), $"{Mathf.RoundToInt(aimed.Health)} / {Mathf.RoundToInt(aimed.MaxHealth)} ХП");
+            Bar(px, py + 24f, pw, 20f, aimed.Health / aimed.MaxHealth, new Color(0.2f, 0.8f, 0.25f), $"{Mathf.Max(0, Mathf.RoundToInt(aimed.Health))} / {Mathf.RoundToInt(aimed.MaxHealth)} ХП");
 
             if (aimed.Building)
             {
