@@ -56,6 +56,9 @@ public static class GameBootstrap
         // Stylized look: soft shadows + a global post-processing volume (bloom/ACES/grade).
         VisualFx.Apply(World, light);
 
+        // Adaptive procedural soundtrack: calm during prep, driving during waves.
+        GameMusic.Spawn(World);
+
         BuildTerrain();
         if (m.waterPlane != 0) BuildWater();
 
