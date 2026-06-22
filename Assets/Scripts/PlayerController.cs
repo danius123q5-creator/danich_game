@@ -54,6 +54,10 @@ public class PlayerController : MonoBehaviour
     const float BonusCooldown = 600f;
     GameObject viewmodel;
     GameObject playerBody;
+    Vector3 vmBasePos;     // viewmodel rest position; recoil animates around it
+    float gunRecoil;       // 0..1 recoil kick, decays each frame
+    float gunHeat;         // 0..1 muzzle heat glow, decays each frame
+    GameObject gunMuzzle;  // barrel tip — glows red-hot when firing
 
     static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА" };
     static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 35, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30 };
@@ -220,6 +224,7 @@ public class PlayerController : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.E)) Interact();
 
+        AnimateViewmodel();
         UpdatePreview();
     }
 
@@ -365,6 +370,30 @@ public class PlayerController : MonoBehaviour
         }
         Effects.Tracer(start + cam.transform.forward * 0.8f, end); // visible trail
         Effects.GunShot(start);
+        Effects.MuzzleFlash(cam.transform.TransformPoint(new Vector3(0.32f, -0.26f, 0.95f))); // barrel-tip flash
+        gunRecoil = 1f; // kick the viewmodel back
+        gunHeat = 1f;   // barrel glows hot
+    }
+
+    // Recoil kick (decays) + barrel heat glow, applied to the gun viewmodel each frame.
+    void AnimateViewmodel()
+    {
+        if (viewmodel == null || !viewmodel.activeSelf) return;
+        gunRecoil = Mathf.MoveTowards(gunRecoil, 0f, 6f * Time.deltaTime);
+        gunHeat = Mathf.MoveTowards(gunHeat, 0f, 0.5f * Time.deltaTime); // ~2s cooldown
+        viewmodel.transform.localPosition = vmBasePos + new Vector3(0f, 0.012f, -0.10f) * gunRecoil;
+        viewmodel.transform.localRotation = Quaternion.Euler(-7f * gunRecoil, 0f, 0f);
+        if (gunMuzzle != null)
+        {
+            var r = gunMuzzle.GetComponent<Renderer>();
+            if (r != null)
+            {
+                var m = r.material;
+                m.EnableKeyword("_EMISSION");
+                if (m.HasProperty("_EmissionColor"))
+                    m.SetColor("_EmissionColor", new Color(1f, 0.35f, 0.1f) * (gunHeat * 3f)); // glows red-hot, blooms
+            }
+        }
     }
 
     public void AddAmmo(int n) { ammo = Mathf.Min(Guns[gunTier].mag, ammo + n); }
@@ -648,6 +677,8 @@ public class PlayerController : MonoBehaviour
         viewmodel = new GameObject("Viewmodel");
         viewmodel.transform.SetParent(cam.transform, false);
         viewmodel.transform.localPosition = new Vector3(0.32f, -0.28f, 0.55f);
+        vmBasePos = viewmodel.transform.localPosition;
+        gunMuzzle = null;
 
         Color dark = new Color(0.18f, 0.18f, 0.2f);
         Color metal = new Color(0.35f, 0.37f, 0.4f);
@@ -656,7 +687,7 @@ public class PlayerController : MonoBehaviour
         {
             case Tool.Gun:
                 VPrim(PrimitiveType.Cube, new Vector3(0f, 0f, 0f), new Vector3(0.12f, 0.12f, 0.3f), dark);
-                VPrim(PrimitiveType.Cylinder, new Vector3(0f, 0.02f, 0.25f), new Vector3(0.04f, 0.18f, 0.04f), metal, new Vector3(90f, 0f, 0f));
+                gunMuzzle = VPrim(PrimitiveType.Cylinder, new Vector3(0f, 0.02f, 0.25f), new Vector3(0.04f, 0.18f, 0.04f), metal, new Vector3(90f, 0f, 0f));
                 VPrim(PrimitiveType.Cube, new Vector3(0f, -0.14f, -0.06f), new Vector3(0.1f, 0.16f, 0.12f), dark);
                 break;
             case Tool.Build:

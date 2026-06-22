@@ -112,7 +112,21 @@ public static class Effects
     {
         if (turretClip == null) turretClip = MakeTone(520f, 130f, 0.09f);
         PlayAt(turretClip, pos, 0.55f); // punchy auto-turret "pew"
+        MuzzleFlash(pos);
         Net('S', pos);
+    }
+
+    /// <summary>A brief, bright emissive flash at a gun muzzle — pops and vanishes in a few
+    /// frames. The emission blooms, so every shot gets a satisfying spark of light.</summary>
+    public static void MuzzleFlash(Vector3 pos)
+    {
+        var g = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        Object.Destroy(g.GetComponent<Collider>());
+        g.transform.position = pos;
+        g.transform.localScale = Vector3.one * 0.28f;
+        GameBootstrap.SetColor(g, new Color(1f, 0.85f, 0.4f));
+        SetEmission(g, new Color(1f, 0.8f, 0.35f), 3.5f);
+        g.AddComponent<MuzzleFlashFx>();
     }
 
     /// <summary>Electric crackle for the Tesla coil.</summary>
@@ -297,6 +311,18 @@ public class SparkFx : MonoBehaviour
         transform.position += vel * Time.deltaTime;
         transform.localScale = Vector3.one * Mathf.Lerp(0.16f, 0f, life / 0.5f);
         if (life >= 0.5f) Destroy(gameObject);
+    }
+}
+
+/// <summary>A muzzle flash: a bright sphere that shrinks away in a few frames.</summary>
+public class MuzzleFlashFx : MonoBehaviour
+{
+    float life;
+    void Update()
+    {
+        life += Time.deltaTime;
+        transform.localScale = Vector3.one * Mathf.Lerp(0.28f, 0f, life / 0.06f);
+        if (life >= 0.06f) Destroy(gameObject);
     }
 }
 

@@ -11,11 +11,46 @@ using UnityEngine.Rendering.Universal;
 /// </summary>
 public static class VisualFx
 {
-    /// <summary>World-level setup: soft shadows + the global post-processing volume.</summary>
+    /// <summary>World-level setup: sunset sky/mood + soft shadows + the global post-processing volume.</summary>
     public static void Apply(Transform worldParent, Light sun)
     {
         StyleLight(sun);
+        SetupSunsetSky(sun);
         CreateGlobalVolume(worldParent);
+    }
+
+    /// <summary>Sunset / apocalypse mood: a warm procedural sky, a low orange sun, and a
+    /// crimson haze so distant hills melt into the horizon. Uses Unity's built-in procedural
+    /// skybox shader (always shipped — no custom shader to get stripped from the build).</summary>
+    static void SetupSunsetSky(Light sun)
+    {
+        var skyShader = Shader.Find("Skybox/Procedural");
+        if (skyShader != null)
+        {
+            var sky = new Material(skyShader);
+            if (sky.HasProperty("_SkyTint")) sky.SetColor("_SkyTint", new Color(1f, 0.55f, 0.42f));
+            if (sky.HasProperty("_GroundColor")) sky.SetColor("_GroundColor", new Color(0.12f, 0.09f, 0.09f));
+            if (sky.HasProperty("_AtmosphereThickness")) sky.SetFloat("_AtmosphereThickness", 1.6f);
+            if (sky.HasProperty("_Exposure")) sky.SetFloat("_Exposure", 1.35f);
+            RenderSettings.skybox = sky;
+        }
+        RenderSettings.sun = sun;
+
+        if (sun != null)
+        {
+            sun.color = new Color(1f, 0.62f, 0.36f);          // warm orange sunlight
+            sun.intensity = 1.15f;
+            sun.transform.rotation = Quaternion.Euler(20f, -35f, 0f); // low = long, dramatic shadows
+        }
+
+        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+        RenderSettings.ambientLight = new Color(0.34f, 0.26f, 0.24f); // warm, dim
+        RenderSettings.fog = true;
+        RenderSettings.fogMode = FogMode.ExponentialSquared;
+        RenderSettings.fogColor = new Color(0.55f, 0.32f, 0.24f);     // crimson haze
+        RenderSettings.fogDensity = 0.011f;
+
+        DynamicGI.UpdateEnvironment();
     }
 
     static void StyleLight(Light sun)
