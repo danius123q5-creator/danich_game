@@ -91,6 +91,17 @@ public class GameRoot : MonoBehaviour
             var p = Object.FindFirstObjectByType<PlayerController>();
             if (p != null) LoadBuildings(p);
         }
+        else
+        {
+            // Fresh game: drop a pre-built starter base. Not for co-op clients (the
+            // host owns/streams buildings) and not in PvP.
+            bool netClient = lan != null && lan.Active && !lan.IsHost;
+            if (!netClient && !IsPvp)
+            {
+                var p = Object.FindFirstObjectByType<PlayerController>();
+                if (p != null) GameBootstrap.BuildStarterBase(p.transform.position, p);
+            }
+        }
         State = GState.Playing;
         Time.timeScale = 1f;
         FreeCursor(false);
@@ -125,6 +136,8 @@ public class GameRoot : MonoBehaviour
     {
         GameBootstrap.DestroyWorld();
         GameBootstrap.BuildWorld(); // fresh world: wave 0 → wave 1, new player, reset metal
+        var hp = Object.FindFirstObjectByType<PlayerController>();
+        if (hp != null) GameBootstrap.BuildStarterBase(hp.transform.position, hp); // hardcore is offline
         State = GState.Playing;
         Time.timeScale = 1f;
         FreeCursor(false);
@@ -224,6 +237,7 @@ public class GameRoot : MonoBehaviour
     // ---- UI ----
     void OnGUI()
     {
+        UI.Begin(); // scale menus/splash to the screen resolution
         if (splashActive) { DrawSplash(); return; }
         if (State == GState.Menu) { if (inModes) DrawModesMenu(); else DrawMainMenu(); }
         else if (State == GState.Paused) DrawPauseMenu();
@@ -232,16 +246,16 @@ public class GameRoot : MonoBehaviour
     void DrawSplash()
     {
         GUI.color = new Color(0.08f, 0.10f, 0.14f);
-        GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(0f, 0f, UI.W, UI.H), Texture2D.whiteTexture);
         GUI.color = Color.white;
-        float cy = Screen.height * 0.5f;
+        float cy = UI.H * 0.5f;
         var big = new GUIStyle(GUI.skin.label) { fontSize = 64, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-        GUI.Label(new Rect(0f, cy - 60f, Screen.width, 120f), "made by danich", big);
+        GUI.Label(new Rect(0f, cy - 60f, UI.W, 120f), "made by danich", big);
     }
 
     void DrawMainMenu()
     {
-        float cx = Screen.width * 0.5f, cy = Screen.height * 0.5f;
+        float cx = UI.W * 0.5f, cy = UI.H * 0.5f;
         var title = new GUIStyle(GUI.skin.label) { fontSize = 48, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         GUI.color = new Color(0.6f, 0.9f, 0.5f);
         GUI.Label(new Rect(cx - 320f, cy - 190f, 640f, 70f), "ОБОРОНА ОТ ЗОМБИ", title);
@@ -261,14 +275,14 @@ public class GameRoot : MonoBehaviour
 
         var credit = new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         GUI.color = new Color(0.7f, 0.8f, 0.7f);
-        GUI.Label(new Rect(0f, Screen.height - 28f, Screen.width, 22f), "made by danich", credit);
+        GUI.Label(new Rect(0f, UI.H - 28f, UI.W, 22f), "made by danich", credit);
         GUI.color = Color.white;
     }
 
     // ---- Modes screen: pick offline / online co-op / PvP, choose a map, host or join ----
     void DrawModesMenu()
     {
-        float cx = Screen.width * 0.5f, cy = Screen.height * 0.5f;
+        float cx = UI.W * 0.5f, cy = UI.H * 0.5f;
         var title = new GUIStyle(GUI.skin.label) { fontSize = 44, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         GUI.color = new Color(0.6f, 0.9f, 0.5f);
         GUI.Label(new Rect(cx - 320f, cy - 250f, 640f, 64f), "РЕЖИМЫ", title);
@@ -357,10 +371,10 @@ public class GameRoot : MonoBehaviour
     void DrawPauseMenu()
     {
         GUI.color = new Color(0f, 0f, 0f, 0.6f);
-        GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(0f, 0f, UI.W, UI.H), Texture2D.whiteTexture);
         GUI.color = Color.white;
 
-        float cx = Screen.width * 0.5f, cy = Screen.height * 0.5f;
+        float cx = UI.W * 0.5f, cy = UI.H * 0.5f;
         var title = new GUIStyle(GUI.skin.label) { fontSize = 40, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         GUI.Label(new Rect(cx - 200f, cy - 170f, 400f, 60f), "ПАУЗА", title);
 

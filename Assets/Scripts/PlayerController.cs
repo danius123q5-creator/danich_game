@@ -700,8 +700,9 @@ public class PlayerController : MonoBehaviour
 
     void OnGUI()
     {
-        float cx = Screen.width * 0.5f;
-        float cy = Screen.height * 0.5f;
+        UI.Begin(); // scale the whole HUD to the screen resolution
+        float cx = UI.W * 0.5f;
+        float cy = UI.H * 0.5f;
 
         GUI.color = Color.white;
         GUI.DrawTexture(new Rect(cx - 14f, cy - 2f, 28f, 4f), Texture2D.whiteTexture);
@@ -712,12 +713,12 @@ public class PlayerController : MonoBehaviour
         GUI.color = Color.yellow; GUI.Label(new Rect(24f, 17f, 360f, 34f), $"УБИТО: {Score}", Lbl);
 
         // Bottom-left player HP bar (raised + enlarged)
-        Bar(20f, Screen.height - 110f, 520f, 48f, Health / MaxHealth, new Color(0.2f, 0.8f, 0.25f), $"ХП {Mathf.RoundToInt(Health)}");
+        Bar(20f, UI.H - 110f, 520f, 48f, Health / MaxHealth, new Color(0.2f, 0.8f, 0.25f), $"ХП {Mathf.RoundToInt(Health)}");
 
         // Bottom-centre metal readout (above the tool line)
-        Panel(new Rect(cx - 170f, Screen.height - 92f, 340f, 40f));
+        Panel(new Rect(cx - 170f, UI.H - 92f, 340f, 40f));
         GUI.color = new Color(0.45f, 0.8f, 1f);
-        GUI.Label(new Rect(cx - 170f, Screen.height - 90f, 340f, 36f), $"МЕТАЛЛ: {Metal}", Ctr);
+        GUI.Label(new Rect(cx - 170f, UI.H - 90f, 340f, 36f), $"МЕТАЛЛ: {Metal}", Ctr);
         GUI.color = Color.white;
 
         // Bottom-center tool line (smaller font + centred so the longer RU text fits)
@@ -730,8 +731,8 @@ public class PlayerController : MonoBehaviour
         string bonusTxt = bonusRem <= 0f ? "СКМ:+100 металла" : $"бонус {Mathf.FloorToInt(bonusRem / 60f)}:{Mathf.FloorToInt(bonusRem % 60f):00}";
         toolLine += $"     колесо=оружие   {bonusTxt}";
         var toolStyle = new GUIStyle(GUI.skin.label) { fontSize = 16, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-        Panel(new Rect(8f, Screen.height - 44f, Screen.width - 16f, 34f));
-        GUI.color = Color.white; GUI.Label(new Rect(8f, Screen.height - 43f, Screen.width - 16f, 30f), toolLine, toolStyle);
+        Panel(new Rect(8f, UI.H - 44f, UI.W - 16f, 34f));
+        GUI.color = Color.white; GUI.Label(new Rect(8f, UI.H - 43f, UI.W - 16f, 30f), toolLine, toolStyle);
 
         // Top-center wave banner (hidden in PvP — no waves there)
         var gm = GameManager.Instance;
@@ -762,9 +763,9 @@ public class PlayerController : MonoBehaviour
         if (vehicle != null)
         {
             var dh = new GUIStyle(GUI.skin.label) { fontSize = 24, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-            Panel(new Rect(cx - 320f, Screen.height - 96f, 640f, 40f));
+            Panel(new Rect(cx - 320f, UI.H - 96f, 640f, 40f));
             GUI.color = new Color(0.7f, 0.95f, 1f);
-            GUI.Label(new Rect(cx - 320f, Screen.height - 92f, 640f, 32f), "WASD — ехать       F — выйти", dh);
+            GUI.Label(new Rect(cx - 320f, UI.H - 92f, 640f, 32f), "WASD — ехать       F — выйти", dh);
             GUI.color = Color.white;
         }
 
@@ -852,17 +853,17 @@ public class PlayerController : MonoBehaviour
         {
             // Full death screen: dim everything, big title, two big buttons.
             GUI.color = new Color(0f, 0f, 0f, 0.78f);
-            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(0f, 0f, UI.W, UI.H), Texture2D.whiteTexture);
             GUI.color = Color.white;
 
             var dead = new GUIStyle(GUI.skin.label) { fontSize = 72, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             GUI.color = new Color(0.85f, 0.2f, 0.18f);
-            GUI.Label(new Rect(0f, cy - 200f, Screen.width, 100f), "ВЫ ПОГИБЛИ", dead);
+            GUI.Label(new Rect(0f, cy - 200f, UI.W, 100f), "ВЫ ПОГИБЛИ", dead);
             if (GameRoot.Hardcore)
             {
                 var hc = new GUIStyle(GUI.skin.label) { fontSize = 26, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
                 GUI.color = new Color(0.9f, 0.55f, 0.2f);
-                GUI.Label(new Rect(0f, cy - 110f, Screen.width, 36f), "ХАРДКОР — прогресс сброшен", hc);
+                GUI.Label(new Rect(0f, cy - 110f, UI.W, 36f), "ХАРДКОР — прогресс сброшен", hc);
             }
             GUI.color = Color.white;
 
@@ -891,7 +892,7 @@ public class PlayerController : MonoBehaviour
         if (buildMenuOpen)
         {
             GUI.color = new Color(0f, 0f, 0f, 0.6f);
-            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(0f, 0f, UI.W, UI.H), Texture2D.whiteTexture);
             GUI.color = Color.white;
 
             // Each category is a header followed by its buttons, wrapping to a new row
@@ -917,7 +918,7 @@ public class PlayerController : MonoBehaviour
             var head = new GUIStyle(GUI.skin.label) { fontSize = 16, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft, wordWrap = false };
             var btn = new GUIStyle(GUI.skin.button) { fontSize = 14, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = true };
 
-            Vector2 mouse = Event.current.mousePosition;
+            Vector2 mouse = Event.current.mousePosition / UI.Scale; // GUI.matrix isn't applied to the event pos
             int hoverItem = -1;
 
             float y = startY;

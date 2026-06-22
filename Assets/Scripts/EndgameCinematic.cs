@@ -318,7 +318,8 @@ public class EndgameCinematic : MonoBehaviour
     // ---- on-screen text ----
     void OnGUI()
     {
-        float cx = Screen.width * 0.5f, cy = Screen.height * 0.5f;
+        UI.Begin();
+        float cx = UI.W * 0.5f, cy = UI.H * 0.5f;
 
         // darkening overlay during bombard/credits/done
         float overlay = 0f;
@@ -328,7 +329,7 @@ public class EndgameCinematic : MonoBehaviour
         if (overlay > 0f)
         {
             GUI.color = new Color(0f, 0f, 0f, overlay);
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(0, 0, UI.W, UI.H), Texture2D.whiteTexture);
             GUI.color = Color.white;
         }
 
@@ -336,7 +337,7 @@ public class EndgameCinematic : MonoBehaviour
         {
             var b = new GUIStyle(GUI.skin.label) { fontSize = 30, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             GUI.color = new Color(1f, 0.4f, 0.3f);
-            GUI.Label(new Rect(0, 40, Screen.width, 50), "ЭВАКУАЦИЯ — добегите до вертолёта!", b);
+            GUI.Label(new Rect(0, 40, UI.W, 50), "ЭВАКУАЦИЯ — добегите до вертолёта!", b);
             GUI.color = Color.white;
         }
 
@@ -345,15 +346,15 @@ public class EndgameCinematic : MonoBehaviour
             var title = new GUIStyle(GUI.skin.label) { fontSize = 54, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             var sub = new GUIStyle(GUI.skin.label) { fontSize = 26, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             float y = cy + 120f - creditScroll * 40f;
-            GUI.Label(new Rect(0, y, Screen.width, 70), "ZOMBIE DEFENSE", title);
-            GUI.Label(new Rect(0, y + 75, Screen.width, 40), "made by danich", sub);
-            GUI.Label(new Rect(0, y + 145, Screen.width, 40), "спасибо за игру!", sub);
+            GUI.Label(new Rect(0, y, UI.W, 70), "ZOMBIE DEFENSE", title);
+            GUI.Label(new Rect(0, y + 75, UI.W, 40), "made by danich", sub);
+            GUI.Label(new Rect(0, y + 145, UI.W, 40), "спасибо за игру!", sub);
         }
 
         if (phase == Phase.Done && fade > 0.8f)
         {
             var end = new GUIStyle(GUI.skin.label) { fontSize = 60, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-            GUI.Label(new Rect(0, cy - 40, Screen.width, 80), "THE END", end);
+            GUI.Label(new Rect(0, cy - 40, UI.W, 80), "THE END", end);
         }
     }
 }

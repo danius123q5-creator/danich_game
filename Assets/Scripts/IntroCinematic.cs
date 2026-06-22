@@ -227,9 +227,10 @@ public class IntroCinematic : MonoBehaviour
     void OnGUI()
     {
         if (phase == Phase.Handover) return;
+        UI.Begin();
         var style = new GUIStyle(GUI.skin.label) { fontSize = 26, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         GUI.color = new Color(0.85f, 0.95f, 0.85f);
-        GUI.Label(new Rect(0f, Screen.height - 92f, Screen.width, 40f), "Высадка в зону карантина…", style);
+        GUI.Label(new Rect(0f, UI.H - 92f, UI.W, 40f), "Высадка в зону карантина…", style);
         GUI.color = Color.white;
     }
 }

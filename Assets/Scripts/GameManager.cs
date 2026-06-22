@@ -10,7 +10,7 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
 
-    public float FirstPrepTime = 240f; // first prep before wave 1 (4 minutes)
+    public float FirstPrepTime = 320f; // first prep before wave 1 (build your base)
     public float PrepTime = 60f;       // prep between later waves
     public float SpawnInterval = 0.6f;
     public int MaxAlive = 120;
@@ -37,7 +37,7 @@ public class GameManager : MonoBehaviour
     {
         player = FindFirstObjectByType<PlayerController>();
         IsPrep = true;
-        PhaseTimeLeft = FirstPrepTime; // 60s before the first wave; later preps use PrepTime (10s)
+        PhaseTimeLeft = FirstPrepTime; // long first prep to build your base; later preps use PrepTime
     }
 
     void Update()
