@@ -72,6 +72,9 @@ public static class GameBootstrap
             BuildTree(new Vector3(tx, 0f, tz), i, m.treeStyle);
         }
 
+        ScatterGrass(m);    // wind-swaying CC0 grass tufts around the play area
+        ScatterWreckage(m); // apocalyptic debris: car wrecks, rubble, pipes
+
         var player = new GameObject("Player");
         player.transform.SetParent(World);
         player.transform.position = RandomSpawnPoint();
@@ -351,6 +354,131 @@ public static class GameBootstrap
 
     // Scatter prop: shape depends on the map's tree style (forest mix, snowy conifer,
     // desert cactus, dead canyon snag, tropical palm). Seed keeps layouts stable.
+    // Kenney "Nature Kit" CC0 grass/flower tufts, scattered with a wind-sway shader.
+    static readonly string[] _grassModels =
+        { "Grass/grass", "Grass/grass_large", "Grass/grass_leafs", "Grass/grass",
+          "Grass/grass_leafs", "Grass/flower_yellowA", "Grass/flower_redA", "Grass/plant_bushSmall" };
+    static Material _grassMat;
+    static bool _grassFailed;
+
+    static void ScatterGrass(MapDef m)
+    {
+        if (_grassFailed) return;
+        var sh = Shader.Find("Custom/VertexColorWind");
+        if (sh == null) { _grassFailed = true; return; }
+        if (_grassMat == null) { _grassMat = new Material(sh); _grassMat.enableInstancing = true; }
+
+        var root = new GameObject("Grass").transform;
+        root.SetParent(World);
+
+        const int count = 650;
+        for (int i = 0; i < count; i++)
+        {
+            float ang = i * 2.39996f;            // golden-angle scatter
+            float r = 5f + (i % 42) * 1.8f;      // out to ~80 m around the base
+            float x = Mathf.Cos(ang) * r, z = Mathf.Sin(ang) * r;
+            if (m.channel && Mathf.Abs(x - RiverX) < RiverHalf + 1f) continue; // keep the trench clear
+            float y = Hill(x, z);
+            if (y < m.water + 0.25f) continue;   // no underwater grass
+
+            var prefab = Resources.Load<GameObject>(_grassModels[(i * 7) % _grassModels.Length]);
+            if (prefab == null) { _grassFailed = true; return; }
+            var go = Object.Instantiate(prefab, root);
+            go.transform.position = new Vector3(x, y, z);
+            go.transform.rotation = Quaternion.Euler(0f, (i * 53) % 360, 0f);
+            go.transform.localScale = Vector3.one * (3f + (i % 4)); // ~0.75–1.5 m tufts
+            foreach (var rr in go.GetComponentsInChildren<Renderer>())
+            {
+                rr.sharedMaterial = _grassMat;
+                rr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // perf: grass casts no shadows
+            }
+            foreach (var c in go.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+        }
+    }
+
+    // ── Apocalyptic wreckage scattered around the map (procedural, decorative) ──
+    static void ScatterWreckage(MapDef m)
+    {
+        var root = new GameObject("Wreckage").transform;
+        root.SetParent(World);
+        const int clusters = 16;
+        for (int i = 0; i < clusters; i++)
+        {
+            float ang = i * 2.39996f + 0.5f;
+            float r = 22f + (i % 8) * 9f; // ring 22..85 m (keeps the base area clear)
+            float x = Mathf.Cos(ang) * r, z = Mathf.Sin(ang) * r;
+            if (m.channel && Mathf.Abs(x - RiverX) < RiverHalf + 3f) continue;
+            float y = Hill(x, z);
+            if (y < m.water + 0.3f) continue;
+            var pos = new Vector3(x, y, z);
+            float yaw = (i * 67) % 360;
+            switch (i % 3)
+            {
+                case 0: BuildCarWreck(root, pos, yaw); break;
+                case 1: BuildRubble(root, pos, yaw, i); break;
+                default: BuildPipes(root, pos, yaw); break;
+            }
+        }
+    }
+
+    static void WreckPiece(Transform parent, PrimitiveType t, Vector3 lp, Vector3 ls, Color c, Vector3 euler = default)
+    {
+        var g = GameObject.CreatePrimitive(t);
+        Object.Destroy(g.GetComponent<Collider>()); // decorative — never blocks movement/pathing
+        g.transform.SetParent(parent, false);
+        g.transform.localPosition = lp;
+        g.transform.localEulerAngles = euler;
+        g.transform.localScale = ls;
+        SetColor(g, c);
+    }
+
+    static void BuildCarWreck(Transform parent, Vector3 pos, float yaw)
+    {
+        var go = new GameObject("CarWreck").transform;
+        go.SetParent(parent);
+        go.position = pos;
+        go.rotation = Quaternion.Euler(Random.Range(-5f, 5f), yaw, Random.Range(-7f, 7f)); // tilted, abandoned
+        Color rust = new Color(0.42f, 0.26f, 0.17f);
+        Color burnt = new Color(0.13f, 0.12f, 0.12f);
+        WreckPiece(go, PrimitiveType.Cube, new Vector3(0f, 0.55f, 0f), new Vector3(2.0f, 0.7f, 4.2f), rust);          // chassis
+        WreckPiece(go, PrimitiveType.Cube, new Vector3(0f, 1.05f, -0.3f), new Vector3(1.8f, 0.6f, 2.0f), burnt);      // crushed cabin
+        WreckPiece(go, PrimitiveType.Cylinder, new Vector3(-1.0f, 0.3f, 1.4f), new Vector3(0.5f, 0.18f, 0.5f), burnt, new Vector3(0f, 0f, 90f));
+        WreckPiece(go, PrimitiveType.Cylinder, new Vector3(1.0f, 0.3f, 1.4f), new Vector3(0.5f, 0.18f, 0.5f), burnt, new Vector3(0f, 0f, 90f));
+        WreckPiece(go, PrimitiveType.Cylinder, new Vector3(-1.0f, 0.3f, -1.6f), new Vector3(0.5f, 0.18f, 0.5f), burnt, new Vector3(0f, 0f, 90f)); // one wheel missing
+    }
+
+    static void BuildRubble(Transform parent, Vector3 pos, float yaw, int seed)
+    {
+        var go = new GameObject("Rubble").transform;
+        go.SetParent(parent);
+        go.position = pos;
+        go.rotation = Quaternion.Euler(0f, yaw, 0f);
+        Color concrete = new Color(0.48f, 0.46f, 0.43f);
+        Color dark = new Color(0.30f, 0.29f, 0.27f);
+        WreckPiece(go, PrimitiveType.Cube, new Vector3(0f, 1.2f, 0f), new Vector3(0.4f, 2.4f, 3.0f), concrete, new Vector3(0f, 0f, 14f));   // leaning wall fragment
+        WreckPiece(go, PrimitiveType.Cube, new Vector3(1.2f, 0.6f, 1.0f), new Vector3(0.4f, 1.2f, 1.6f), concrete, new Vector3(0f, 30f, -8f));
+        for (int k = 0; k < 6; k++)
+        {
+            float a = seed * 13 + k * 61;
+            Vector3 lp = new Vector3(Mathf.Cos(a) * 1.8f, 0.2f, Mathf.Sin(a) * 1.8f);
+            WreckPiece(go, PrimitiveType.Cube, lp, Vector3.one * Random.Range(0.3f, 0.7f), (k % 2 == 0) ? dark : concrete,
+                new Vector3(Random.Range(0f, 360f), Random.Range(0f, 360f), Random.Range(0f, 360f)));
+        }
+    }
+
+    static void BuildPipes(Transform parent, Vector3 pos, float yaw)
+    {
+        var go = new GameObject("Pipes").transform;
+        go.SetParent(parent);
+        go.position = pos;
+        go.rotation = Quaternion.Euler(0f, yaw, 0f);
+        Color metal = new Color(0.34f, 0.36f, 0.38f);
+        Color rust = new Color(0.40f, 0.27f, 0.18f);
+        WreckPiece(go, PrimitiveType.Cylinder, new Vector3(0f, 0.3f, 0f), new Vector3(0.3f, 1.6f, 0.3f), metal, new Vector3(90f, 0f, 0f));     // pipe lying along Z
+        WreckPiece(go, PrimitiveType.Cylinder, new Vector3(0.9f, 0.3f, 0.4f), new Vector3(0.28f, 1.3f, 0.28f), rust, new Vector3(90f, 22f, 0f));
+        WreckPiece(go, PrimitiveType.Cylinder, new Vector3(-0.7f, 0.5f, -0.4f), new Vector3(0.26f, 1.0f, 0.26f), metal, new Vector3(68f, -15f, 0f));
+    }
+
     // Kenney "Nature Kit" CC0 tree models (vertex-coloured) used for forest/snow maps.
     static readonly string[] _treeModels =
         { "Trees/tree_default", "Trees/tree_oak", "Trees/tree_detailed",
