@@ -348,6 +348,13 @@ public static class GameBootstrap
 
     // Scatter prop: shape depends on the map's tree style (forest mix, snowy conifer,
     // desert cactus, dead canyon snag, tropical palm). Seed keeps layouts stable.
+    // Kenney "Nature Kit" CC0 tree models (vertex-coloured) used for forest/snow maps.
+    static readonly string[] _treeModels =
+        { "Trees/tree_default", "Trees/tree_oak", "Trees/tree_detailed",
+          "Trees/tree_pineRoundA", "Trees/tree_pineDefaultA", "Trees/tree_fat" };
+    static Material _treeMat;
+    static bool _treeMatFailed;
+
     static void BuildTree(Vector3 pos, int seed, int style)
     {
         var root = new GameObject("Tree");
@@ -356,6 +363,10 @@ public static class GameBootstrap
         root.transform.rotation = Quaternion.Euler(0f, (seed * 57) % 360, 0f);
 
         float js = 0.85f + ((seed * 17) % 35) * 0.01f; // 0.85..1.19 size jitter
+
+        // Forest/snow maps: use the nicer Kenney models; cactus/dead/palm keep the procedural shapes.
+        if ((style == 0 || style == 1) && TrySpawnModelTree(root, seed, js)) return;
+
         switch (style)
         {
             case 1: BuildConifer(root, seed, js); break;  // snow / mountains
@@ -364,6 +375,28 @@ public static class GameBootstrap
             case 4: BuildPalm(root, seed, js); break;     // tropical islands
             default: BuildForestTree(root, seed, js); break;
         }
+    }
+
+    // Instantiate a Kenney CC0 tree model and paint it with the vertex-colour shader.
+    // Returns false (→ procedural fallback) if the shader was stripped or a model is missing.
+    static bool TrySpawnModelTree(GameObject root, int seed, float js)
+    {
+        if (_treeMatFailed) return false;
+        if (_treeMat == null)
+        {
+            var sh = Shader.Find("Custom/VertexColorTrees");
+            if (sh == null) { _treeMatFailed = true; return false; }
+            _treeMat = new Material(sh);
+        }
+        var prefab = Resources.Load<GameObject>(_treeModels[(seed * 13) % _treeModels.Length]);
+        if (prefab == null) { _treeMatFailed = true; return false; }
+
+        var go = Object.Instantiate(prefab, root.transform, false);
+        go.transform.localPosition = Vector3.zero;
+        go.transform.localScale = Vector3.one * (2.6f * js); // Kenney trees ~1u → scale to game size
+        foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = _treeMat;
+        foreach (var c in go.GetComponentsInChildren<Collider>()) Object.Destroy(c); // decorative only
+        return true;
     }
 
     // Original five forest shapes: round deciduous, conifer, slim tall, bush, autumn.
