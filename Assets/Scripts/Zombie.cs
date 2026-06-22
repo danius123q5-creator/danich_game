@@ -216,6 +216,18 @@ public class Zombie : MonoBehaviour
             }
         }
 
+        // Standoff: never let a (big) zombie bury its body inside the player's camera.
+        // It still attacks from melee range, just keeps ~1.5 m of personal space.
+        if (player != null && !player.IsDead)
+        {
+            Vector3 away = transform.position - player.transform.position;
+            away.y = 0f;
+            float d = away.magnitude;
+            const float standoff = 1.5f;
+            if (d > 0.01f && d < standoff)
+                move += away / d * (standoff - d) * 8f; // firm push back out to the standoff
+        }
+
         if (cc.isGrounded) vSpeed = -1f;
         else vSpeed -= 18f * Time.deltaTime;
 

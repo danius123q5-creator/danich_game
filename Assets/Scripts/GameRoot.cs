@@ -273,6 +273,22 @@ public class GameRoot : MonoBehaviour
         if (GUI.Button(new Rect(x, cy + 48f, bw, bh), "Режимы", btn)) inModes = true;
         if (GUI.Button(new Rect(x, cy + 112f, bw, bh), "Выход", btn)) QuitApp();
 
+        // Update notice — shown only if the launch-time check found a newer GitHub release.
+        if (UpdateChecker.UpdateAvailable)
+        {
+            var up = new GUIStyle(GUI.skin.button) { fontSize = 17, fontStyle = FontStyle.Bold };
+            GUI.backgroundColor = new Color(0.9f, 0.7f, 0.2f);
+            if (GUI.Button(new Rect(cx - 210f, cy + 176f, 420f, 40f), $"Доступно обновление {UpdateChecker.Latest} — скачать", up))
+                Application.OpenURL(UpdateChecker.ReleasesUrl);
+            GUI.backgroundColor = Color.white;
+        }
+
+        // Build version (bottom-left).
+        var ver = new GUIStyle(GUI.skin.label) { fontSize = 13, alignment = TextAnchor.LowerLeft };
+        GUI.color = new Color(0.6f, 0.7f, 0.6f);
+        GUI.Label(new Rect(12f, UI.H - 26f, 220f, 20f), $"v{GameVersion.Current}", ver);
+        GUI.color = Color.white;
+
         var credit = new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         GUI.color = new Color(0.7f, 0.8f, 0.7f);
         GUI.Label(new Rect(0f, UI.H - 28f, UI.W, 22f), "made by danich", credit);
