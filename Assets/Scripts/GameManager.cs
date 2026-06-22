@@ -61,7 +61,14 @@ public class GameManager : MonoBehaviour
 
         if (IsPrep)
         {
-            if (Input.GetKeyDown(KeyCode.J)) PhaseTimeLeft = 0f; // "ready" — skip the prep and start the wave now
+            if (Input.GetKeyDown(KeyCode.J)) // "ready" — skip the prep and start the wave now
+            {
+                // Reward an early start: more metal the more prep time you skip.
+                int bonus = 40 + Mathf.RoundToInt(PhaseTimeLeft * 0.6f);
+                foreach (var p in FindObjectsByType<PlayerController>(FindObjectsSortMode.None)) p.AddMetal(bonus);
+                if (player != null) Effects.Upgrade(player.transform.position + Vector3.up * 1f); // ding + sparkle
+                PhaseTimeLeft = 0f;
+            }
             PhaseTimeLeft -= Time.deltaTime;
             if (PhaseTimeLeft <= 0f) StartWave();
             return;

@@ -16,11 +16,12 @@ public static class UI
     /// UI.W / UI.H / UI.Scale afterwards.</summary>
     public static void Begin()
     {
-        float s = Screen.height / RefHeight;
+        UISettings.EnsureLoaded();
+        float s = (Screen.height / RefHeight) * Mathf.Clamp(UISettings.Scale, 0.6f, 1.6f);
         if (s <= 0f) s = 1f;
         Scale = s;
-        H = RefHeight;
-        W = Screen.width / s;
+        W = Screen.width / s;   // virtual canvas: shrinks as the user scales the UI up
+        H = Screen.height / s;
         GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(s, s, 1f));
     }
 }

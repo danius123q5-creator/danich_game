@@ -41,6 +41,7 @@ public class PlayerController : MonoBehaviour
     int previewType = -1;
     Buildable aimed;
     bool buildMenuOpen;
+    bool builtSomething; // once true, the "press Q to build" prep hint stops showing
     Car vehicle; // non-null while driving a car
 
     enum Tool { Gun, Build, Wrench, Shovel }
@@ -423,8 +424,9 @@ public class PlayerController : MonoBehaviour
         {
             LanManager.Instance.SendBuildPlace(SelectedBuild, hit.point, transform.eulerAngles.y);
             AddMetal(-cost);
+            builtSomething = true;
         }
-        else if (Buildable.Create(SelectedBuild, hit.point, rot, this) != null) AddMetal(-cost);
+        else if (Buildable.Create(SelectedBuild, hit.point, rot, this) != null) { AddMetal(-cost); builtSomething = true; }
     }
 
     void SellBuild()
@@ -711,8 +713,9 @@ public class PlayerController : MonoBehaviour
     }
 
     // ---- HUD ----
-    static GUIStyle _lbl, _ctr, _sm, _tool16, _line24, _big52;
+    static GUIStyle _lbl, _ctr, _sm, _tool16, _line24, _big52, _lblRight;
     static GUIStyle Lbl => _lbl ??= new GUIStyle(GUI.skin.label) { fontSize = 24, fontStyle = FontStyle.Bold };
+    static GUIStyle LblRight => _lblRight ??= new GUIStyle(GUI.skin.label) { fontSize = 24, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleRight };
     static GUIStyle Ctr => _ctr ??= new GUIStyle(GUI.skin.label) { fontSize = 30, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
     static GUIStyle Sm => _sm ??= new GUIStyle(GUI.skin.label) { fontSize = 19, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
     static GUIStyle Tool16 => _tool16 ??= new GUIStyle(GUI.skin.label) { fontSize = 16, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
@@ -721,7 +724,7 @@ public class PlayerController : MonoBehaviour
 
     void Panel(Rect r)
     {
-        GUI.color = new Color(0f, 0f, 0f, 0.55f);
+        GUI.color = new Color(0f, 0f, 0f, UISettings.PanelAlpha);
         GUI.DrawTexture(r, Texture2D.whiteTexture);
         GUI.color = Color.white;
     }
@@ -742,20 +745,26 @@ public class PlayerController : MonoBehaviour
         float cx = UI.W * 0.5f;
         float cy = UI.H * 0.5f;
 
-        GUI.color = Color.white;
-        GUI.DrawTexture(new Rect(cx - 14f, cy - 2f, 28f, 4f), Texture2D.whiteTexture);
-        GUI.DrawTexture(new Rect(cx - 2f, cy - 14f, 4f, 28f), Texture2D.whiteTexture);
+        // Crosshair — size from settings (0 = hidden).
+        float ch = UISettings.Crosshair;
+        if (ch > 0.01f)
+        {
+            GUI.color = Color.white;
+            GUI.DrawTexture(new Rect(cx - 14f * ch, cy - 2f * ch, 28f * ch, 4f * ch), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(cx - 2f * ch, cy - 14f * ch, 4f * ch, 28f * ch), Texture2D.whiteTexture);
+        }
 
         // Top-left stats panel (kills only — metal moved to bottom-centre)
-        Panel(new Rect(12f, 10f, 380f, 46f));
-        GUI.color = Color.yellow; GUI.Label(new Rect(24f, 17f, 360f, 34f), $"УБИТО: {Score}", Lbl);
+        // Kills counter — top-right corner.
+        Panel(new Rect(UI.W - 392f, 10f, 380f, 46f));
+        GUI.color = Color.yellow; GUI.Label(new Rect(UI.W - 380f, 17f, 360f, 34f), $"УБИТО: {Score}", LblRight);
 
         // Bottom-left player HP bar (raised + enlarged)
         Bar(20f, UI.H - 110f, 520f, 48f, Health / MaxHealth, new Color(0.2f, 0.8f, 0.25f), $"ХП {Mathf.RoundToInt(Health)}");
 
         // Bottom-centre metal readout (above the tool line)
         Panel(new Rect(cx - 170f, UI.H - 92f, 340f, 40f));
-        GUI.color = new Color(0.45f, 0.8f, 1f);
+        GUI.color = UISettings.Accent;
         GUI.Label(new Rect(cx - 170f, UI.H - 90f, 340f, 36f), $"МЕТАЛЛ: {Metal}", Ctr);
         GUI.color = Color.white;
 
@@ -785,8 +794,11 @@ public class PlayerController : MonoBehaviour
 
                 // Pulsing prompts during prep (cached styles — no per-frame GUIStyle alloc).
                 float pulse = 0.6f + 0.4f * Mathf.PingPong(Time.unscaledTime * 1.5f, 1f);
-                GUI.color = new Color(1f, 0.9f, 0.3f, pulse);
-                GUI.Label(new Rect(cx - 350f, 146f, 700f, 32f), "нажмите Q для стройки", Line24);
+                if (!builtSomething) // the Q hint goes away once you've built your first thing
+                {
+                    GUI.color = new Color(1f, 0.9f, 0.3f, pulse);
+                    GUI.Label(new Rect(cx - 350f, 146f, 700f, 32f), "нажмите Q для стройки", Line24);
+                }
 
                 // "Press J when ready" — skips the prep. Hidden for co-op clients (the host owns the waves).
                 if (!NetClient)

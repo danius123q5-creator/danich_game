@@ -27,6 +27,8 @@ public class GameRoot : MonoBehaviour
     LanManager lan;
     string joinIp = "127.0.0.1";
     bool inModes; // showing the Modes sub-screen instead of the main menu
+    bool inSettings;        // showing the Settings (UI customization) screen
+    bool settingsFromPause; // remember whether Settings was opened from the pause menu
 
     bool splashActive = true;
     float splashStart;
@@ -35,6 +37,7 @@ public class GameRoot : MonoBehaviour
     {
         Instance = this;
         lan = gameObject.AddComponent<LanManager>(); // persists with GameRoot
+        UISettings.Load();                           // apply saved HUD customization
     }
     void Start() { splashStart = Time.unscaledTime; EnterMenu(); }
 
@@ -239,6 +242,7 @@ public class GameRoot : MonoBehaviour
     {
         UI.Begin(); // scale menus/splash to the screen resolution
         if (splashActive) { DrawSplash(); return; }
+        if (inSettings) { DrawSettingsMenu(); return; }
         if (State == GState.Menu) { if (inModes) DrawModesMenu(); else DrawMainMenu(); }
         else if (State == GState.Paused) DrawPauseMenu();
     }
@@ -262,23 +266,28 @@ public class GameRoot : MonoBehaviour
         GUI.color = Color.white;
 
         var btn = new GUIStyle(GUI.skin.button) { fontSize = 22, fontStyle = FontStyle.Bold };
-        float bw = 280f, bh = 54f, x = cx - bw * 0.5f;
+        float bw = 280f, bh = 50f, x = cx - bw * 0.5f, y = cy - 110f;
 
         if (HasSave)
         {
             int w = PlayerPrefs.GetInt("save_wave", 0) + 1;
-            if (GUI.Button(new Rect(x, cy - 80f, bw, bh), $"Продолжить  (волна {w})", btn)) { CurrentMode = Mode.Offline; Hardcore = false; StartGame(true); }
+            if (GUI.Button(new Rect(x, y, bw, bh), $"Продолжить  (волна {w})", btn)) { CurrentMode = Mode.Offline; Hardcore = false; StartGame(true); }
         }
-        if (GUI.Button(new Rect(x, cy - 16f, bw, bh), "Новая игра", btn)) { CurrentMode = Mode.Offline; Hardcore = false; PlayerPrefs.DeleteKey("save_exists"); PlayerPrefs.DeleteKey("save_builds"); StartGame(false); }
-        if (GUI.Button(new Rect(x, cy + 48f, bw, bh), "Режимы", btn)) inModes = true;
-        if (GUI.Button(new Rect(x, cy + 112f, bw, bh), "Выход", btn)) QuitApp();
+        y += 58f;
+        if (GUI.Button(new Rect(x, y, bw, bh), "Новая игра", btn)) { CurrentMode = Mode.Offline; Hardcore = false; PlayerPrefs.DeleteKey("save_exists"); PlayerPrefs.DeleteKey("save_builds"); StartGame(false); }
+        y += 58f;
+        if (GUI.Button(new Rect(x, y, bw, bh), "Режимы", btn)) inModes = true;
+        y += 58f;
+        if (GUI.Button(new Rect(x, y, bw, bh), "Настройки", btn)) { settingsFromPause = false; inSettings = true; }
+        y += 58f;
+        if (GUI.Button(new Rect(x, y, bw, bh), "Выход", btn)) QuitApp();
 
         // Update notice — shown only if the launch-time check found a newer GitHub release.
         if (UpdateChecker.UpdateAvailable)
         {
             var up = new GUIStyle(GUI.skin.button) { fontSize = 17, fontStyle = FontStyle.Bold };
             GUI.backgroundColor = new Color(0.9f, 0.7f, 0.2f);
-            if (GUI.Button(new Rect(cx - 210f, cy + 176f, 420f, 40f), $"Доступно обновление {UpdateChecker.Latest} — скачать", up))
+            if (GUI.Button(new Rect(cx - 210f, y + 60f, 420f, 38f), $"Доступно обновление {UpdateChecker.Latest} — скачать", up))
                 Application.OpenURL(UpdateChecker.ReleasesUrl);
             GUI.backgroundColor = Color.white;
         }
@@ -395,9 +404,67 @@ public class GameRoot : MonoBehaviour
         GUI.Label(new Rect(cx - 200f, cy - 170f, 400f, 60f), "ПАУЗА", title);
 
         var btn = new GUIStyle(GUI.skin.button) { fontSize = 22, fontStyle = FontStyle.Bold };
-        float bw = 280f, bh = 54f, x = cx - bw * 0.5f;
-        if (GUI.Button(new Rect(x, cy - 70f, bw, bh), "Продолжить", btn)) Resume();
-        if (GUI.Button(new Rect(x, cy - 6f, bw, bh), "В главное меню", btn)) ExitToMenu();
-        if (GUI.Button(new Rect(x, cy + 58f, bw, bh), "Выйти из игры", btn)) QuitApp();
+        float bw = 280f, bh = 52f, x = cx - bw * 0.5f;
+        if (GUI.Button(new Rect(x, cy - 90f, bw, bh), "Продолжить", btn)) Resume();
+        if (GUI.Button(new Rect(x, cy - 30f, bw, bh), "Настройки", btn)) { settingsFromPause = true; inSettings = true; }
+        if (GUI.Button(new Rect(x, cy + 30f, bw, bh), "В главное меню", btn)) ExitToMenu();
+        if (GUI.Button(new Rect(x, cy + 90f, bw, bh), "Выйти из игры", btn)) QuitApp();
+    }
+
+    // ---- Settings: UI customization (live preview; persisted in PlayerPrefs) ----
+    void DrawSettingsMenu()
+    {
+        // Dim only when opened over the paused game (the main menu is already a flat screen).
+        if (settingsFromPause)
+        {
+            GUI.color = new Color(0f, 0f, 0f, 0.6f);
+            GUI.DrawTexture(new Rect(0f, 0f, UI.W, UI.H), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+        }
+
+        float cx = UI.W * 0.5f, cy = UI.H * 0.5f;
+        var title = new GUIStyle(GUI.skin.label) { fontSize = 40, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+        GUI.color = new Color(0.6f, 0.9f, 0.5f);
+        GUI.Label(new Rect(cx - 320f, cy - 230f, 640f, 56f), "НАСТРОЙКИ ИНТЕРФЕЙСА", title);
+        GUI.color = Color.white;
+
+        var lab = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft };
+        var small = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold };
+        float bw = 460f, x = cx - bw * 0.5f, y = cy - 150f;
+
+        // UI scale
+        GUI.Label(new Rect(x, y, bw, 22f), $"Размер интерфейса: {Mathf.RoundToInt(UISettings.Scale * 100f)}%", lab);
+        UISettings.Scale = GUI.HorizontalSlider(new Rect(x, y + 26f, bw, 22f), UISettings.Scale, 0.7f, 1.4f);
+        y += 64f;
+
+        // Crosshair size (0 = hidden)
+        string chTxt = UISettings.Crosshair <= 0.01f ? "выкл" : $"{Mathf.RoundToInt(UISettings.Crosshair * 100f)}%";
+        GUI.Label(new Rect(x, y, bw, 22f), $"Прицел: {chTxt}", lab);
+        UISettings.Crosshair = GUI.HorizontalSlider(new Rect(x, y + 26f, bw, 22f), UISettings.Crosshair, 0f, 2f);
+        y += 64f;
+
+        // HUD panel opacity
+        GUI.Label(new Rect(x, y, bw, 22f), $"Прозрачность панелей: {Mathf.RoundToInt(UISettings.PanelAlpha * 100f)}%", lab);
+        UISettings.PanelAlpha = GUI.HorizontalSlider(new Rect(x, y + 26f, bw, 22f), UISettings.PanelAlpha, 0f, 0.9f);
+        y += 64f;
+
+        // Accent colour (cycle through presets) + swatch
+        GUI.Label(new Rect(x, y, bw - 120f, 28f), $"Цвет акцента: {UISettings.AccentNames[UISettings.AccentIndex]}", lab);
+        int n = UISettings.Accents.Length;
+        if (GUI.Button(new Rect(x + bw - 116f, y, 34f, 28f), "<", small)) UISettings.AccentIndex = (UISettings.AccentIndex - 1 + n) % n;
+        if (GUI.Button(new Rect(x + bw - 38f, y, 34f, 28f), ">", small)) UISettings.AccentIndex = (UISettings.AccentIndex + 1) % n;
+        GUI.color = UISettings.Accent;
+        GUI.DrawTexture(new Rect(x + bw - 78f, y, 36f, 28f), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        y += 60f;
+
+        // Reset + Back (Back saves)
+        float hw = bw / 2f;
+        if (GUI.Button(new Rect(x, y, hw - 6f, 44f), "Сбросить", small)) UISettings.Reset();
+        if (GUI.Button(new Rect(x + hw + 6f, y, hw - 6f, 44f), "Назад", small))
+        {
+            UISettings.Save();
+            inSettings = false;
+        }
     }
 }
