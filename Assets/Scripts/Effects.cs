@@ -161,6 +161,33 @@ public static class Effects
         Net('I', pos);
     }
 
+    /// <summary>Stylized "dematerialize" death: a puff of glowing (emissive) sparks that
+    /// rise and shrink. The emission makes them bloom brightly, so a kill reads as the
+    /// zombie vaporising into light. Purely cosmetic — safe to call then destroy the zombie.</summary>
+    public static void Vaporize(Vector3 pos, Color tint)
+    {
+        for (int i = 0; i < 16; i++)
+        {
+            var g = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            Object.Destroy(g.GetComponent<Collider>());
+            g.transform.position = pos + new Vector3(Random.Range(-0.4f, 0.4f), Random.Range(-0.6f, 0.8f), Random.Range(-0.4f, 0.4f));
+            g.transform.localScale = Vector3.one * 0.15f;
+            GameBootstrap.SetColor(g, tint);
+            SetEmission(g, tint, 2.4f); // bright glow → blooms
+            g.AddComponent<VaporizeSpark>().vel = new Vector3(Random.Range(-0.7f, 0.7f), Random.Range(2.5f, 4.8f), Random.Range(-0.7f, 0.7f));
+        }
+    }
+
+    /// <summary>Make a primitive glow (emissive) so the bloom post-process picks it up.</summary>
+    static void SetEmission(GameObject go, Color c, float intensity)
+    {
+        var r = go.GetComponent<Renderer>();
+        if (r == null) return;
+        var m = r.material;
+        m.EnableKeyword("_EMISSION");
+        if (m.HasProperty("_EmissionColor")) m.SetColor("_EmissionColor", c * intensity);
+    }
+
     public static void Burst(Vector3 pos, Color c, int count)
     {
         for (int i = 0; i < count; i++)
@@ -269,6 +296,21 @@ public class SparkFx : MonoBehaviour
         vel.y -= 9.8f * Time.deltaTime;
         transform.position += vel * Time.deltaTime;
         transform.localScale = Vector3.one * Mathf.Lerp(0.16f, 0f, life / 0.5f);
+        if (life >= 0.5f) Destroy(gameObject);
+    }
+}
+
+/// <summary>A glowing death spark: rises, slows and shrinks into nothing.</summary>
+public class VaporizeSpark : MonoBehaviour
+{
+    public Vector3 vel;
+    float life;
+    void Update()
+    {
+        life += Time.deltaTime;
+        vel *= (1f - 1.6f * Time.deltaTime);
+        transform.position += vel * Time.deltaTime;
+        transform.localScale = Vector3.one * Mathf.Lerp(0.15f, 0f, life / 0.5f);
         if (life >= 0.5f) Destroy(gameObject);
     }
 }

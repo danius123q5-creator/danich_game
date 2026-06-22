@@ -53,6 +53,9 @@ public static class GameBootstrap
             RenderSettings.fogDensity = m.fogDensity;
         }
 
+        // Stylized look: soft shadows + a global post-processing volume (bloom/ACES/grade).
+        VisualFx.Apply(World, light);
+
         BuildTerrain();
         if (m.waterPlane != 0) BuildWater();
 
@@ -490,6 +493,8 @@ public static class GameBootstrap
         if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c); // URP/HDRP Lit
         if (m.HasProperty("_Color")) m.SetColor("_Color", c);         // Built-in
         m.color = c;
+        // A soft specular sheen so surfaces catch the sun (less flat, more "juicy"/stylized).
+        if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.2f);
     }
 
     /// <summary>A simple unlit shader that exists in whichever render pipeline is active.</summary>

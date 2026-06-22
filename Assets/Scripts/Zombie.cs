@@ -397,6 +397,16 @@ public class Zombie : MonoBehaviour
 
     bool dead;
 
+    // Death-spark colour per zombie kind (glows via bloom).
+    Color VaporizeTint() => kind switch
+    {
+        Kind.Tank => new Color(1f, 0.35f, 0.25f),      // red
+        Kind.Pistol => new Color(1f, 0.9f, 0.35f),     // yellow
+        Kind.Grenadier => new Color(1f, 0.6f, 0.2f),   // orange
+        Kind.Kamikaze => new Color(1f, 0.45f, 0.9f),   // magenta
+        _ => new Color(0.5f, 1f, 0.45f),               // green (normal)
+    };
+
     public void TakeDamage(float amount)
     {
         // On a co-op client the host owns this zombie — report the hit instead of applying
@@ -413,6 +423,7 @@ public class Zombie : MonoBehaviour
         if (health <= 0f)
         {
             dead = true;
+            Effects.Vaporize(transform.position + Vector3.up * 1f, VaporizeTint()); // stylized death pop
             if (GameManager.Instance != null) GameManager.Instance.OnZombieKilled(player);
             Destroy(gameObject);
         }

@@ -127,6 +127,7 @@ public class PlayerController : MonoBehaviour
         camGO.transform.localPosition = new Vector3(0f, 0.7f, 0f);
         cam = camGO.AddComponent<Camera>();
         camGO.AddComponent<AudioListener>();
+        VisualFx.EnablePostFx(cam); // bloom / tonemapping / grading from the global volume
 
         BuildViewmodel();
 
