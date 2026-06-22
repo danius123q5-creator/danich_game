@@ -73,19 +73,25 @@ public class Sentry : Buildable
         return best;
     }
 
+    // Reused across all sentries' line-of-sight checks (no per-call array allocation).
+    static readonly RaycastHit[] _losHits = new RaycastHit[32];
+
     // True only if nothing solid (wall/terrain/building) is between the sentry and the zombie.
     bool HasLineOfSight(Vector3 from, Zombie z)
     {
         Vector3 to = z.transform.position + Vector3.up * 0.4f;
         Vector3 dir = to - from;
-        var hits = Physics.RaycastAll(from, dir.normalized, dir.magnitude);
-        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-        foreach (var h in hits)
+        int n = Physics.RaycastNonAlloc(from, dir.normalized, _losHits, dir.magnitude);
+
+        // Find the NEAREST hit that isn't our own collider (single pass, no sort).
+        float bestD = float.MaxValue; Collider best = null;
+        for (int i = 0; i < n; i++)
         {
-            if (h.collider.GetComponentInParent<Sentry>() == this) continue; // ignore our own collider
-            return h.collider.GetComponentInParent<Zombie>() != null;        // first real hit must be a zombie
+            if (_losHits[i].collider.GetComponentInParent<Sentry>() == this) continue; // ignore ourselves
+            if (_losHits[i].distance < bestD) { bestD = _losHits[i].distance; best = _losHits[i].collider; }
         }
-        return true;
+        if (best == null) return true;                          // clear line of sight
+        return best.GetComponentInParent<Zombie>() != null;     // nearest blocker must be a zombie
     }
 
     void FireAt(Zombie z)

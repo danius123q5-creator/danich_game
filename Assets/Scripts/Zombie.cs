@@ -62,6 +62,9 @@ public class Zombie : MonoBehaviour
     void OnEnable() { All.Add(this); }
     void OnDisable() { All.Remove(this); }
 
+    // Reused by ranged zombies' line-of-fire check (no per-shot array allocation).
+    static readonly RaycastHit[] _shotHits = new RaycastHit[32];
+
     public static Zombie Create(Vector3 pos, Kind kind = Kind.Normal)
     {
         var root = new GameObject("Zombie");
@@ -262,14 +265,17 @@ public class Zombie : MonoBehaviour
         Vector3 from = transform.position + Vector3.up * 1.4f;
         Vector3 toP = player.transform.position + Vector3.up * 0.6f;
         Vector3 dir = toP - from;
-        var hits = Physics.RaycastAll(from, dir.normalized, dir.magnitude);
-        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-        foreach (var h in hits)
+        int n = Physics.RaycastNonAlloc(from, dir.normalized, _shotHits, dir.magnitude);
+
+        // Nearest hit that isn't a zombie (single pass, no sort/alloc).
+        float bestD = float.MaxValue; Collider best = null;
+        for (int i = 0; i < n; i++)
         {
-            if (h.collider.GetComponentInParent<Zombie>() != null) continue; // ignore zombies (incl. self)
-            return h.collider.GetComponentInParent<PlayerController>() != null; // first solid hit must be the player
+            if (_shotHits[i].collider.GetComponentInParent<Zombie>() != null) continue; // ignore zombies (incl. self)
+            if (_shotHits[i].distance < bestD) { bestD = _shotHits[i].distance; best = _shotHits[i].collider; }
         }
-        return true; // open air
+        if (best == null) return true; // open air
+        return best.GetComponentInParent<PlayerController>() != null; // nearest solid blocker must be the player
     }
 
     void FireRanged()
@@ -391,6 +397,16 @@ public class Zombie : MonoBehaviour
 
     bool dead;
 
+    // Death-spark colour per zombie kind (glows via bloom).
+    Color VaporizeTint() => kind switch
+    {
+        Kind.Tank => new Color(1f, 0.35f, 0.25f),      // red
+        Kind.Pistol => new Color(1f, 0.9f, 0.35f),     // yellow
+        Kind.Grenadier => new Color(1f, 0.6f, 0.2f),   // orange
+        Kind.Kamikaze => new Color(1f, 0.45f, 0.9f),   // magenta
+        _ => new Color(0.5f, 1f, 0.45f),               // green (normal)
+    };
+
     public void TakeDamage(float amount)
     {
         // On a co-op client the host owns this zombie — report the hit instead of applying
@@ -407,6 +423,7 @@ public class Zombie : MonoBehaviour
         if (health <= 0f)
         {
             dead = true;
+            Effects.Vaporize(transform.position + Vector3.up * 1f, VaporizeTint()); // stylized death pop
             if (GameManager.Instance != null) GameManager.Instance.OnZombieKilled(player);
             Destroy(gameObject);
         }
