@@ -620,7 +620,7 @@ public class PlayerController : MonoBehaviour
     {
         Health = MaxHealth;
         cc.enabled = false;
-        transform.position = GameBootstrap.RandomSpawnPoint();
+        transform.position = GameBootstrap.PlayerSpawn(); // always come back beside the starter base
         cc.enabled = true;
     }
 

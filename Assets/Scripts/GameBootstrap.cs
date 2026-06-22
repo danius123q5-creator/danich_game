@@ -10,6 +10,11 @@ public static class GameBootstrap
     // (Main Menu / Quit to Menu). Null while in the menu.
     public static Transform World;
 
+    // Where the player should (re)spawn — right beside the starter base. Set when the
+    // base is built; until then (or for saves/co-op clients) we fall back to a random spot.
+    public static Vector3 BaseSpawn;
+    public static bool HasBaseSpawn;
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Boot()
     {
@@ -27,6 +32,7 @@ public static class GameBootstrap
     {
         if (World != null) return;
         World = new GameObject("World").transform;
+        HasBaseSpawn = false; // a fresh world has no base yet (BuildStarterBase sets it)
 
         var m = Cur;
         var sun = new GameObject("Sun");
@@ -75,7 +81,12 @@ public static class GameBootstrap
     {
         if (World != null) Object.Destroy(World.gameObject);
         World = null;
+        HasBaseSpawn = false;
     }
+
+    /// <summary>The player's (re)spawn point: beside the starter base when there is one,
+    /// otherwise a random standing spot. Keeps respawns from dropping you across the map.</summary>
+    public static Vector3 PlayerSpawn() => HasBaseSpawn ? BaseSpawn : RandomSpawnPoint();
 
     /// <summary>Pre-built starter base near the player's spawn: a dispenser ringed by
     /// a few walls, instantly built (full health). For fresh games only — callers
@@ -83,6 +94,10 @@ public static class GameBootstrap
     /// buildings) and in PvP.</summary>
     public static void BuildStarterBase(Vector3 nearSpawn, PlayerController owner)
     {
+        // Remember this spot as the (re)spawn point so the player always returns to the base.
+        BaseSpawn = nearSpawn;
+        HasBaseSpawn = true;
+
         Vector3 c = nearSpawn + new Vector3(0f, 0f, 6f); // a few metres off the spawn so the player isn't inside it
 
         void Place(int type, Vector3 p, float yaw)
