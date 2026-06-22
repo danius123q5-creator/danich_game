@@ -337,7 +337,10 @@ public class Zombie : MonoBehaviour
             transform.position += to / dist * MoveSpeed * Time.deltaTime;
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(to), 6f * Time.deltaTime);
         }
-        if (dist < 1.4f) Detonate(); // reached its scatter point next to the player
+        // Blow up at the scatter point OR the instant we're hugging a player — otherwise a
+        // kamikaze chasing the moving offset point could stick to the player without ever
+        // closing the last 1.4 m and never detonate.
+        if (dist < 1.4f || (nearest - transform.position).sqrMagnitude < 2f * 2f) Detonate();
     }
 
     // Explode: blast the player(s) and nearby buildings in radius, then die.
