@@ -17,7 +17,7 @@ public class GameManager : MonoBehaviour
     public float SpawnRadius = 40f;
     public int BaseZombies = 6;
     public int PerWave = 6;
-    public int EvacWave => GameRoot.Hardcore ? 73 : 55; // reaching this wave triggers the evacuation (hardcore goes longer)
+    public int EvacWave => GameRoot.Hardcore ? 61 : 55; // reaching this wave triggers the evacuation (hardcore goes longer)
     public float BirdInterval = 13f; // a bird fly-over (drops a zombie) every so often during a wave
     float nextBird;
 

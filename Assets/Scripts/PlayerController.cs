@@ -784,6 +784,31 @@ public class PlayerController : MonoBehaviour
         return r;
     }
 
+    static GUIStyle _ammoStyle;
+
+    // Hardcore HUD: a small ammo readout floating over every turret, coloured by how much
+    // is left (green → low/orange → empty/red). Projects each turret to GUI space.
+    void DrawTurretAmmo()
+    {
+        if (cam == null) return;
+        _ammoStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+        foreach (var b in Buildable.All)
+        {
+            if (b == null || !(b is Sentry) || !b.UsesReserve || b.Building) continue;
+            Vector3 sp = cam.WorldToScreenPoint(b.transform.position + Vector3.up * 2.3f);
+            if (sp.z <= 0.5f || sp.z > 65f) continue;             // behind camera or too far
+            float gx = sp.x / UI.Scale;
+            float gy = (Screen.height - sp.y) / UI.Scale;
+            int ammo = b.Reserve, max = Mathf.Max(1, b.ReserveMax);
+            float frac = (float)ammo / max;
+            GUI.color = ammo <= 0 ? new Color(1f, 0.3f, 0.3f)
+                      : frac < 0.25f ? new Color(1f, 0.75f, 0.2f)
+                      : new Color(0.55f, 1f, 0.55f);
+            GUI.Label(new Rect(gx - 80f, gy - 10f, 160f, 20f), ammo <= 0 ? "НЕТ ПАТРОНОВ" : "патроны " + ammo, _ammoStyle);
+        }
+        GUI.color = Color.white;
+    }
+
     void OnGUI()
     {
         UI.Begin(); // scale the whole HUD to the screen resolution
@@ -798,6 +823,9 @@ public class PlayerController : MonoBehaviour
             GUI.DrawTexture(new Rect(cx - 14f * ch, cy - 2f * ch, 28f * ch, 4f * ch), Texture2D.whiteTexture);
             GUI.DrawTexture(new Rect(cx - 2f * ch, cy - 14f * ch, 4f * ch, 28f * ch), Texture2D.whiteTexture);
         }
+
+        // Hardcore: floating ammo readout above each turret (so you can see which need a refill).
+        if (GameRoot.Hardcore && !buildMenuOpen) DrawTurretAmmo();
 
         // Top-left stats panel (kills only — metal moved to bottom-centre)
         // Kills counter — top-right corner (movable).
@@ -860,6 +888,11 @@ public class PlayerController : MonoBehaviour
                 {
                     GUI.color = new Color(1f, 0.3f, 0.3f, pulse);
                     GUI.Label(new Rect(cx - 380f, 180f, 760f, 28f), "если вы готовы — нажмите J, чтобы начать волну", Sm);
+                }
+                if (GameRoot.Hardcore)
+                {
+                    GUI.color = new Color(1f, 0.7f, 0.3f, pulse);
+                    GUI.Label(new Rect(cx - 400f, 208f, 800f, 26f), "хардкор: турели тратят патроны — пополняй их (E); раздатчик отдаёт лишь накопленное", Sm);
                 }
                 GUI.color = Color.white;
             }

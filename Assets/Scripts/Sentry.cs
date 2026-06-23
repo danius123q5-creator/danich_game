@@ -15,11 +15,18 @@ public class Sentry : Buildable
     float nextRocket;
     Zombie target;
 
+    // Hardcore: turrets run on ammo (metal loaded into their reserve via E). Empty = silent
+    // until you refill. Normal mode keeps infinite ammo (ReserveMax 0 → UsesReserve false).
+    public override int ReserveMax => GameRoot.Hardcore ? 300 : 0;
+    bool HasAmmo => !UsesReserve || Reserve > 0;
+    void UseAmmo(int n) { if (UsesReserve) Reserve = Mathf.Max(0, Reserve - n); }
+
     protected override void Awake()
     {
         BuildCost = 130;
         MaxLevel = 3;
         base.Awake();
+        if (GameRoot.Hardcore) Reserve = 150; // start with some ammo (LoadState overrides for saves)
     }
 
     protected override void ApplyLevel()
@@ -46,17 +53,19 @@ public class Sentry : Buildable
         to.y = 0f;
         if (to.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(to);
 
-        if (Time.time >= nextShot)
+        if (Time.time >= nextShot && HasAmmo) // hardcore: silent when out of ammo
         {
             nextShot = Time.time + fireRate;
-            for (int i = 0; i < numShots; i++) FireAt(target);
-            Effects.TurretShot(transform.position + Vector3.up * 0.6f); // one shot sound per volley
+            int fired = 0;
+            for (int i = 0; i < numShots && HasAmmo; i++) { FireAt(target); UseAmmo(1); fired++; }
+            if (fired > 0) Effects.TurretShot(transform.position + Vector3.up * 0.6f); // one shot sound per volley
         }
 
-        if (Level >= 2 && Time.time >= nextRocket)
+        if (Level >= 2 && Time.time >= nextRocket && (!UsesReserve || Reserve >= 6))
         {
             nextRocket = Time.time + 3f;
             RocketAt(target);
+            UseAmmo(6);
         }
     }
 
