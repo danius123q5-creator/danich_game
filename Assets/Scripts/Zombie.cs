@@ -26,6 +26,8 @@ public class Zombie : MonoBehaviour
     float vSpeed;
     float speedMul = 1f;     // <1 while caught in barbed wire
     float slowUntil = -99f;
+    float frozenUntil = -99f; // hard stop from the freeze tower
+    bool Frozen => Time.time < frozenUntil;
     CharacterController cc;
     PlayerController player;
     Buildable nearBuildable;
@@ -168,6 +170,16 @@ public class Zombie : MonoBehaviour
         if (player == null)
         {
             player = FindFirstObjectByType<PlayerController>();
+        }
+
+        if (Frozen) // stopped cold by the freeze tower: no move, no attack
+        {
+            if (!flying && cc != null)
+            {
+                if (cc.isGrounded) vSpeed = -1f; else vSpeed -= 18f * Time.deltaTime;
+                cc.Move(Vector3.up * vSpeed * Time.deltaTime); // just settle to the ground
+            }
+            return;
         }
 
         if (flying) { FlyKamikaze(); return; } // winged kamikaze: ignores ground/gravity
@@ -408,6 +420,14 @@ public class Zombie : MonoBehaviour
     {
         speedMul = Mathf.Min(speedMul, mul);
         slowUntil = Mathf.Max(slowUntil, Time.time + duration);
+    }
+
+    /// <summary>Freeze tower: stop this zombie dead (no move, no attack) for the duration.</summary>
+    public void Freeze(float duration)
+    {
+        speedMul = 0f;
+        slowUntil = Mathf.Max(slowUntil, Time.time + duration);
+        frozenUntil = Mathf.Max(frozenUntil, Time.time + duration);
     }
 
     bool dead;

@@ -41,10 +41,46 @@ public static class Models
             case 10: return BuildTeslaCoil(level);
             case 11: return BuildArtillery(level);
             case 15: return BuildAntiAir(level);
+            case 21: return BuildFreezeGun(level);
+            case 22: return BuildOrbitalControl(level);
             case 18: return BuildCar(level);
             case 19: return BuildRpg(level);
             default: return BuildProxyMine(level);
         }
+    }
+
+    // Freeze tower: metal column with a glowing ice orb + crystal spikes.
+    public static GameObject BuildFreezeGun(int level)
+    {
+        var root = new GameObject("FreezeGunModel");
+        var t = root.transform;
+        Color metal = new Color(0.45f, 0.5f, 0.58f);
+        Color ice = new Color(0.5f, 0.85f, 1f);
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.12f, 0f), new Vector3(1.0f, 0.12f, 1.0f), metal); // base
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.7f, 0f), new Vector3(0.4f, 0.6f, 0.4f), metal);   // column
+        Prim(PrimitiveType.Sphere, t, new Vector3(0f, 1.45f, 0f), new Vector3(0.85f, 0.85f, 0.85f), ice);   // emitter orb
+        for (int i = 0; i < 4; i++)
+        {
+            float a = i * 90f, rad = a * Mathf.Deg2Rad;
+            Prim(PrimitiveType.Cube, t, new Vector3(Mathf.Cos(rad) * 0.5f, 1.45f, Mathf.Sin(rad) * 0.5f),
+                 new Vector3(0.12f, 0.5f, 0.12f), ice, new Vector3(0f, a, 35f)); // crystal spikes
+        }
+        return root;
+    }
+
+    // Orbital control block: console + tilted screen + a small dish antenna.
+    public static GameObject BuildOrbitalControl(int level)
+    {
+        var root = new GameObject("OrbitalControlModel");
+        var t = root.transform;
+        Color metal = new Color(0.32f, 0.34f, 0.38f);
+        Color screen = new Color(0.2f, 0.7f, 0.9f);
+        Color dish = new Color(0.7f, 0.72f, 0.74f);
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.35f, 0f), new Vector3(1.7f, 0.7f, 1.7f), metal);            // console base
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.85f, -0.5f), new Vector3(1.5f, 0.7f, 0.15f), screen, new Vector3(-25f, 0f, 0f)); // screen
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0.55f, 1.0f, 0.3f), new Vector3(0.1f, 0.5f, 0.1f), metal);    // antenna mast
+        Prim(PrimitiveType.Sphere, t, new Vector3(0.55f, 1.55f, 0.3f), new Vector3(0.5f, 0.2f, 0.5f), dish);      // dish
+        return root;
     }
 
     // Rocket turret: base + body + a fat launch tube pointing forward (+Z) so yaw-aim works.

@@ -13,8 +13,18 @@ public class PlayerController : MonoBehaviour
     public float MaxHealth = 200f;
     public float RespawnDelay = 3f;
 
-    // Hardcore caps the wallet lower and makes builds pricier.
-    public static int MetalMax => GameRoot.Hardcore ? 170 : 300;
+    // Hardcore caps the wallet lower and makes builds pricier. After wave 12 the cap grows
+    // each wave (+30/wave) so late-game super-weapons stay affordable.
+    public static int MetalMax
+    {
+        get
+        {
+            int cap = GameRoot.Hardcore ? 170 : 300;
+            var gm = GameManager.Instance;
+            if (gm != null && gm.WaveNumber > 12) cap += (gm.WaveNumber - 12) * 30;
+            return cap;
+        }
+    }
     const int ReserveLoadChunk = 100; // metal loaded into a special weapon's reserve per E press
 
     // Build cost, marked up in hardcore.
@@ -60,8 +70,8 @@ public class PlayerController : MonoBehaviour
     float gunHeat;         // 0..1 muzzle heat glow, decays each frame
     GameObject gunMuzzle;  // barrel tip — glows red-hot when firing
 
-    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА" };
-    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 35, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30 };
+    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ" };
+    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 35, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200 };
 
     // Short "what it is / how it works" blurb per build type — shown in the Q menu on hover.
     static readonly string[] BuildDescriptions =
@@ -87,6 +97,8 @@ public class PlayerController : MonoBehaviour
         "Машина: подойди и нажми E чтобы сесть, рули WASD, F — выйти. Зомби её не трогают.",
         "РПГ: дешёвая ракетная турель. Сама бьёт ракетами по площади — хороша против толпы, но хрупкая и медленно перезаряжается.",
         "Вертикальная лестница: встань вплотную и лезь вверх/вниз на W/S. Заберись на стены и мосты. Пробел — спрыгнуть.",
+        "Стоп-пушка: раз в ~16с пускает волну, замораживающую ВСЕХ зомби на карте на 10 секунд. Дёшево, без расхода металла.",
+        "Орбитальная станция: блок управления (копи 3000 металла, E). Когда готов — в небе появляется станция и бьёт лазером по зомби.",
     };
 
     // Build-menu sections: each holds the build-type indices shown under that header.
@@ -95,7 +107,7 @@ public class PlayerController : MonoBehaviour
     {
         new[] { 3, 16, 17, 4, 6, 20, 5 }, // WALL, LONG WALL, TALL WALL, DOOR, STAIRS, LADDER, BRIDGE
         new[] { 0, 19, 1, 2, 7, 8, 15 },          // SENTRY, RPG, DISPENSER, MINE, LANDMINE, BARBED WIRE, AA TURRET
-        new[] { 9, 10, 11, 18 },                  // AIR STRIKE, TESLA COIL, ARTILLERY, CAR
+        new[] { 9, 10, 11, 21, 22, 18 },          // AIR STRIKE, TESLA, ARTILLERY, FREEZE, ORBITAL, CAR
     };
 
     struct GunStats { public string name; public float dmg; public float rate; public int mag; }

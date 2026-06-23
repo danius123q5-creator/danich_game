@@ -242,6 +242,39 @@ public static class Effects
         if (!NetSuppress) { var lan = LanManager.Instance; if (lan != null && lan.Active) lan.FxAirBlast(pos, radius); }
     }
 
+    /// <summary>Blue stasis wave from the freeze tower — a big expanding ring + frost sparks.</summary>
+    public static void FreezeWave(Vector3 pos)
+    {
+        var go = new GameObject("FreezeWave");
+        var lr = go.AddComponent<LineRenderer>();
+        lr.sharedMaterial = LineMat();
+        lr.loop = true; lr.useWorldSpace = true;
+        int seg = 44; lr.positionCount = seg;
+        lr.startWidth = lr.endWidth = 0.45f;
+        lr.startColor = lr.endColor = new Color(0.45f, 0.8f, 1f);
+        var sw = go.AddComponent<ShockwaveFx>();
+        sw.lr = lr; sw.center = pos + Vector3.up * 0.12f; sw.seg = seg; sw.maxR = 70f;
+        Burst(pos, new Color(0.6f, 0.9f, 1f), 26);
+        if (zapClip == null) zapClip = MakeTone(1100f, 320f, 0.10f);
+        PlayAt(zapClip, pos, 0.5f);
+    }
+
+    /// <summary>A brief bright laser beam (orbital station) with sparks at the impact point.</summary>
+    public static void Laser(Vector3 from, Vector3 to, Color c)
+    {
+        var go = new GameObject("Laser");
+        if (GameBootstrap.World != null) go.transform.SetParent(GameBootstrap.World);
+        var lr = go.AddComponent<LineRenderer>();
+        lr.sharedMaterial = LineMat();
+        lr.useWorldSpace = true;
+        lr.positionCount = 2;
+        lr.SetPosition(0, from); lr.SetPosition(1, to);
+        lr.startWidth = lr.endWidth = 0.35f;
+        lr.startColor = lr.endColor = c;
+        Object.Destroy(go, 0.12f);
+        Burst(to, c, 8);
+    }
+
     static void Fireball(Vector3 pos, float radius)
     {
         var g = GameObject.CreatePrimitive(PrimitiveType.Sphere);

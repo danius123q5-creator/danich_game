@@ -193,7 +193,7 @@ public class EndgameCinematic : MonoBehaviour
             mushroom.localScale = Vector3.Lerp(mushroom.localScale, Vector3.one * 3.2f, 0.7f * dt);
         }
 
-        if (detonated && t - detonateAt > 6.5f) { phase = Phase.Credits; t = 0f; }
+        if (detonated && t - detonateAt > 8f) { phase = Phase.Credits; t = 0f; } // leave time for the station to crash
         if (t > 16f && !detonated) Detonate(); // safety: never stall the cutscene
     }
 
@@ -217,6 +217,13 @@ public class EndgameCinematic : MonoBehaviour
 
         Effects.AirBlast(baseCenter + Vector3.up * 1f, 44f); // huge ground shockwave
         BuildMushroom(baseCenter);
+
+        // any orbital station plummets out of the sky a beat after the nuke and explodes
+        foreach (var b in baseBuildings)
+        {
+            var os = b != null ? b.GetComponent<OrbitalStation>() : null;
+            if (os != null) os.Crash(1.8f);
+        }
 
         // level the base into rubble and wipe every zombie
         for (int i = baseBuildings.Count - 1; i >= 0; i--)
