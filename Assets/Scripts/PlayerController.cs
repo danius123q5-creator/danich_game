@@ -739,6 +739,31 @@ public class PlayerController : MonoBehaviour
         GUI.Label(new Rect(x, y - 2f, w, h), label, Sm);
     }
 
+    static int _dragId = -1;
+    // Apply a movable element's saved offset; in layout-edit mode, frame it and drag it.
+    Rect Place(int id, Rect baseRect)
+    {
+        Vector2 off = UISettings.Offsets[id];
+        Rect r = new Rect(baseRect.x + off.x, baseRect.y + off.y, baseRect.width, baseRect.height);
+        if (UISettings.EditLayout)
+        {
+            var e = Event.current;
+            Vector2 m = e.mousePosition / UI.Scale;                 // GUI.matrix isn't applied to the event pos
+            if (e.type == EventType.MouseDown && r.Contains(m)) { _dragId = id; e.Use(); }
+            else if (_dragId == id && e.type == EventType.MouseDrag) { UISettings.Offsets[id] += e.delta / UI.Scale; e.Use(); }
+            else if (_dragId == id && e.type == EventType.MouseUp) { _dragId = -1; e.Use(); }
+
+            GUI.color = new Color(0.3f, 1f, 0.5f, 0.9f); // green frame so each element reads as movable
+            float t = 2f;
+            GUI.DrawTexture(new Rect(r.x, r.y, r.width, t), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(r.x, r.yMax - t, r.width, t), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(r.x, r.y, t, r.height), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(r.xMax - t, r.y, t, r.height), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+        }
+        return r;
+    }
+
     void OnGUI()
     {
         UI.Begin(); // scale the whole HUD to the screen resolution
@@ -755,17 +780,20 @@ public class PlayerController : MonoBehaviour
         }
 
         // Top-left stats panel (kills only — metal moved to bottom-centre)
-        // Kills counter — top-right corner.
-        Panel(new Rect(UI.W - 392f, 10f, 380f, 46f));
-        GUI.color = Color.yellow; GUI.Label(new Rect(UI.W - 380f, 17f, 360f, 34f), $"УБИТО: {Score}", LblRight);
+        // Kills counter — top-right corner (movable).
+        Rect kills = Place(2, new Rect(UI.W - 392f, 10f, 380f, 46f));
+        Panel(kills);
+        GUI.color = Color.yellow; GUI.Label(new Rect(kills.x + 12f, kills.y + 7f, 360f, 34f), $"УБИТО: {Score}", LblRight);
 
-        // Bottom-left player HP bar (raised + enlarged)
-        Bar(20f, UI.H - 110f, 520f, 48f, Health / MaxHealth, new Color(0.2f, 0.8f, 0.25f), $"ХП {Mathf.RoundToInt(Health)}");
+        // Bottom-left player HP bar (raised + enlarged; movable)
+        Rect hp = Place(0, new Rect(20f, UI.H - 110f, 520f, 48f));
+        Bar(hp.x, hp.y, hp.width, hp.height, Health / MaxHealth, new Color(0.2f, 0.8f, 0.25f), $"ХП {Mathf.RoundToInt(Health)}");
 
         // Bottom-centre metal readout (above the tool line)
-        Panel(new Rect(cx - 170f, UI.H - 92f, 340f, 40f));
+        Rect metal = Place(1, new Rect(cx - 170f, UI.H - 92f, 340f, 40f));
+        Panel(metal);
         GUI.color = UISettings.Accent;
-        GUI.Label(new Rect(cx - 170f, UI.H - 90f, 340f, 36f), $"МЕТАЛЛ: {Metal}", Ctr);
+        GUI.Label(new Rect(metal.x, metal.y + 2f, 340f, 36f), $"МЕТАЛЛ: {Metal}", Ctr);
         GUI.color = Color.white;
 
         // Bottom-center tool line (smaller font + centred so the longer RU text fits)
@@ -777,8 +805,9 @@ public class PlayerController : MonoBehaviour
         float bonusRem = nextBonus - Time.time;
         string bonusTxt = bonusRem <= 0f ? "СКМ:+100 металла" : $"бонус {Mathf.FloorToInt(bonusRem / 60f)}:{Mathf.FloorToInt(bonusRem % 60f):00}";
         toolLine += $"     колесо=оружие   {bonusTxt}";
-        Panel(new Rect(8f, UI.H - 44f, UI.W - 16f, 34f));
-        GUI.color = Color.white; GUI.Label(new Rect(8f, UI.H - 43f, UI.W - 16f, 30f), toolLine, Tool16);
+        Rect toolR = Place(3, new Rect(8f, UI.H - 44f, UI.W - 16f, 34f));
+        Panel(toolR);
+        GUI.color = Color.white; GUI.Label(new Rect(toolR.x, toolR.y + 1f, toolR.width, 30f), toolLine, Tool16);
 
         // Top-center wave banner (hidden in PvP — no waves there)
         var gm = GameManager.Instance;
