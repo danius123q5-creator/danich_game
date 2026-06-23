@@ -1,4 +1,5 @@
 using System.Collections;
+using System.IO;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -34,11 +35,19 @@ public class GameMusic : MonoBehaviour
         go.AddComponent<GameMusic>();
     }
 
+    // The soundtrack file shipped with the game (StreamingAssets). When present it's the
+    // default music — played always, looped — unless the player set a custom URL in Settings.
+    const string BundledTrack = "music_track.ogg";
+
     void Start()
     {
         string url = Url.Trim();
-        if (!string.IsNullOrEmpty(url)) StartCoroutine(StreamUrl(url)); // custom track, with fallback inside
-        else StartProcedural();
+        if (!string.IsNullOrEmpty(url)) { StartCoroutine(StreamUrl(url)); return; } // custom URL overrides
+
+        string bundled = Path.Combine(Application.streamingAssetsPath, BundledTrack);
+        if (File.Exists(bundled)) { StartCoroutine(StreamUrl(new System.Uri(bundled).AbsoluteUri)); return; } // ships with the game
+
+        StartProcedural(); // no track available: built-in synth music
     }
 
     void StartProcedural()
