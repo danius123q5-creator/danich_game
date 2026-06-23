@@ -264,7 +264,13 @@ public class GameRoot : MonoBehaviour
         float cx = UI.W * 0.5f, cy = UI.H * 0.5f;
         var title = new GUIStyle(GUI.skin.label) { fontSize = 48, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         GUI.color = new Color(0.6f, 0.9f, 0.5f);
-        GUI.Label(new Rect(cx - 320f, cy - 190f, 640f, 70f), "ОБОРОНА ОТ ЗОМБИ", title);
+        GUI.Label(new Rect(cx - 320f, cy - 204f, 640f, 56f), "ОБОРОНА ОТ ЗОМБИ", title);
+        GUI.color = Color.white;
+
+        // Game version, right under the title.
+        var vlab = new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+        GUI.color = new Color(0.8f, 0.85f, 0.8f);
+        GUI.Label(new Rect(cx - 320f, cy - 146f, 640f, 26f), $"версия {GameVersion.Current}", vlab);
         GUI.color = Color.white;
 
         var btn = new GUIStyle(GUI.skin.button) { fontSize = 22, fontStyle = FontStyle.Bold };
@@ -284,18 +290,19 @@ public class GameRoot : MonoBehaviour
         y += 58f;
         if (GUI.Button(new Rect(x, y, bw, bh), "Выход", btn)) QuitApp();
 
-        // Update notice — shown only if the launch-time check found a newer GitHub release.
-        if (UpdateChecker.UpdateAvailable)
-        {
-            var up = new GUIStyle(GUI.skin.button) { fontSize = 17, fontStyle = FontStyle.Bold };
-            GUI.backgroundColor = new Color(0.9f, 0.7f, 0.2f);
-            if (GUI.Button(new Rect(cx - 210f, y + 60f, 420f, 38f), $"Доступно обновление {UpdateChecker.Latest} — скачать", up))
-                Application.OpenURL(UpdateChecker.ReleasesUrl);
-            GUI.backgroundColor = Color.white;
-        }
+        // Update / download banner — ALWAYS shown (permanent), highlighted when a newer
+        // release exists. Wide box so the text never clips. Opens the releases page.
+        bool avail = UpdateChecker.UpdateAvailable;
+        string utxt = avail ? $"Доступно обновление {UpdateChecker.Latest} — скачать"
+                            : "Обновления — скачать последнюю версию";
+        var up = new GUIStyle(GUI.skin.button) { fontSize = 18, fontStyle = FontStyle.Bold };
+        GUI.backgroundColor = avail ? new Color(0.9f, 0.7f, 0.2f) : new Color(0.42f, 0.5f, 0.6f);
+        if (GUI.Button(new Rect(cx - 300f, y + 62f, 600f, 42f), utxt, up))
+            Application.OpenURL(UpdateChecker.ReleasesUrl);
+        GUI.backgroundColor = Color.white;
 
-        // Build version (bottom-left).
-        var ver = new GUIStyle(GUI.skin.label) { fontSize = 13, alignment = TextAnchor.LowerLeft };
+        // Build version (bottom-left, also).
+        var ver = new GUIStyle(GUI.skin.label) { fontSize = 14, alignment = TextAnchor.LowerLeft };
         GUI.color = new Color(0.6f, 0.7f, 0.6f);
         GUI.Label(new Rect(12f, UI.H - 26f, 220f, 20f), $"v{GameVersion.Current}", ver);
         GUI.color = Color.white;

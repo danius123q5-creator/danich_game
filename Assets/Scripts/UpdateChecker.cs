@@ -42,8 +42,8 @@ public class UpdateChecker : MonoBehaviour
 
             string tag = ParseTag(req.downloadHandler.text);
             if (string.IsNullOrEmpty(tag)) yield break;
-            Latest = tag;
-            UpdateAvailable = IsNewer(VersionNumber(tag), VersionNumber(GameVersion.Current));
+            Latest = VersionNumber(tag);                 // "danichgame1.7" → "1.7" (short, for the banner)
+            UpdateAvailable = IsNewer(Latest, VersionNumber(GameVersion.Current));
         }
     }
 
