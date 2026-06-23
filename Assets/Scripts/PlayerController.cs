@@ -71,7 +71,7 @@ public class PlayerController : MonoBehaviour
     GameObject gunMuzzle;  // barrel tip — glows red-hot when firing
 
     static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ" };
-    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 35, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200 };
+    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 20, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200 };
 
     // Short "what it is / how it works" blurb per build type — shown in the Q menu on hover.
     static readonly string[] BuildDescriptions =

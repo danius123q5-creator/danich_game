@@ -15,7 +15,7 @@ public class BarbedWire : Buildable
 
     protected override void Awake()
     {
-        BuildCost = 35;
+        BuildCost = 20;
         MaxLevel = 3;
         BuildTime = 1.2f;
         base.Awake();
