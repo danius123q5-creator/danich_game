@@ -43,10 +43,57 @@ public static class Models
             case 15: return BuildAntiAir(level);
             case 21: return BuildFreezeGun(level);
             case 22: return BuildOrbitalControl(level);
+            case 23: return BuildWatchTower(level);
             case 18: return BuildCar(level);
             case 19: return BuildRpg(level);
             default: return BuildProxyMine(level);
         }
+    }
+
+    // Tall watchtower: 4 legs, the top platform (with a central hatch), railings, and a
+    // ladder up the middle. Walls/colliders are defined in Buildable.AddColliders.
+    public static GameObject BuildWatchTower(int level)
+    {
+        var root = new GameObject("WatchTowerModel");
+        var t = root.transform;
+        float H = 20f;
+        Color wood = new Color(0.42f, 0.30f, 0.18f);
+        Color darkw = new Color(0.34f, 0.24f, 0.15f);
+        Color rail = new Color(0.50f, 0.36f, 0.20f);
+
+        // 4 corner legs (slightly splayed look kept simple: vertical posts)
+        float lx = 1.55f;
+        Prim(PrimitiveType.Cube, t, new Vector3(-lx, H * 0.5f, -lx), new Vector3(0.2f, H, 0.2f), wood);
+        Prim(PrimitiveType.Cube, t, new Vector3(lx, H * 0.5f, -lx), new Vector3(0.2f, H, 0.2f), wood);
+        Prim(PrimitiveType.Cube, t, new Vector3(-lx, H * 0.5f, lx), new Vector3(0.2f, H, 0.2f), wood);
+        Prim(PrimitiveType.Cube, t, new Vector3(lx, H * 0.5f, lx), new Vector3(0.2f, H, 0.2f), wood);
+
+        // cross braces at a few heights (front/back/sides), for a built look
+        for (float y = 4f; y < H; y += 4f)
+        {
+            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, -lx), new Vector3(lx * 2f, 0.12f, 0.12f), darkw); // front rung
+            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, lx), new Vector3(lx * 2f, 0.12f, 0.12f), darkw);  // back rung
+            Prim(PrimitiveType.Cube, t, new Vector3(-lx, y, 0f), new Vector3(0.12f, 0.12f, lx * 2f), darkw); // left
+            Prim(PrimitiveType.Cube, t, new Vector3(lx, y, 0f), new Vector3(0.12f, 0.12f, lx * 2f), darkw);  // right
+        }
+
+        // solid top platform
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 19.7f, 0f), new Vector3(3.4f, 0.25f, 3.4f), darkw);
+
+        // railings on the back and sides (the front is left open for the ladder)
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 20.4f, -1.7f), new Vector3(3.4f, 0.7f, 0.1f), rail);
+        Prim(PrimitiveType.Cube, t, new Vector3(-1.7f, 20.4f, 0f), new Vector3(0.1f, 0.7f, 3.4f), rail);
+        Prim(PrimitiveType.Cube, t, new Vector3(1.7f, 20.4f, 0f), new Vector3(0.1f, 0.7f, 3.4f), rail);
+        // short rails flanking the ladder gap at the front
+        Prim(PrimitiveType.Cube, t, new Vector3(-1.35f, 20.4f, 1.7f), new Vector3(0.7f, 0.7f, 0.1f), rail);
+        Prim(PrimitiveType.Cube, t, new Vector3(1.35f, 20.4f, 1.7f), new Vector3(0.7f, 0.7f, 0.1f), rail);
+
+        // ladder up the outside front (two rails + rungs), reaching just above the platform
+        Prim(PrimitiveType.Cube, t, new Vector3(-0.35f, 10f, 2.3f), new Vector3(0.08f, 20.4f, 0.08f), rail);
+        Prim(PrimitiveType.Cube, t, new Vector3(0.35f, 10f, 2.3f), new Vector3(0.08f, 20.4f, 0.08f), rail);
+        for (float y = 0.4f; y < 20.2f; y += 0.5f)
+            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, 2.3f), new Vector3(0.78f, 0.07f, 0.1f), rail);
+        return root;
     }
 
     // Freeze tower: metal column with a glowing ice orb + crystal spikes.

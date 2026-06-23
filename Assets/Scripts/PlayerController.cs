@@ -70,8 +70,8 @@ public class PlayerController : MonoBehaviour
     float gunHeat;         // 0..1 muzzle heat glow, decays each frame
     GameObject gunMuzzle;  // barrel tip — glows red-hot when firing
 
-    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ" };
-    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 20, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200 };
+    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ", "СМОТР. БАШНЯ" };
+    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 20, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200, 90 };
 
     // Short "what it is / how it works" blurb per build type — shown in the Q menu on hover.
     static readonly string[] BuildDescriptions =
@@ -99,13 +99,14 @@ public class PlayerController : MonoBehaviour
         "Вертикальная лестница: встань вплотную и лезь вверх/вниз на W/S. Заберись на стены и мосты. Пробел — спрыгнуть.",
         "Стоп-пушка: раз в ~16с пускает волну, замораживающую ВСЕХ зомби на карте на 10 секунд. Дёшево, без расхода металла.",
         "Орбитальная станция: блок управления (копи 3000 металла, E). Когда готов — в небе появляется станция и бьёт лазером по зомби.",
+        "Смотровая башня (20 м): залезь по лестнице через люк на площадку наверху — отличная точка для стрельбы, зомби туда не достанут.",
     };
 
     // Build-menu sections: each holds the build-type indices shown under that header.
     static readonly string[] BuildCategories = { "СТРОИТЕЛЬНОЕ", "ОБОРОНА", "ОСТАЛЬНОЕ" };
     static readonly int[][] BuildCategoryItems =
     {
-        new[] { 3, 16, 17, 4, 6, 20, 5 }, // WALL, LONG WALL, TALL WALL, DOOR, STAIRS, LADDER, BRIDGE
+        new[] { 3, 16, 17, 4, 6, 20, 23, 5 }, // WALL, LONG/TALL WALL, DOOR, STAIRS, LADDER, WATCHTOWER, BRIDGE
         new[] { 0, 19, 1, 2, 7, 8, 15 },          // SENTRY, RPG, DISPENSER, MINE, LANDMINE, BARBED WIRE, AA TURRET
         new[] { 9, 10, 11, 21, 22, 18 },          // AIR STRIKE, TESLA, ARTILLERY, FREEZE, ORBITAL, CAR
     };
@@ -301,10 +302,10 @@ public class PlayerController : MonoBehaviour
         // Ladder climbing: while standing in a ladder's climb zone, move straight
         // up/down with W/S (gravity off, hangs in place when idle). A/D still strafes
         // so you can step off sideways; Space hops off (falls through to a jump).
-        Ladder ladder = NearbyLadder();
+        bool onLadder = NearClimb();
         // Engage only when climbing up (W) or already off the ground mid-climb — so you
         // can still walk freely around the ladder's base instead of getting stuck on it.
-        if (ladder != null && (v > 0.1f || !cc.isGrounded) && !Input.GetKeyDown(KeyCode.Space))
+        if (onLadder && (v > 0.1f || !cc.isGrounded) && !Input.GetKeyDown(KeyCode.Space))
         {
             vSpeed = 0f;
             float climb = v * MoveSpeed * 0.6f;        // W = up, S = down
@@ -333,18 +334,24 @@ public class PlayerController : MonoBehaviour
         cc.Move((dir * speed + Vector3.up * vSpeed) * Time.deltaTime);
     }
 
-    // Returns a finished ladder whose climb zone overlaps the player, else null.
-    Ladder NearbyLadder()
+    // True when the player overlaps something climbable: the vertical-ladder buildable, or
+    // a ClimbZone trigger (the watchtower's central ladder).
+    bool NearClimb()
     {
         var hits = Physics.OverlapBox(transform.position + Vector3.up * 0.9f,
                                       new Vector3(0.45f, 0.9f, 0.45f), transform.rotation,
                                       ~0, QueryTriggerInteraction.Collide);
         foreach (var h in hits)
         {
+            if (h.GetComponent<ClimbZone>() != null) // watchtower ladder column
+            {
+                var wb = h.GetComponentInParent<Buildable>();
+                if (wb == null || (!wb.Building && !wb.IsPuppet)) return true;
+            }
             var l = h.GetComponentInParent<Ladder>();
-            if (l != null && !l.Building && !l.IsPuppet) return l;
+            if (l != null && !l.Building && !l.IsPuppet) return true;
         }
-        return null;
+        return false;
     }
 
     // Reused by every aim/fire/interact/preview ray (called several times per frame),
