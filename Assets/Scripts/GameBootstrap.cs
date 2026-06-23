@@ -379,16 +379,14 @@ public static class GameBootstrap
     static readonly string[] _grassModels =
         { "Grass/grass", "Grass/grass_large", "Grass/grass_leafs", "Grass/grass",
           "Grass/grass_leafs", "Grass/flower_yellowA", "Grass/flower_redA", "Grass/plant_bushSmall" };
-    static Material _grassMat;
     static bool _grassFailed;
 
     static void ScatterGrass(MapDef m)
     {
         if (_grassFailed) return;
-        var sh = Shader.Find("Custom/VertexColorWind");
-        if (sh == null) { _grassFailed = true; return; }
-        if (_grassMat == null) { _grassMat = new Material(sh); _grassMat.enableInstancing = true; }
-
+        // Use the grass models' OWN imported materials. The custom wind shader the dad added
+        // is stripped out of the URP build (variants → 0) and renders magenta, so we don't
+        // apply it. (Trade-off: no wind sway, but build-safe and correctly coloured.)
         var root = new GameObject("Grass").transform;
         root.SetParent(World);
 
@@ -409,10 +407,7 @@ public static class GameBootstrap
             go.transform.rotation = Quaternion.Euler(0f, (i * 53) % 360, 0f);
             go.transform.localScale = Vector3.one * (3f + (i % 4)); // ~0.75–1.5 m tufts
             foreach (var rr in go.GetComponentsInChildren<Renderer>())
-            {
-                rr.sharedMaterial = _grassMat;
                 rr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // perf: grass casts no shadows
-            }
             foreach (var c in go.GetComponentsInChildren<Collider>()) Object.Destroy(c);
         }
     }
