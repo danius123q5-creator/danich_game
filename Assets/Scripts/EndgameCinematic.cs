@@ -5,7 +5,8 @@ using UnityEngine;
 /// End-game evacuation cutscene (wave 60):
 ///  1. EVAC   — sky darkens, siren, a chopper descends; the player runs to it through a final crowd.
 ///  2. LIFTOFF— on boarding the camera detaches from the player and rises high over the base.
-///  3. BOMBARD— from up high, rockets rain and shred the whole base into PHYSICAL debris (rigidbodies).
+///  3. NUKE   — a Tu-22 bomber screams over and drops a nuke: white flash, fireball, mushroom
+///             cloud and shockwave level the whole base into PHYSICAL debris (rigidbodies).
 ///  4. CREDITS— the camera smoothly turns to the departing chopper while the credits roll.
 ///  5. DONE   — fade out, back to the main menu.
 /// </summary>
@@ -21,7 +22,7 @@ public class EndgameCinematic : MonoBehaviour
         new GameObject("EndgameCinematic").AddComponent<EndgameCinematic>();
     }
 
-    enum Phase { Evac, Liftoff, Bombard, Credits, Done }
+    enum Phase { Evac, Liftoff, Nuke, Credits, Done }
     Phase phase = Phase.Evac;
     float t;                       // seconds in the current phase
     float darkness;               // 0..1 sky-darken amount
@@ -36,8 +37,10 @@ public class EndgameCinematic : MonoBehaviour
     Color ambient0;
 
     readonly List<Buildable> baseBuildings = new List<Buildable>();
-    float rocketTimer;
-    bool finalBlast;
+    Transform bomber, bomb, mushroom;
+    Vector3 bomberDir;
+    float bomberSpeed, bombVel, detonateAt, flashAmt;
+    bool bombDropped, detonated;
 
     void Awake() { Active = true; }
 
@@ -95,7 +98,7 @@ public class EndgameCinematic : MonoBehaviour
         {
             case Phase.Evac: Evac(dt); break;
             case Phase.Liftoff: Liftoff(dt); break;
-            case Phase.Bombard: Bombard(dt); break;
+            case Phase.Nuke: Nuke(dt); break;
             case Phase.Credits: Credits(dt); break;
             case Phase.Done: DonePhase(dt); break;
         }
@@ -144,64 +147,139 @@ public class EndgameCinematic : MonoBehaviour
 
         if (t > 4f)
         {
-            // snapshot the base to shred, then start the bombardment
+            // snapshot the base to level, then send the bomber in
             baseBuildings.Clear();
             baseBuildings.AddRange(Buildable.All);
-            phase = Phase.Bombard; t = 0f; rocketTimer = 0f; finalBlast = false;
+            BuildBomber();
+            phase = Phase.Nuke; t = 0f;
         }
     }
 
-    // --- Phase 3: rockets rain, base shreds into physical debris ---
-    void Bombard(float dt)
+    // --- Phase 3: a Tu-22 flies over and drops a nuke that levels the base ---
+    void Nuke(float dt)
     {
-        // hold the high overview, slight drift for life
-        Vector3 want = baseCenter + new Vector3(Mathf.Sin(t * 0.4f) * 6f, 55f, -42f);
-        DriveCamera(want, baseCenter, 2f * dt);
+        // Camera holds the high overview, then pulls back/up as the mushroom cloud grows.
+        float back = detonated ? Mathf.Min(t - detonateAt, 7f) : 0f;
+        Vector3 want = baseCenter + new Vector3(Mathf.Sin(t * 0.25f) * 5f, 55f + back * 6f, -42f - back * 8f);
+        Vector3 look = baseCenter + Vector3.up * back * 4f;
+        DriveCamera(want, look, 1.6f * dt);
 
-        rocketTimer -= dt;
-        if (t < 4f && rocketTimer <= 0f)
+        // Fly the bomber across the sky.
+        if (bomber != null) bomber.position += bomberDir * bomberSpeed * dt;
+
+        // Release the bomb once the bomber is roughly over the base.
+        if (!bombDropped && bomber != null && Vector3.Dot(bomber.position - baseCenter, bomberDir) > -6f)
         {
-            rocketTimer = 0.22f;
-            // pick an impact point on a remaining building (or random base spot)
-            Vector3 hit = baseCenter + new Vector3(Random.Range(-18f, 18f), 0f, Random.Range(-18f, 18f));
-            var b = NextStanding();
-            if (b != null) hit = b.transform.position;
-            FireRocket(hit, 5f, 8f);
+            bombDropped = true;
+            bomb = BuildBomb(bomber.position);
+            bombVel = 6f;
         }
 
-        if (!finalBlast && t >= 4f)
+        // Bomb falls, accelerating, then detonates on the deck.
+        if (bomb != null && !detonated)
         {
-            finalBlast = true;
-            // one giant particle blast (fireball + shockwave + smoke plume) that levels the base
-            Effects.AirBlast(baseCenter + Vector3.up * 1f, 16f);
-            for (int i = baseBuildings.Count - 1; i >= 0; i--)
-                if (baseBuildings[i] != null) Shred(baseBuildings[i], baseCenter, 8f);
-            foreach (var z in Zombie.All)
-                z.TakeDamage(99999f);
+            bombVel += 34f * dt;
+            bomb.position += Vector3.down * bombVel * dt;
+            bomb.Rotate(220f * dt, 0f, 0f, Space.Self);
+            if (bomb.position.y <= baseCenter.y + 1.5f) Detonate();
         }
 
-        if (t > 5.5f) { phase = Phase.Credits; t = 0f; }
+        flashAmt = Mathf.MoveTowards(flashAmt, 0f, dt * 1.1f); // white flash fades
+
+        // Mushroom cloud billows up and out.
+        if (mushroom != null)
+        {
+            mushroom.position += Vector3.up * 7f * dt;
+            mushroom.localScale = Vector3.Lerp(mushroom.localScale, Vector3.one * 3.2f, 0.7f * dt);
+        }
+
+        if (detonated && t - detonateAt > 6.5f) { phase = Phase.Credits; t = 0f; }
+        if (t > 16f && !detonated) Detonate(); // safety: never stall the cutscene
     }
 
-    Buildable NextStanding()
+    // The flash + fireball + shockwave + mushroom that flattens the base and kills everything.
+    void Detonate()
     {
-        for (int i = 0; i < baseBuildings.Count; i++)
-            if (baseBuildings[i] != null) return baseBuildings[i];
-        return null;
-    }
+        if (detonated) return;
+        detonated = true;
+        detonateAt = t;
+        flashAmt = 1f;
+        if (bomb != null) Destroy(bomb.gameObject);
 
-    void FireRocket(Vector3 impact, float force, float radius)
-    {
-        Vector3 sky = impact + new Vector3(Random.Range(-6f, 6f), 45f, Random.Range(-14f, -6f));
-        Effects.Tracer(sky, impact);            // incoming streak
-        Effects.Explosion(impact + Vector3.up * 0.4f);
-        float rSq = radius * radius;
+        // expanding fireball
+        var fb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        Object.Destroy(fb.GetComponent<Collider>());
+        if (GameBootstrap.World != null) fb.transform.SetParent(GameBootstrap.World);
+        fb.transform.position = baseCenter + Vector3.up * 3f;
+        fb.transform.localScale = Vector3.one * 5f;
+        GameBootstrap.SetColor(fb, new Color(1f, 0.85f, 0.45f));
+        fb.AddComponent<NukeFx>();
+
+        Effects.AirBlast(baseCenter + Vector3.up * 1f, 44f); // huge ground shockwave
+        BuildMushroom(baseCenter);
+
+        // level the base into rubble and wipe every zombie
         for (int i = baseBuildings.Count - 1; i >= 0; i--)
+            if (baseBuildings[i] != null) Shred(baseBuildings[i], baseCenter, 16f);
+        foreach (var z in Zombie.All) z.TakeDamage(99999f);
+    }
+
+    // ---- Tu-22 bomber ----
+    void BuildBomber()
+    {
+        bomber = new GameObject("Tu22").transform;
+        if (GameBootstrap.World != null) bomber.SetParent(GameBootstrap.World);
+        Color metal = new Color(0.55f, 0.57f, 0.6f);
+        Color dark = new Color(0.3f, 0.32f, 0.35f);
+        Color glass = new Color(0.25f, 0.35f, 0.45f);
+
+        // long pointed fuselage (capsule laid along +Z = nose direction)
+        Prim(bomber, PrimitiveType.Capsule, new Vector3(0f, 0f, 0f), new Vector3(1.3f, 7f, 1.3f), metal, new Vector3(90f, 0f, 0f));
+        Prim(bomber, PrimitiveType.Cylinder, new Vector3(0f, 0f, 7.2f), new Vector3(0.55f, 1.4f, 0.55f), metal, new Vector3(90f, 0f, 0f)); // nose
+        Prim(bomber, PrimitiveType.Sphere, new Vector3(0f, 0.4f, 5.2f), new Vector3(0.9f, 0.7f, 1.5f), glass);                            // cockpit
+        // swept wings
+        Prim(bomber, PrimitiveType.Cube, new Vector3(4.8f, -0.1f, -1.5f), new Vector3(9f, 0.25f, 2.6f), metal, new Vector3(0f, 30f, 0f));
+        Prim(bomber, PrimitiveType.Cube, new Vector3(-4.8f, -0.1f, -1.5f), new Vector3(9f, 0.25f, 2.6f), metal, new Vector3(0f, -30f, 0f));
+        // twin jet engines at the tail root
+        Prim(bomber, PrimitiveType.Cylinder, new Vector3(0.95f, 0.3f, -5.6f), new Vector3(0.7f, 1.7f, 0.7f), dark, new Vector3(90f, 0f, 0f));
+        Prim(bomber, PrimitiveType.Cylinder, new Vector3(-0.95f, 0.3f, -5.6f), new Vector3(0.7f, 1.7f, 0.7f), dark, new Vector3(90f, 0f, 0f));
+        // tall swept tail fin + horizontal stabilisers
+        Prim(bomber, PrimitiveType.Cube, new Vector3(0f, 1.8f, -6.4f), new Vector3(0.3f, 3.4f, 2.2f), metal, new Vector3(-28f, 0f, 0f));
+        Prim(bomber, PrimitiveType.Cube, new Vector3(2.2f, 0.3f, -6.4f), new Vector3(4f, 0.25f, 1.4f), metal, new Vector3(0f, 24f, 0f));
+        Prim(bomber, PrimitiveType.Cube, new Vector3(-2.2f, 0.3f, -6.4f), new Vector3(4f, 0.25f, 1.4f), metal, new Vector3(0f, -24f, 0f));
+
+        bomber.localScale = Vector3.one * 1.7f;
+        bomberDir = new Vector3(1f, 0f, 0.18f).normalized;
+        bomberSpeed = 65f;
+        bomber.position = baseCenter + Vector3.up * 56f - bomberDir * 135f; // fly in from one side, high up
+        bomber.rotation = Quaternion.LookRotation(bomberDir);
+    }
+
+    Transform BuildBomb(Vector3 at)
+    {
+        var b = new GameObject("Nuke").transform;
+        if (GameBootstrap.World != null) b.SetParent(GameBootstrap.World);
+        b.position = at;
+        Prim(b, PrimitiveType.Capsule, Vector3.zero, new Vector3(0.6f, 1.0f, 0.6f), new Color(0.2f, 0.22f, 0.24f), new Vector3(90f, 0f, 0f));
+        Prim(b, PrimitiveType.Cube, new Vector3(0f, 0f, -0.7f), new Vector3(0.5f, 0.5f, 0.4f), new Color(0.5f, 0.5f, 0.52f), new Vector3(45f, 0f, 0f)); // tail fins
+        return b;
+    }
+
+    void BuildMushroom(Vector3 at)
+    {
+        mushroom = new GameObject("Mushroom").transform;
+        if (GameBootstrap.World != null) mushroom.SetParent(GameBootstrap.World);
+        mushroom.position = at + Vector3.up * 2f;
+        Color smoke = new Color(0.26f, 0.23f, 0.21f);
+        Color hot = new Color(0.85f, 0.45f, 0.2f);
+        Prim(mushroom, PrimitiveType.Cylinder, new Vector3(0f, 6f, 0f), new Vector3(3f, 6f, 3f), smoke);           // stem
+        for (int i = 0; i < 7; i++)                                                                                  // cap cluster
         {
-            var b = baseBuildings[i];
-            if (b == null) continue;
-            if ((b.transform.position - impact).sqrMagnitude <= rSq) Shred(b, impact, force);
+            Vector2 r = Random.insideUnitCircle * 4.5f;
+            Prim(mushroom, PrimitiveType.Sphere, new Vector3(r.x, 12f + Random.Range(-1f, 1.5f), r.y),
+                 Vector3.one * Random.Range(4f, 6.5f), i < 2 ? hot : smoke);
         }
+        mushroom.localScale = Vector3.one * 0.6f;
     }
 
     // Turn a building into a cluster of physics-driven rubble chunks, then remove it.
@@ -320,15 +398,31 @@ public class EndgameCinematic : MonoBehaviour
         UI.Begin();
         float cx = UI.W * 0.5f, cy = UI.H * 0.5f;
 
-        // darkening overlay during bombard/credits/done
+        // darkening overlay during nuke/credits/done
         float overlay = 0f;
-        if (phase == Phase.Bombard) overlay = 0.25f;
+        if (phase == Phase.Nuke) overlay = 0.2f;
         else if (phase == Phase.Credits) overlay = 0.55f;
         else if (phase == Phase.Done) overlay = Mathf.Lerp(0.55f, 1f, fade);
         if (overlay > 0f)
         {
             GUI.color = new Color(0f, 0f, 0f, overlay);
             GUI.DrawTexture(new Rect(0, 0, UI.W, UI.H), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+        }
+
+        // blinding white flash of the detonation
+        if (flashAmt > 0.001f)
+        {
+            GUI.color = new Color(1f, 1f, 1f, Mathf.Clamp01(flashAmt));
+            GUI.DrawTexture(new Rect(0, 0, UI.W, UI.H), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+        }
+
+        if (phase == Phase.Nuke && !detonated)
+        {
+            var w = new GUIStyle(GUI.skin.label) { fontSize = 34, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+            GUI.color = new Color(1f, 0.3f, 0.2f);
+            GUI.Label(new Rect(0, 40, UI.W, 56), "ЯДЕРНЫЙ УДАР", w);
             GUI.color = Color.white;
         }
 
@@ -355,5 +449,17 @@ public class EndgameCinematic : MonoBehaviour
             var end = new GUIStyle(GUI.skin.label) { fontSize = 60, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             GUI.Label(new Rect(0, cy - 40, UI.W, 80), "THE END", end);
         }
+    }
+}
+
+/// <summary>The nuke fireball: expands fast, then vanishes.</summary>
+public class NukeFx : MonoBehaviour
+{
+    float t;
+    void Update()
+    {
+        t += Time.deltaTime;
+        transform.localScale += Vector3.one * 26f * Time.deltaTime;
+        if (t > 1.4f) Destroy(gameObject);
     }
 }
