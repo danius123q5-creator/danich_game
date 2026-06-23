@@ -33,6 +33,7 @@ public class PlayerController : MonoBehaviour
     [HideInInspector] public float Health;
     [HideInInspector] public int Metal = 250;
     [HideInInspector] public int Score = 0;
+    [HideInInspector] public int Deaths = 0; // how many times the player has died (HUD counter)
     [HideInInspector] public int SelectedBuild = 0;
     [HideInInspector] public bool Disarmed; // evac cutscene: no weapons, just run
 
@@ -667,7 +668,7 @@ public class PlayerController : MonoBehaviour
     {
         if (IsDead) return;
         Health = Mathf.Max(0f, Health - amount);
-        if (IsDead) deathTime = Time.time;
+        if (IsDead) { deathTime = Time.time; Deaths++; } // counted once per death (early-out above guards re-entry)
     }
 
     void Respawn()
@@ -803,6 +804,12 @@ public class PlayerController : MonoBehaviour
         Rect kills = Place(2, new Rect(UI.W - 392f, 10f, 380f, 46f));
         Panel(kills);
         GUI.color = Color.yellow; GUI.Label(new Rect(kills.x + 12f, kills.y + 7f, 360f, 34f), $"УБИТО: {Score}", LblRight);
+
+        // Player death counter — under the kills panel (movable).
+        Rect deaths = Place(4, new Rect(UI.W - 392f, 60f, 380f, 38f));
+        Panel(deaths);
+        GUI.color = new Color(1f, 0.45f, 0.45f); GUI.Label(new Rect(deaths.x + 12f, deaths.y + 5f, 360f, 28f), $"СМЕРТЕЙ: {Deaths}", LblRight);
+        GUI.color = Color.white;
 
         // Bottom-left player HP bar (raised + enlarged; movable)
         Rect hp = Place(0, new Rect(20f, UI.H - 110f, 520f, 48f));
