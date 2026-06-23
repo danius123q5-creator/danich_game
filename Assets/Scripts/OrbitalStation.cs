@@ -2,10 +2,13 @@ using UnityEngine;
 
 /// <summary>Control block for an orbital laser station (super weapon). Costs 3000, paid
 /// incrementally (E) like the other super-weapons. Once online, a satellite appears high
-/// in the sky and fires a continuous killing laser at the nearest zombie.</summary>
+/// in the sky and fires a killing laser at the nearest zombie — burning metal from its own
+/// reserve on every shot (top it up with E; an empty reserve stops the beam).</summary>
 public class OrbitalStation : Buildable
 {
     public override int FundingRequired => 3000;
+    public override int ReserveMax => 1500;       // metal pool the beam drains as it fires
+    const int ShotCost = 20;                       // metal burned per laser shot
 
     Transform station;
     float next;
@@ -39,10 +42,21 @@ public class OrbitalStation : Buildable
             if (d < bestSq) { bestSq = d; best = z; }
         }
         if (best == null) return;
+        if (!SpendMetal(ShotCost)) return; // burns metal from its reserve; empty → beam stops (RELOAD)
 
         Vector3 to = best.transform.position + Vector3.up * 1f;
         Effects.Laser(station.position, to, new Color(1f, 0.25f, 0.2f));
-        best.TakeDamage(140f); // strong beam: drops normals instantly, chews tanks
+
+        // Big explosion on impact: heavy splash damage to every zombie nearby.
+        Effects.AirBlast(to, 9f);
+        const float blastR = 6.5f;
+        float rSq = blastR * blastR;
+        var hitList = new System.Collections.Generic.List<Zombie>(Zombie.All);
+        foreach (var z in hitList)
+        {
+            if (z == null || z.IsPuppet) continue;
+            if ((z.transform.position - to).sqrMagnitude <= rSq) z.TakeDamage(160f);
+        }
     }
 
     void BuildStation()
@@ -58,6 +72,8 @@ public class OrbitalStation : Buildable
         SP(PrimitiveType.Cube, new Vector3(-4.2f, 0f, 0f), new Vector3(5f, 0.1f, 2.6f), panel);      // left solar panel
         SP(PrimitiveType.Cube, new Vector3(4.2f, 0f, 0f), new Vector3(5f, 0.1f, 2.6f), panel);       // right solar panel
         SP(PrimitiveType.Cylinder, new Vector3(0f, -1.1f, 0f), new Vector3(0.7f, 0.7f, 0.7f), emit);  // down-firing emitter
+
+        if (Reserve <= 0) Reserve = 600; // starting charge so it fires right after coming online
     }
 
     void SP(PrimitiveType t, Vector3 pos, Vector3 scale, Color c)
