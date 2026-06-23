@@ -59,6 +59,8 @@ public class GameMusic : MonoBehaviour
         _proc = true;
     }
 
+    UnityWebRequest _req; // kept ALIVE while a streamed clip plays; disposed in OnDestroy
+
     // Stream a user-supplied track from a direct audio URL. Falls back to the procedural
     // soundtrack if the link can't be fetched/decoded (e.g. a YouTube page URL).
     IEnumerator StreamUrl(string url)
@@ -67,32 +69,45 @@ public class GameMusic : MonoBehaviour
                        : url.EndsWith(".wav", System.StringComparison.OrdinalIgnoreCase) ? AudioType.WAV
                        : AudioType.MPEG; // .mp3 and anything else: try MPEG
 
-        using (var req = UnityWebRequestMultimedia.GetAudioClip(url, type))
+        // NOTE: a streamed AudioClip reads from this request's buffer, so the request must
+        // stay alive for the whole playback. Disposing it early (a `using` block) leaves the
+        // audio thread reading freed memory and HANGS the game on exit. We hold it in _req
+        // and dispose it in OnDestroy after stopping the source.
+        var req = UnityWebRequestMultimedia.GetAudioClip(url, type);
+        if (req.downloadHandler is DownloadHandlerAudioClip dh) dh.streamAudio = true;
+        yield return req.SendWebRequest();
+
+        if (req.result != UnityWebRequest.Result.Success)
         {
-            if (req.downloadHandler is DownloadHandlerAudioClip dh) dh.streamAudio = true;
-            yield return req.SendWebRequest();
-
-            if (req.result != UnityWebRequest.Result.Success)
-            {
-                Debug.LogWarning($"GameMusic: трек по URL не загрузился ({req.error}). Включаю встроенную музыку.");
-                StartProcedural();
-                yield break;
-            }
-
-            AudioClip clip = DownloadHandlerAudioClip.GetContent(req);
-            if (clip == null || clip.loadState == AudioDataLoadState.Failed)
-            {
-                Debug.LogWarning("GameMusic: трек по URL не распознан как аудио. Включаю встроенную музыку.");
-                StartProcedural();
-                yield break;
-            }
-
-            clip.name = "music_url";
-            _url = MakeSource(clip);
-            _url.loop = true;
-            _url.volume = BaseVolume;
-            _url.Play();
+            Debug.LogWarning($"GameMusic: трек по URL не загрузился ({req.error}). Включаю встроенную музыку.");
+            req.Dispose();
+            StartProcedural();
+            yield break;
         }
+
+        AudioClip clip = DownloadHandlerAudioClip.GetContent(req);
+        if (clip == null || clip.loadState == AudioDataLoadState.Failed)
+        {
+            Debug.LogWarning("GameMusic: трек по URL не распознан как аудио. Включаю встроенную музыку.");
+            req.Dispose();
+            StartProcedural();
+            yield break;
+        }
+
+        _req = req; // keep the streaming buffer alive
+        clip.name = "music_url";
+        _url = MakeSource(clip);
+        _url.loop = true;
+        _url.volume = BaseVolume;
+        _url.Play();
+    }
+
+    // Clean teardown so quitting/returning to menu never hangs: stop the streamed source
+    // first, then release the web request that backs it.
+    void OnDestroy()
+    {
+        if (_url != null) _url.Stop();
+        if (_req != null) { _req.Dispose(); _req = null; }
     }
 
     AudioSource MakeSource(AudioClip clip)
