@@ -77,7 +77,7 @@ public static class GameBootstrap
 
         var player = new GameObject("Player");
         player.transform.SetParent(World);
-        player.transform.position = RandomSpawnPoint();
+        player.transform.position = CenterSpawnPoint(); // start (and the insertion drop) at the map centre
         player.AddComponent<PlayerController>();
 
         var gm = new GameObject("GameManager");
@@ -216,6 +216,27 @@ public static class GameBootstrap
             }
         }
         return h;
+    }
+
+    /// <summary>Map-centre spawn for the start of a game — the insertion drop lands here.
+    /// On island maps the centre may be sea, so spiral outward to the nearest dry land.</summary>
+    public static Vector3 CenterSpawnPoint()
+    {
+        var m = Cur;
+        float x = 0f, z = 0f;
+        if (m.waterPlane == 2 && Hill(0f, 0f) < m.water + 0.5f)
+        {
+            for (float r = 8f; r <= 140f; r += 8f)
+            {
+                for (int a = 0; a < 12; a++)
+                {
+                    float ang = a * (Mathf.PI / 6f);
+                    float cx = Mathf.Cos(ang) * r, cz = Mathf.Sin(ang) * r;
+                    if (Hill(cx, cz) > m.water + 0.5f) { x = cx; z = cz; r = 999f; break; }
+                }
+            }
+        }
+        return new Vector3(x, Hill(x, z) + 1.5f, z);
     }
 
     /// <summary>A random standing point on the map (off the edges and out of the river).</summary>
@@ -483,8 +504,7 @@ public static class GameBootstrap
     static readonly string[] _treeModels =
         { "Trees/tree_default", "Trees/tree_oak", "Trees/tree_detailed",
           "Trees/tree_pineRoundA", "Trees/tree_pineDefaultA", "Trees/tree_fat" };
-    static Material _treeMat;
-    static bool _treeMatFailed;
+    static bool _treeModelsFailed;
 
     static void BuildTree(Vector3 pos, int seed, int style)
     {
@@ -508,32 +528,19 @@ public static class GameBootstrap
         }
     }
 
-    // Instantiate a Kenney CC0 tree model and paint it with the vertex-colour shader.
-    // Returns false (→ procedural fallback) if the shader was stripped or a model is missing.
+    // Instantiate a Kenney CC0 tree model using its OWN imported materials (trunk + foliage
+    // are separate URP-Lit materials baked from the FBX — build-safe, never magenta). The
+    // earlier code replaced them with a custom vertex-colour shader that URP strips out of
+    // the build → pink. Returns false (→ procedural fallback) only if a model is missing.
     static bool TrySpawnModelTree(GameObject root, int seed, float js)
     {
-        if (_treeMatFailed) return false;
-        if (_treeMat == null)
-        {
-            var sh = Shader.Find("Custom/VertexColorTrees");
-            if (sh == null) { _treeMatFailed = true; return false; }
-            _treeMat = new Material(sh);
-        }
+        if (_treeModelsFailed) return false;
         var prefab = Resources.Load<GameObject>(_treeModels[(seed * 13) % _treeModels.Length]);
-        if (prefab == null) { _treeMatFailed = true; return false; }
+        if (prefab == null) { _treeModelsFailed = true; return false; }
 
         var go = Object.Instantiate(prefab, root.transform, false);
         go.transform.localPosition = Vector3.zero;
         go.transform.localScale = Vector3.one * (2.6f * js); // Kenney trees ~1u → scale to game size
-        // Override EVERY material slot — these models have a separate trunk + foliage
-        // material, and the foliage one references a shader that strips to magenta in a
-        // build. Setting only .sharedMaterial would leave the foliage slot pink.
-        foreach (var r in go.GetComponentsInChildren<Renderer>())
-        {
-            var mats = r.sharedMaterials;
-            for (int i = 0; i < mats.Length; i++) mats[i] = _treeMat;
-            r.sharedMaterials = mats;
-        }
         foreach (var c in go.GetComponentsInChildren<Collider>()) Object.Destroy(c); // decorative only
         return true;
     }
