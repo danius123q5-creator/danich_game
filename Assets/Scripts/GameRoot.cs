@@ -38,6 +38,7 @@ public class GameRoot : MonoBehaviour
         Instance = this;
         lan = gameObject.AddComponent<LanManager>(); // persists with GameRoot
         UISettings.Load();                           // apply saved HUD customization
+        Application.runInBackground = true;          // keep running when the window loses focus (no freeze)
     }
     void Start() { splashStart = Time.unscaledTime; EnterMenu(); }
 
@@ -242,6 +243,7 @@ public class GameRoot : MonoBehaviour
     {
         UI.Begin(); // scale menus/splash to the screen resolution
         if (splashActive) { DrawSplash(); return; }
+        if (UISettings.EditLayout) { DrawLayoutEdit(); return; } // HUD visible + draggable; menus hidden
         if (inSettings) { DrawSettingsMenu(); return; }
         if (State == GState.Menu) { if (inModes) DrawModesMenu(); else DrawMainMenu(); }
         else if (State == GState.Paused) DrawPauseMenu();
@@ -456,7 +458,18 @@ public class GameRoot : MonoBehaviour
         GUI.color = UISettings.Accent;
         GUI.DrawTexture(new Rect(x + bw - 78f, y, 36f, 28f), Texture2D.whiteTexture);
         GUI.color = Color.white;
-        y += 60f;
+        y += 56f;
+
+        // Move HUD elements — only meaningful in-game (the HUD must be on screen to drag it).
+        if (settingsFromPause)
+        {
+            if (GUI.Button(new Rect(x, y, bw, 40f), "Перемещать элементы HUD…", small))
+            {
+                UISettings.EditLayout = true; // OnGUI now shows the HUD with draggable elements
+                inSettings = false;
+            }
+            y += 52f;
+        }
 
         // Reset + Back (Back saves)
         float hw = bw / 2f;
@@ -465,6 +478,28 @@ public class GameRoot : MonoBehaviour
         {
             UISettings.Save();
             inSettings = false;
+        }
+    }
+
+    // Layout-edit overlay: a top bar while the HUD elements are draggable (PlayerController
+    // draws the actual movable HUD). Entered from the in-game Settings screen.
+    void DrawLayoutEdit()
+    {
+        float cx = UI.W * 0.5f;
+        GUI.color = new Color(0f, 0f, 0f, 0.8f);
+        GUI.DrawTexture(new Rect(cx - 470f, 6f, 940f, 60f), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+
+        var lab = new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+        GUI.Label(new Rect(cx - 460f, 10f, 920f, 24f), "ПЕРЕМЕЩЕНИЕ HUD — тащите зелёные рамки мышью", lab);
+
+        var small = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold };
+        if (GUI.Button(new Rect(cx - 220f, 36f, 210f, 26f), "Сбросить позиции", small)) UISettings.ResetLayout();
+        if (GUI.Button(new Rect(cx + 10f, 36f, 210f, 26f), "Готово", small))
+        {
+            UISettings.Save();
+            UISettings.EditLayout = false;
+            inSettings = true; // back to Settings (still paused)
         }
     }
 }

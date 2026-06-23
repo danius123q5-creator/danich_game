@@ -9,6 +9,12 @@ public static class UISettings
     public static float Crosshair = 1f;      // crosshair size multiplier (0 = hidden, up to 2)
     public static float PanelAlpha = 0.55f;  // HUD panel background opacity
 
+    // Drag-to-move HUD: per-element pixel offset from its default spot.
+    // 0 = HP bar, 1 = Metal, 2 = Kills counter, 3 = Tool line.
+    public const int ElementCount = 4;
+    public static readonly Vector2[] Offsets = new Vector2[ElementCount];
+    public static bool EditLayout;           // runtime only: drag-to-move mode is active
+
     public static readonly Color[] Accents =
     {
         new Color(0.45f, 0.8f, 1f),    // blue (default)
@@ -31,6 +37,8 @@ public static class UISettings
         AccentIndex = PlayerPrefs.GetInt("ui_accent", 0);
         Crosshair = PlayerPrefs.GetFloat("ui_cross", 1f);
         PanelAlpha = PlayerPrefs.GetFloat("ui_alpha", 0.55f);
+        for (int i = 0; i < ElementCount; i++)
+            Offsets[i] = new Vector2(PlayerPrefs.GetFloat($"ui_off{i}x", 0f), PlayerPrefs.GetFloat($"ui_off{i}y", 0f));
     }
 
     public static void Save()
@@ -39,11 +47,21 @@ public static class UISettings
         PlayerPrefs.SetInt("ui_accent", AccentIndex);
         PlayerPrefs.SetFloat("ui_cross", Crosshair);
         PlayerPrefs.SetFloat("ui_alpha", PanelAlpha);
+        for (int i = 0; i < ElementCount; i++)
+        {
+            PlayerPrefs.SetFloat($"ui_off{i}x", Offsets[i].x);
+            PlayerPrefs.SetFloat($"ui_off{i}y", Offsets[i].y);
+        }
         PlayerPrefs.Save();
     }
 
     public static void Reset()
     {
         Scale = 1f; AccentIndex = 0; Crosshair = 1f; PanelAlpha = 0.55f;
+    }
+
+    public static void ResetLayout()
+    {
+        for (int i = 0; i < ElementCount; i++) Offsets[i] = Vector2.zero;
     }
 }

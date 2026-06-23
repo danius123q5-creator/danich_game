@@ -525,7 +525,15 @@ public static class GameBootstrap
         var go = Object.Instantiate(prefab, root.transform, false);
         go.transform.localPosition = Vector3.zero;
         go.transform.localScale = Vector3.one * (2.6f * js); // Kenney trees ~1u → scale to game size
-        foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = _treeMat;
+        // Override EVERY material slot — these models have a separate trunk + foliage
+        // material, and the foliage one references a shader that strips to magenta in a
+        // build. Setting only .sharedMaterial would leave the foliage slot pink.
+        foreach (var r in go.GetComponentsInChildren<Renderer>())
+        {
+            var mats = r.sharedMaterials;
+            for (int i = 0; i < mats.Length; i++) mats[i] = _treeMat;
+            r.sharedMaterials = mats;
+        }
         foreach (var c in go.GetComponentsInChildren<Collider>()) Object.Destroy(c); // decorative only
         return true;
     }
