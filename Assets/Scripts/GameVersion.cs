@@ -11,5 +11,5 @@
 /// against the latest release on GitHub.</summary>
 public static class GameVersion
 {
-    public const string Current = "1.8";
+    public const string Current = "1.9";
 }

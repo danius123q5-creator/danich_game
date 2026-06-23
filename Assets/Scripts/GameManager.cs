@@ -45,6 +45,9 @@ public class GameManager : MonoBehaviour
         // PvP is player-vs-player on an open map — no zombie waves.
         if (GameRoot.IsPvp) return;
 
+        // Tutorial owns the world: TutorialManager spawns its own practice zombies.
+        if (GameRoot.IsTutorial) return;
+
         // On a LAN client the host owns the wave/zombie sim — keep the client's world calm.
         if (LanManager.Instance != null && LanManager.Instance.Active && !LanManager.Instance.IsHost) return;
 

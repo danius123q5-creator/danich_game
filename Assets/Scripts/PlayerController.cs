@@ -828,9 +828,9 @@ public class PlayerController : MonoBehaviour
         Panel(toolR);
         GUI.color = Color.white; GUI.Label(new Rect(toolR.x, toolR.y + 1f, toolR.width, 30f), toolLine, Tool16);
 
-        // Top-center wave banner (hidden in PvP — no waves there)
+        // Top-center wave banner (hidden in PvP and the tutorial — no normal waves there)
         var gm = GameManager.Instance;
-        if (gm != null && !GameRoot.IsPvp)
+        if (gm != null && !GameRoot.IsPvp && !GameRoot.IsTutorial)
         {
             if (gm.IsPrep)
             {
@@ -1041,6 +1041,14 @@ public class PlayerController : MonoBehaviour
                     int row = j / perRow, col = j % perRow;
                     var rect = new Rect(leftX + col * (bw + gap), ry + row * (bh + gap), bw, bh);
                     if (rect.Contains(mouse)) hoverItem = i;
+                    // Tutorial: glow a pulsing cyan border behind the build the current step asks for.
+                    if (TutorialManager.HighlightBuild == i)
+                    {
+                        float pb = 4f + 3f * Mathf.PingPong(Time.unscaledTime * 3f, 1f);
+                        GUI.color = new Color(0.3f, 1f, 1f, 0.95f);
+                        GUI.DrawTexture(new Rect(rect.x - pb, rect.y - pb, rect.width + 2f * pb, rect.height + 2f * pb), Texture2D.whiteTexture);
+                        GUI.color = Color.white;
+                    }
                     bool afford = Metal >= BCost(i);
                     GUI.backgroundColor = (i == SelectedBuild) ? Color.yellow : (afford ? new Color(0.4f, 0.6f, 0.85f) : new Color(0.5f, 0.35f, 0.35f));
                     if (GUI.Button(rect, $"{BuildNames[i]}\n{BCost(i)} мет.", btn))

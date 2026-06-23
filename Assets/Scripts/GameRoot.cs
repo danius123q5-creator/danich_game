@@ -20,6 +20,7 @@ public class GameRoot : MonoBehaviour
     public static bool IsPvp => CurrentMode == Mode.Pvp;
     public static int PvpTeam = 0; // 0 = Team A, 1 = Team B (PvP friendly-fire / colours)
     public static bool Hardcore = false; // die = restart from wave 1, pricier builds, 170 metal cap
+    public static bool IsTutorial = false; // scripted tutorial session: normal waves are disabled, TutorialManager drives the world
 
     static readonly string[] TeamNames = { "Команда A", "Команда Б" };
 
@@ -87,6 +88,7 @@ public class GameRoot : MonoBehaviour
 
     void StartGame(bool continueProgress)
     {
+        IsTutorial = false; // a normal game clears any prior tutorial state
         if (menuCam != null) menuCam.gameObject.SetActive(false);
         GameBootstrap.BuildWorld();
         if (continueProgress)
@@ -121,8 +123,39 @@ public class GameRoot : MonoBehaviour
         FreeCursor(false);
     }
 
+    /// <summary>Start the interactive tutorial: a fresh offline world with no pre-built base
+    /// (the player builds it) and a TutorialManager driving scripted steps. Normal waves are
+    /// off; the tutorial spawns its own practice zombies.</summary>
+    void StartTutorial()
+    {
+        IsTutorial = true;
+        CurrentMode = Mode.Offline;
+        Hardcore = false;
+        if (menuCam != null) menuCam.gameObject.SetActive(false);
+        GameBootstrap.BuildWorld();
+
+        var p = Object.FindFirstObjectByType<PlayerController>();
+        if (p != null)
+        {
+            // Safe respawn point at the start spot (no starter base — the player builds one).
+            GameBootstrap.BaseSpawn = p.transform.position;
+            GameBootstrap.HasBaseSpawn = true;
+        }
+        if (GameBootstrap.World != null)
+        {
+            var t = new GameObject("TutorialManager");
+            t.transform.SetParent(GameBootstrap.World);
+            t.AddComponent<TutorialManager>();
+        }
+
+        State = GState.Playing;
+        Time.timeScale = 1f;
+        FreeCursor(false);
+    }
+
     void QuitToMenu()
     {
+        IsTutorial = false;
         GameBootstrap.DestroyWorld();
         EnterMenu();
     }
@@ -138,6 +171,7 @@ public class GameRoot : MonoBehaviour
     /// <summary>Hardcore death: throw away the run and start fresh from wave 1.</summary>
     public void RestartRun()
     {
+        IsTutorial = false;
         GameBootstrap.DestroyWorld();
         GameBootstrap.BuildWorld(); // fresh world: wave 0 → wave 1, new player, reset metal
         var hp = Object.FindFirstObjectByType<PlayerController>();
@@ -277,6 +311,11 @@ public class GameRoot : MonoBehaviour
         }
         y += 58f;
         if (GUI.Button(new Rect(x, y, bw, bh), "Новая игра", btn)) { CurrentMode = Mode.Offline; Hardcore = false; PlayerPrefs.DeleteKey("save_exists"); PlayerPrefs.DeleteKey("save_builds"); StartGame(false); }
+        y += 58f;
+        bool tutDone = PlayerPrefs.GetInt("tutorial_done", 0) == 1;
+        if (!tutDone) GUI.backgroundColor = new Color(0.3f, 0.72f, 0.36f); // highlight until completed
+        if (GUI.Button(new Rect(x, y, bw, bh), tutDone ? "Обучение" : "ОБУЧЕНИЕ (рекомендуется)", btn)) StartTutorial();
+        GUI.backgroundColor = Color.white;
         y += 58f;
         if (GUI.Button(new Rect(x, y, bw, bh), "Режимы", btn)) inModes = true;
         y += 58f;
