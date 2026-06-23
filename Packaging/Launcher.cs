@@ -81,17 +81,50 @@ static class Launcher
             string ver = keys[combo.SelectedIndex];
             string url = versions[ver];
             play.Enabled = false;
+            combo.Enabled = false;
             status.ForeColor = Color.Gainsboro;
-            status.Text = "Скачивание версии " + ver + "…";
-            Application.DoEvents();
-            try
+            status.Text = "Скачивание версии " + ver + "… 0%";
+
+            // Download ASYNCHRONOUSLY so the UI thread keeps pumping messages — otherwise a
+            // large setup blocks the window and Windows shows "(Не отвечает)". WebClient's
+            // event-based async posts these callbacks back on the UI thread.
+            string tmp = Path.Combine(Path.GetTempPath(), "ZombieShooterSetup_" + ver + ".exe");
+            var wc = new WebClient();
+            wc.Headers.Add("User-Agent", "ZSLauncher");
+            wc.DownloadProgressChanged += (ws, we) =>
+                status.Text = "Скачивание версии " + ver + "… " + we.ProgressPercentage + "%";
+            wc.DownloadFileCompleted += (ws, we) =>
             {
-                string tmp = Path.Combine(Path.GetTempPath(), "ZombieShooterSetup_" + ver + ".exe");
-                using (var wc = new WebClient()) { wc.Headers.Add("User-Agent", "ZSLauncher"); wc.DownloadFile(url, tmp); }
-                Process.Start(new ProcessStartInfo { FileName = tmp, UseShellExecute = true });
-                Application.Exit();
+                wc.Dispose();
+                if (we.Cancelled) { play.Enabled = true; combo.Enabled = true; return; }
+                if (we.Error != null)
+                {
+                    status.ForeColor = Color.FromArgb(230, 120, 110);
+                    status.Text = "Не удалось: " + we.Error.Message;
+                    play.Enabled = true; combo.Enabled = true;
+                    return;
+                }
+                status.Text = "Запуск установщика версии " + ver + "…";
+                try
+                {
+                    Process.Start(new ProcessStartInfo { FileName = tmp, UseShellExecute = true });
+                    Application.Exit();
+                }
+                catch (Exception ex)
+                {
+                    status.ForeColor = Color.FromArgb(230, 120, 110);
+                    status.Text = "Не удалось запустить: " + ex.Message;
+                    play.Enabled = true; combo.Enabled = true;
+                }
+            };
+            try { wc.DownloadFileAsync(new Uri(url), tmp); }
+            catch (Exception ex)
+            {
+                wc.Dispose();
+                status.ForeColor = Color.FromArgb(230, 120, 110);
+                status.Text = "Не удалось: " + ex.Message;
+                play.Enabled = true; combo.Enabled = true;
             }
-            catch (Exception ex) { status.ForeColor = Color.FromArgb(230, 120, 110); status.Text = "Не удалось: " + ex.Message; play.Enabled = true; }
         };
 
         Application.Run(form);
