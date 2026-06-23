@@ -3,10 +3,10 @@ using UnityEngine;
 
 /// <summary>Walks toward the nearest player; melee or ranged attack depending on Kind.
 /// Normal (melee), Pistol (ranged hitscan), Tank (huge HP, slow, hard melee),
-/// Grenadier (lobs explosive grenades), Kamikaze (winged, flies in and explodes).</summary>
+/// Grenadier (lobs explosive grenades), Runner (fast, fragile, rushes in melee).</summary>
 public class Zombie : MonoBehaviour
 {
-    public enum Kind { Normal, Pistol, Tank, Grenadier, Kamikaze }
+    public enum Kind { Normal, Pistol, Tank, Grenadier, Runner }
 
     public float MaxHealth = 110f; // 60 base + 50 (wave 1)
     public float MoveSpeed = 4f;
@@ -39,12 +39,6 @@ public class Zombie : MonoBehaviour
     float rangedCooldown;
     float rangedDamage;
     float nextRanged;
-
-    // Kamikaze (winged): flies straight at the player and detonates with a 2-3 m scatter.
-    bool flying;
-    Vector3 kamiOffset;
-    bool puppetDetonated;
-    const float BlastRadius = 3.5f;
 
     // --- networking (co-op): host owns zombies; clients render puppets and report hits ---
     public int NetId;
@@ -129,14 +123,11 @@ public class Zombie : MonoBehaviour
                 MaxHealth = baseHP * 1.1f; MoveSpeed = baseSpd * 0.7f;
                 ranged = true; shootRange = 28f; rangedCooldown = 3.2f;
                 break;
-            case Kind.Kamikaze:
-                MaxHealth = baseHP * 0.5f;                 // fragile — shoot it down before it lands
-                MoveSpeed = Mathf.Max(baseSpd + 4f, 10f);  // fast flier
-                AttackDamage = 45f;                        // blast damage
-                flying = true;
-                float ang = Random.value * Mathf.PI * 2f;
-                float spread = Random.Range(2f, 3f);       // scatter 2-3 m around the player
-                kamiOffset = new Vector3(Mathf.Cos(ang) * spread, 0f, Mathf.Sin(ang) * spread);
+            case Kind.Runner:
+                MaxHealth = baseHP * 0.45f;                // fragile — drop it before it reaches you
+                MoveSpeed = baseSpd + 5f;                  // very fast (sprints past the normal cap)
+                AttackDamage = 14f;
+                AttackCooldown = 0.8f;                     // quick, harrying hits
                 break;
             default: // Normal
                 MaxHealth = baseHP; MoveSpeed = baseSpd;
@@ -174,15 +165,13 @@ public class Zombie : MonoBehaviour
 
         if (Frozen) // stopped cold by the freeze tower: no move, no attack
         {
-            if (!flying && cc != null)
+            if (cc != null)
             {
                 if (cc.isGrounded) vSpeed = -1f; else vSpeed -= 18f * Time.deltaTime;
                 cc.Move(Vector3.up * vSpeed * Time.deltaTime); // just settle to the ground
             }
             return;
         }
-
-        if (flying) { FlyKamikaze(); return; } // winged kamikaze: ignores ground/gravity
 
         if (Time.time >= slowUntil) speedMul = 1f; // slow wears off once clear of the wire
 
@@ -347,41 +336,6 @@ public class Zombie : MonoBehaviour
         return best;
     }
 
-    // Winged kamikaze (host/offline): fly straight at the player + scatter offset, then blow up.
-    void FlyKamikaze()
-    {
-        if (player == null) return;
-        Vector3 nearest = NearestPlayerPos();
-        Vector3 aim = nearest + new Vector3(kamiOffset.x, 1f, kamiOffset.z); // torso height + 2-3 m scatter
-
-        Vector3 to = aim - transform.position;
-        float dist = to.magnitude;
-        if (dist > 0.01f)
-        {
-            transform.position += to / dist * MoveSpeed * Time.deltaTime;
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(to), 6f * Time.deltaTime);
-        }
-        // Blow up at the scatter point OR the instant we're hugging a player — otherwise a
-        // kamikaze chasing the moving offset point could stick to the player without ever
-        // closing the last 1.4 m and never detonate.
-        if (dist < 1.4f || (nearest - transform.position).sqrMagnitude < 2f * 2f) Detonate();
-    }
-
-    // Explode: blast the player(s) and nearby buildings in radius, then die.
-    void Detonate()
-    {
-        if (dead) return;
-        dead = true;
-        Effects.Explosion(transform.position);
-        if (player != null && !player.IsDead &&
-            (player.transform.position - transform.position).sqrMagnitude < BlastRadius * BlastRadius)
-            player.TakeDamage(AttackDamage);
-        foreach (var b in Buildable.All)
-            if (!b.IsTrap && (b.transform.position - transform.position).sqrMagnitude < BlastRadius * BlastRadius)
-                b.TakeDamage(60f);
-        Destroy(gameObject);
-    }
-
     // Client-side puppet: follow the host's transform, and let a zombie standing on the
     // local player hurt them (damage-to-self is computed on each client).
     void PuppetUpdate()
@@ -394,18 +348,6 @@ public class Zombie : MonoBehaviour
         }
         if (player == null || player.IsDead) return;
         float dSq = (player.transform.position - transform.position).sqrMagnitude;
-
-        if (kind == Kind.Kamikaze)
-        {
-            // Detonate once near the local player (host removes the puppet via snapshot after).
-            if (!puppetDetonated && dSq < BlastRadius * BlastRadius)
-            {
-                puppetDetonated = true;
-                Effects.Explosion(transform.position);
-                player.TakeDamage(AttackDamage);
-            }
-            return;
-        }
 
         if (dSq < AttackRange * AttackRange && Time.time - lastAttack >= AttackCooldown)
         {
@@ -438,7 +380,7 @@ public class Zombie : MonoBehaviour
         Kind.Tank => new Color(1f, 0.35f, 0.25f),      // red
         Kind.Pistol => new Color(1f, 0.9f, 0.35f),     // yellow
         Kind.Grenadier => new Color(1f, 0.6f, 0.2f),   // orange
-        Kind.Kamikaze => new Color(1f, 0.45f, 0.9f),   // magenta
+        Kind.Runner => new Color(1f, 0.55f, 0.3f),     // orange (runner)
         _ => new Color(0.5f, 1f, 0.45f),               // green (normal)
     };
 

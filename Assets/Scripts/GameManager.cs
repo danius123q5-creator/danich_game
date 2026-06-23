@@ -157,7 +157,7 @@ public class GameManager : MonoBehaviour
     Zombie.Kind PickKind()
     {
         float r = Random.value;
-        if (WaveNumber >= 3 && r < 0.15f) return Zombie.Kind.Kamikaze;  // ~15% from wave 3
+        if (WaveNumber >= 3 && r < 0.15f) return Zombie.Kind.Runner;    // ~15% from wave 3 (fast rushers)
         if (WaveNumber >= 4 && r < 0.27f) return Zombie.Kind.Grenadier; // ~12%
         if (WaveNumber >= 3 && r < 0.42f) return Zombie.Kind.Tank;      // ~15%
         if (WaveNumber >= 2 && r < 0.62f) return Zombie.Kind.Pistol;    // ~20%

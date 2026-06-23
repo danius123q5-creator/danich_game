@@ -551,14 +551,11 @@ public static class Models
     static bool _zModelFailed;
 
     /// <summary>Zombie visual: a Quaternius CC0 model when available, else the procedural
-    /// primitive zombie. Kamikaze (4) stays procedural — it needs its bat wings to read in flight.</summary>
+    /// primitive zombie. Runner (4) uses the same model, scaled leaner and tinted orange.</summary>
     public static GameObject BuildZombieVisual(int kind = 0)
     {
-        if (kind != 4)
-        {
-            var model = TryBuildZombieModel(kind);
-            if (model != null) return model;
-        }
+        var model = TryBuildZombieModel(kind);
+        if (model != null) return model;
         return BuildZombie(kind);
     }
 
@@ -582,10 +579,11 @@ public static class Models
     {
         2 => new Color(1f, 0.8f, 0.78f),   // tank — slightly bloodied
         3 => new Color(1f, 0.95f, 0.82f),  // grenadier
+        4 => new Color(1f, 0.55f, 0.4f),   // runner — orange-red
         _ => Color.white,                   // normal/pistol — texture as-is
     };
 
-    static float ZombieScaleMul(int kind) => kind == 2 ? 1.5f : 1f; // tank is bigger
+    static float ZombieScaleMul(int kind) => kind == 2 ? 1.5f : kind == 4 ? 0.82f : 1f; // tank bigger, runner leaner
 
     static GameObject TryBuildZombieModel(int kind)
     {
@@ -618,7 +616,7 @@ public static class Models
             case 1: skin = new Color(0.38f, 0.50f, 0.30f); dark = new Color(0.22f, 0.28f, 0.16f); break; // pistol
             case 2: skin = new Color(0.46f, 0.42f, 0.22f); dark = new Color(0.28f, 0.26f, 0.14f); break; // tank
             case 3: skin = new Color(0.50f, 0.45f, 0.24f); dark = new Color(0.30f, 0.26f, 0.15f); break; // grenadier
-            case 4: skin = new Color(0.62f, 0.22f, 0.18f); dark = new Color(0.32f, 0.12f, 0.12f); break; // kamikaze (red)
+            case 4: skin = new Color(0.70f, 0.35f, 0.18f); dark = new Color(0.40f, 0.20f, 0.12f); break; // runner (orange)
             default: skin = new Color(0.40f, 0.55f, 0.25f); dark = new Color(0.24f, 0.30f, 0.16f); break; // normal
         }
 
@@ -642,15 +640,8 @@ public static class Models
             Prim(PrimitiveType.Cylinder, t, new Vector3(0.32f, 1.72f, 0.75f), new Vector3(0.17f, 0.1f, 0.17f), new Color(0.22f, 0.22f, 0.2f), new Vector3(75f, 0f, 0f)); // muzzle
         }
 
-        if (kind == 4) // kamikaze: bat-like wings + a glowing charge on the chest
-        {
-            Color wing = new Color(0.12f, 0.10f, 0.13f);
-            Prim(PrimitiveType.Cube, t, new Vector3(-0.6f, 1.55f, -0.1f), new Vector3(0.95f, 0.06f, 0.55f), wing, new Vector3(0f, 0f, 28f));
-            Prim(PrimitiveType.Cube, t, new Vector3( 0.6f, 1.55f, -0.1f), new Vector3(0.95f, 0.06f, 0.55f), wing, new Vector3(0f, 0f, -28f));
-            Prim(PrimitiveType.Sphere, t, new Vector3(0f, 1.3f, 0.28f), new Vector3(0.32f, 0.32f, 0.32f), new Color(1f, 0.45f, 0.15f)); // charge
-        }
-
         if (kind == 2) root.transform.localScale = Vector3.one * 1.35f; // tank: bigger and bulkier
+        else if (kind == 4) root.transform.localScale = Vector3.one * 0.82f; // runner: smaller and leaner
         return root;
     }
 }
