@@ -30,6 +30,7 @@ public class GameRoot : MonoBehaviour
     bool inModes; // showing the Modes sub-screen instead of the main menu
     bool inSettings;        // showing the Settings (UI customization) screen
     bool settingsFromPause; // remember whether Settings was opened from the pause menu
+    string musicUrl = "";   // edit buffer for the custom-music URL (Settings)
 
     bool splashActive = true;
     float splashStart;
@@ -39,6 +40,7 @@ public class GameRoot : MonoBehaviour
         Instance = this;
         lan = gameObject.AddComponent<LanManager>(); // persists with GameRoot
         UISettings.Load();                           // apply saved HUD customization
+        musicUrl = GameMusic.Url;                     // load the saved custom-music URL into the edit buffer
         Application.runInBackground = true;          // keep running when the window loses focus (no freeze)
     }
     void Start() { splashStart = Time.unscaledTime; EnterMenu(); }
@@ -500,6 +502,16 @@ public class GameRoot : MonoBehaviour
         GUI.color = Color.white;
         y += 56f;
 
+        // Custom music: a direct audio-file URL (mp3/ogg/wav). Empty = built-in procedural music.
+        GUI.Label(new Rect(x, y, bw, 22f), "Музыка — URL трека (прямая ссылка mp3/ogg/wav):", lab);
+        var fld = new GUIStyle(GUI.skin.textField) { fontSize = 14, alignment = TextAnchor.MiddleLeft };
+        musicUrl = GUI.TextField(new Rect(x, y + 26f, bw, 28f), musicUrl ?? "", 400, fld);
+        var note = new GUIStyle(GUI.skin.label) { fontSize = 12, alignment = TextAnchor.MiddleLeft, wordWrap = true };
+        GUI.color = new Color(0.8f, 0.85f, 0.9f);
+        GUI.Label(new Rect(x, y + 56f, bw, 32f), "Пусто = встроенная музыка. Обычная ссылка YouTube не играет — нужна прямая ссылка на аудио. Применяется при старте новой игры.", note);
+        GUI.color = Color.white;
+        y += 96f;
+
         // Move HUD elements — only meaningful in-game (the HUD must be on screen to drag it).
         if (settingsFromPause)
         {
@@ -517,6 +529,7 @@ public class GameRoot : MonoBehaviour
         if (GUI.Button(new Rect(x + hw + 6f, y, hw - 6f, 44f), "Назад", small))
         {
             UISettings.Save();
+            GameMusic.Url = (musicUrl ?? "").Trim(); // persist the custom-music URL (takes effect next game start)
             inSettings = false;
         }
     }

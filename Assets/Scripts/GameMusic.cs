@@ -1,17 +1,31 @@
+using System.Collections;
 using UnityEngine;
+using UnityEngine.Networking;
 
 /// <summary>
-/// Procedural adaptive soundtrack (no audio assets — synthesized from math, like the SFX).
-/// Two looping tracks in A-minor: a slow, melancholic CALM theme during the build/prep phase,
-/// and a faster, driving COMBAT theme while a zombie wave is on. Cross-fades between them.
-/// Spawned with the world; lives only during gameplay.
+/// Adaptive soundtrack. By default it's PROCEDURAL (no audio assets — synthesized from math,
+/// like the SFX): two looping A-minor tracks, a slow CALM theme during the build/prep phase
+/// and a faster COMBAT theme while a wave is on, cross-faded.
+///
+/// You can override it with your own track: set GameMusic.Url to a DIRECT audio-file link
+/// (.mp3/.ogg/.wav) in Settings and it streams + loops that instead. (Plain YouTube page
+/// links can't be played by Unity — it needs a direct audio stream; on any failure we fall
+/// back to the built-in procedural music.) Spawned with the world; lives only during gameplay.
 /// </summary>
 public class GameMusic : MonoBehaviour
 {
     const int Rate = 44100;
     const float BaseVolume = 0.32f;
 
-    AudioSource _calm, _combat;
+    AudioSource _calm, _combat, _url;
+    bool _proc; // true while the procedural calm/combat pair is the active soundtrack
+
+    /// <summary>Optional custom-track URL (direct audio file). Empty = built-in procedural music.</summary>
+    public static string Url
+    {
+        get => PlayerPrefs.GetString("music_url", "");
+        set { PlayerPrefs.SetString("music_url", value ?? ""); PlayerPrefs.Save(); }
+    }
 
     public static void Spawn(Transform parent)
     {
@@ -22,10 +36,54 @@ public class GameMusic : MonoBehaviour
 
     void Start()
     {
+        string url = Url.Trim();
+        if (!string.IsNullOrEmpty(url)) StartCoroutine(StreamUrl(url)); // custom track, with fallback inside
+        else StartProcedural();
+    }
+
+    void StartProcedural()
+    {
         _calm = MakeSource(BuildCalmTrack());
         _combat = MakeSource(BuildCombatTrack());
         _calm.Play();
         _combat.Play();
+        _proc = true;
+    }
+
+    // Stream a user-supplied track from a direct audio URL. Falls back to the procedural
+    // soundtrack if the link can't be fetched/decoded (e.g. a YouTube page URL).
+    IEnumerator StreamUrl(string url)
+    {
+        AudioType type = url.EndsWith(".ogg", System.StringComparison.OrdinalIgnoreCase) ? AudioType.OGGVORBIS
+                       : url.EndsWith(".wav", System.StringComparison.OrdinalIgnoreCase) ? AudioType.WAV
+                       : AudioType.MPEG; // .mp3 and anything else: try MPEG
+
+        using (var req = UnityWebRequestMultimedia.GetAudioClip(url, type))
+        {
+            if (req.downloadHandler is DownloadHandlerAudioClip dh) dh.streamAudio = true;
+            yield return req.SendWebRequest();
+
+            if (req.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogWarning($"GameMusic: трек по URL не загрузился ({req.error}). Включаю встроенную музыку.");
+                StartProcedural();
+                yield break;
+            }
+
+            AudioClip clip = DownloadHandlerAudioClip.GetContent(req);
+            if (clip == null || clip.loadState == AudioDataLoadState.Failed)
+            {
+                Debug.LogWarning("GameMusic: трек по URL не распознан как аудио. Включаю встроенную музыку.");
+                StartProcedural();
+                yield break;
+            }
+
+            clip.name = "music_url";
+            _url = MakeSource(clip);
+            _url.loop = true;
+            _url.volume = BaseVolume;
+            _url.Play();
+        }
     }
 
     AudioSource MakeSource(AudioClip clip)
@@ -42,6 +100,18 @@ public class GameMusic : MonoBehaviour
 
     void Update()
     {
+        float k = 0.6f * Time.deltaTime; // ~1.5s fade
+
+        // Custom URL track: one looping source, ducked only for the evac cutscene.
+        if (_url != null)
+        {
+            float want = EndgameCinematic.Active ? 0f : BaseVolume;
+            _url.volume = Mathf.MoveTowards(_url.volume, want, k);
+            return;
+        }
+
+        if (!_proc) return; // URL still loading: nothing to fade yet
+
         var gm = GameManager.Instance;
         // Combat music while a wave is actually running (not prep, not the evac cutscene, not PvP idle).
         bool combat = gm != null && !gm.IsPrep && !EndgameCinematic.Active;
@@ -50,7 +120,6 @@ public class GameMusic : MonoBehaviour
         float wantCombat = (combat && !silent) ? BaseVolume : 0f;
         float wantCalm = (!combat && !silent) ? BaseVolume : 0f;
 
-        float k = 0.6f * Time.deltaTime; // ~1.5s cross-fade
         _combat.volume = Mathf.MoveTowards(_combat.volume, wantCombat, k);
         _calm.volume = Mathf.MoveTowards(_calm.volume, wantCalm, k);
     }
