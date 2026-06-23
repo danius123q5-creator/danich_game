@@ -474,7 +474,7 @@ public class PlayerController : MonoBehaviour
         // cooldown), not the whole wallet at once.
         if (b.IsFunding && Metal > 0)
         {
-            int fund = Mathf.Min(Metal, Mathf.Min(b.InvestAmount, b.FundingRemaining));
+            int fund = Mathf.Min(Metal, Mathf.Min(b.FundChunk, b.FundingRemaining));
             if (fund <= 0) return;
             if (NetClient) { if (b.UpgradeReadyIn <= 0f) { AddMetal(-fund); b.MarkNetCooldown(); LanManager.Instance.SendBuildAction(b.NetId, 1, fund); } }
             else if (b.Fund(fund)) AddMetal(-fund);
@@ -885,7 +885,7 @@ public class PlayerController : MonoBehaviour
             {
                 // Bar 2: funding progress (capped chunk per press).
                 float f = (float)aimed.FundingPaid / Mathf.Max(1, aimed.FundingRequired);
-                int chunk = Mathf.Min(Metal, Mathf.Min(aimed.InvestAmount, aimed.FundingRemaining));
+                int chunk = Mathf.Min(Metal, Mathf.Min(aimed.FundChunk, aimed.FundingRemaining));
                 string txt = Metal > 0
                     ? $"E: вложить +{chunk}   ({aimed.FundingPaid}/{aimed.FundingRequired})"
                     : $"нужен металл   ({aimed.FundingPaid}/{aimed.FundingRequired})";

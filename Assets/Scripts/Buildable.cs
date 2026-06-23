@@ -11,7 +11,8 @@ public class Buildable : MonoBehaviour
     public int Type;
     public int BuildCost = 100;
     public int UpgradeCost = 200;   // metal needed to gain a level
-    public int InvestAmount = 50;   // metal added per E press
+    public int InvestAmount = 50;   // metal added per E press (upgrades)
+    public virtual int FundChunk => 136; // metal poured into a super-weapon's funding per E press
     public int Invested = 0;        // accumulated toward the next level
     public int MaxLevel = 3;
     public int Level = 1;
