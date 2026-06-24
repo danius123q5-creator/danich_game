@@ -322,14 +322,15 @@ public class Zombie : MonoBehaviour
 
     void ZvZMelee(GameObject target)
     {
-        if (Time.time - lastAttack < AttackCooldown) return;
+        if (Time.time - lastAttack < 0.5f) return; // ZvZ swings faster than the 1s player-melee
         lastAttack = Time.time;
+        Effects.Burst(target.transform.position + Vector3.up * 1f, new Color(1f, 0.55f, 0.3f), 5); // visible clash
         var core = target.GetComponent<Core>();
-        if (core != null) { core.TakeDamage(AttackDamage); return; }
+        if (core != null) { core.TakeDamage(AttackDamage * 1.5f); return; }
         var z = target.GetComponent<Zombie>();
-        if (z != null) { z.TakeDamage(AttackDamage); return; }
+        if (z != null) { z.TakeDamage(AttackDamage * 2.2f); return; } // hordes shred each other quickly
         var b = target.GetComponent<Buildable>();
-        if (b != null) b.TakeDamage(AttackDamage);
+        if (b != null) b.TakeDamage(AttackDamage * 1.5f);
     }
 
     // Clear line of sight to the player (nothing solid in between except other zombies)?
