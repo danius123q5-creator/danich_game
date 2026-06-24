@@ -23,6 +23,12 @@ static class Launcher
         // handshake on some machines, so we don't.)
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
+        // Resolve the latest version once (used for both self-update and the version list).
+        string latestVer = GetLatestVersion();
+
+        // Self-update: if a newer launcher is published, swap ourselves and relaunch.
+        if (SelfUpdate(latestVer)) return;
+
         var form = new Form
         {
             Text = "ZombieShooter — Лаунчер 2.0",
@@ -50,7 +56,7 @@ static class Launcher
             TextAlign = ContentAlignment.MiddleCenter, ForeColor = Color.Gainsboro, Font = new Font("Segoe UI", 9) };
         form.Controls.AddRange(new Control[] { title, latestLbl, sub, combo, play, status });
 
-        var versions = LoadVersions(); // version -> setup url, only releases that ship a build
+        var versions = LoadVersions(latestVer); // version -> setup url
         var keys = new List<string>(versions.Keys);
         keys.Sort(CompareVersion);     // oldest → newest
         string latest = keys.Count > 0 ? keys[keys.Count - 1] : null;
@@ -146,10 +152,9 @@ static class Launcher
     // Build the version list from the github.com releases area (NOT api.github.com, which
     // rate-limits): resolve the latest via the releases/latest redirect, then list every
     // version up to it with a direct releases/download URL.
-    static SortedDictionary<string, string> LoadVersions()
+    static SortedDictionary<string, string> LoadVersions(string latest)
     {
         var map = new SortedDictionary<string, string>(StringComparer.Ordinal);
-        string latest = GetLatestVersion();
         if (string.IsNullOrEmpty(latest)) return map;
 
         var lp = latest.Split('.');
@@ -228,6 +233,55 @@ static class Launcher
             else if (sb.Length > 0) break;
         }
         return sb.ToString().Trim('.');
+    }
+
+    // Self-update: download the latest launcher; if it differs from us byte-for-byte, write a
+    // tiny batch that waits for us to exit, swaps the exe and relaunches. Returns true when an
+    // update is in progress (the caller should exit immediately so the file can be replaced).
+    static bool SelfUpdate(string latest)
+    {
+        if (string.IsNullOrEmpty(latest)) return false;
+        try
+        {
+            string url = "https://github.com/" + Repo + "/releases/download/danichgame" + latest + "/ZombieShooterLauncher.exe";
+            string self = Application.ExecutablePath;
+            string tmp = Path.Combine(Path.GetTempPath(), "ZSLauncher_new.exe");
+            using (var wc = new TimedWebClient()) { wc.Headers.Add("User-Agent", "ZSLauncher"); wc.DownloadFile(url, tmp); }
+            if (!File.Exists(tmp)) return false;
+            if (BytesEqual(File.ReadAllBytes(self), File.ReadAllBytes(tmp))) { try { File.Delete(tmp); } catch { } return false; }
+
+            string bat = Path.Combine(Path.GetTempPath(), "zs_launcher_update.bat");
+            File.WriteAllText(bat,
+                "@echo off\r\n" +
+                "ping 127.0.0.1 -n 2 >nul\r\n" +
+                ":wait\r\n" +
+                "copy /Y \"" + tmp + "\" \"" + self + "\" >nul 2>&1\r\n" +
+                "if errorlevel 1 ( ping 127.0.0.1 -n 2 >nul & goto wait )\r\n" +
+                "start \"\" \"" + self + "\"\r\n" +
+                "del \"" + tmp + "\" >nul 2>&1\r\n" +
+                "del \"%~f0\" >nul 2>&1\r\n");
+            Process.Start(new ProcessStartInfo { FileName = bat, UseShellExecute = true, WindowStyle = ProcessWindowStyle.Hidden });
+            return true;
+        }
+        catch { return false; }
+    }
+
+    static bool BytesEqual(byte[] a, byte[] b)
+    {
+        if (a == null || b == null || a.Length != b.Length) return false;
+        for (int i = 0; i < a.Length; i++) if (a[i] != b[i]) return false;
+        return true;
+    }
+
+    // WebClient with a sane timeout (the default is ~100s).
+    class TimedWebClient : WebClient
+    {
+        protected override WebRequest GetWebRequest(Uri address)
+        {
+            var r = base.GetWebRequest(address);
+            if (r != null) r.Timeout = 10000;
+            return r;
+        }
     }
 
     // Compare dotted version strings numerically (1.10 > 1.9).
