@@ -19,10 +19,9 @@ static class Launcher
     {
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
-        // Enable TLS 1.2 AND 1.3 (numeric flags so it compiles even on older reference
-        // assemblies where Tls13 isn't named). GitHub's CDN negotiates whichever it prefers.
-        try { ServicePointManager.SecurityProtocol = (SecurityProtocolType)(3072 | 12288); }
-        catch { ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12; }
+        // TLS 1.2 — universally supported and accepted by GitHub. (Forcing TLS 1.3 broke the
+        // handshake on some machines, so we don't.)
+        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
         var form = new Form
         {
@@ -169,33 +168,52 @@ static class Launcher
         return map;
     }
 
-    // Resolve the latest version via the releases/latest 302 (→ .../tag/danichgameX.Y).
+    // Resolve the latest version. Primary: follow the github.com releases/latest redirect and
+    // read the FINAL url (.../tag/danichgameX.Y) — no api.github.com, no rate limits. Fallback:
+    // api.github.com latest-release tag_name. Tries each, twice.
     static string GetLatestVersion()
     {
-        for (int attempt = 0; attempt < 3; attempt++)
+        string web = "https://github.com/" + Repo + "/releases/latest";
+        string api = "https://api.github.com/repos/" + Repo + "/releases/latest";
+        for (int attempt = 0; attempt < 2; attempt++)
         {
-            try
-            {
-                var req = (HttpWebRequest)WebRequest.Create("https://github.com/" + Repo + "/releases/latest");
-                req.UserAgent = "ZSLauncher";
-                req.AllowAutoRedirect = false;
-                req.Timeout = 8000;
-                using (var resp = (HttpWebResponse)req.GetResponse())
-                {
-                    string v = VersionFromTag(resp.Headers["Location"]);
-                    if (!string.IsNullOrEmpty(v)) return v;
-                }
-            }
-            catch (WebException wex)
-            {
-                if (wex.Response != null)
-                {
-                    string v = VersionFromTag(wex.Response.Headers["Location"]);
-                    if (!string.IsNullOrEmpty(v)) return v;
-                }
-            }
-            catch { }
+            string v = TryLatest(web);
+            if (!string.IsNullOrEmpty(v)) return v;
+            v = TryLatest(api);
+            if (!string.IsNullOrEmpty(v)) return v;
         }
+        return null;
+    }
+
+    static string TryLatest(string url)
+    {
+        try
+        {
+            var req = (HttpWebRequest)WebRequest.Create(url);
+            req.UserAgent = "Mozilla/5.0 (ZSLauncher)";
+            req.Accept = "application/vnd.github+json";
+            req.AllowAutoRedirect = true;   // follow to the tag page
+            req.Timeout = 9000;
+            using (var resp = (HttpWebResponse)req.GetResponse())
+            {
+                // Web path: the final URL is .../releases/tag/danichgameX.Y
+                string v = VersionFromTag(resp.ResponseUri != null ? resp.ResponseUri.AbsoluteUri : "");
+                if (!string.IsNullOrEmpty(v) && v.Contains(".")) return v;
+                // API path: parse "tag_name":"danichgameX.Y" from the JSON body
+                using (var sr = new StreamReader(resp.GetResponseStream()))
+                {
+                    string body = sr.ReadToEnd();
+                    int i = body.IndexOf("\"tag_name\"");
+                    if (i >= 0)
+                    {
+                        int q1 = body.IndexOf('"', i + 10);
+                        int q2 = q1 >= 0 ? body.IndexOf('"', q1 + 1) : -1;
+                        if (q2 > q1) return VersionFromTag(body.Substring(q1 + 1, q2 - q1 - 1));
+                    }
+                }
+            }
+        }
+        catch { }
         return null;
     }
 

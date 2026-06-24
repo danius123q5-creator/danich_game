@@ -25,29 +25,46 @@ public class UpdateChecker : MonoBehaviour
         go.AddComponent<UpdateChecker>();
     }
 
+    const string ApiUrl = "https://api.github.com/repos/danius123q5-creator/danich_game/releases/latest";
+
     void Start() { StartCoroutine(Check()); }
 
     IEnumerator Check()
     {
-        for (int attempt = 0; attempt < 3 && string.IsNullOrEmpty(Latest); attempt++)
-        {
-            using (var req = UnityWebRequest.Get(LatestUrl))
-            {
-                req.SetRequestHeader("User-Agent", "ZombieShooter");
-                req.redirectLimit = 0;   // don't follow — we only want the Location header (the tag URL)
-                req.timeout = 8;
-                yield return req.SendWebRequest();
-                Checked = true;
+        // Primary: follow the github.com releases/latest redirect and read the final tag URL
+        // (no api.github.com, no rate limits). Fallback: the API's tag_name.
+        yield return Resolve(LatestUrl, false);
+        if (string.IsNullOrEmpty(Latest)) yield return Resolve(ApiUrl, true);
 
-                // releases/latest 302s to .../releases/tag/danichgameX.Y — pull the version off it.
-                string loc = req.GetResponseHeader("Location");
-                if (string.IsNullOrEmpty(loc)) loc = req.url; // fallback if a proxy already resolved it
-                string ver = TrailingVersion(loc);
-                if (!string.IsNullOrEmpty(ver))
+        Checked = true;
+        if (!string.IsNullOrEmpty(Latest))
+            UpdateAvailable = IsNewer(Latest, TrailingVersion(GameVersion.Current));
+    }
+
+    IEnumerator Resolve(string url, bool api)
+    {
+        using (var req = UnityWebRequest.Get(url))
+        {
+            req.SetRequestHeader("User-Agent", "ZombieShooter");
+            if (api) req.SetRequestHeader("Accept", "application/vnd.github+json");
+            req.timeout = 8; // follow redirects (default): the final URL lands on the tag page
+            yield return req.SendWebRequest();
+            if (req.result != UnityWebRequest.Result.Success) yield break;
+
+            if (!api)
+            {
+                string ver = TrailingVersion(req.url); // final URL after redirects = .../tag/danichgameX.Y
+                if (!string.IsNullOrEmpty(ver) && ver.Contains(".")) Latest = ver;
+            }
+            else
+            {
+                string body = req.downloadHandler.text;
+                int i = body.IndexOf("\"tag_name\"");
+                if (i >= 0)
                 {
-                    Latest = ver;
-                    UpdateAvailable = IsNewer(Latest, TrailingVersion(GameVersion.Current));
-                    yield break;
+                    int q1 = body.IndexOf('"', i + 10);
+                    int q2 = q1 >= 0 ? body.IndexOf('"', q1 + 1) : -1;
+                    if (q2 > q1) Latest = TrailingVersion(body.Substring(q1 + 1, q2 - q1 - 1));
                 }
             }
         }
