@@ -21,6 +21,15 @@ public class LanManager : MonoBehaviour
     public bool Active { get; private set; }
     public bool IsHost { get; private set; }
 
+    // ---- ZvZ (2.0) over LAN ----
+    public bool ZvZActive;            // client: host reports we're in a ZvZ match
+    public float ZvZCore0, ZvZCore1;  // client: latest core HPs streamed by the host
+    public int ZvZWinner = -1;        // client: match result (-1 ongoing, else the winning team)
+    public bool HostZvZActive;        // host: ZvZManager sets these; SendWorldState streams them
+    public float HostZvZCore0, HostZvZCore1;
+    public int HostZvZWinner = -1;
+    int zvzSpawns;                    // host: queued "release my zombie" requests from the client
+
     UdpClient udp;
     Thread recvThread;
     volatile bool running;
@@ -139,7 +148,17 @@ public class LanManager : MonoBehaviour
                     wWave = int.Parse(f[1], ci); wPrep = f[2] == "1";
                     wLeft = float.Parse(f[3], ci); wAlive = int.Parse(f[4], ci);
                     wMap = int.Parse(f[5], ci); haveWave = true;
+                    if (f.Length >= 10) // ZvZ trailer: zvz core0 core1 winner
+                    {
+                        ZvZActive = f[6] == "1";
+                        ZvZCore0 = float.Parse(f[7], ci);
+                        ZvZCore1 = float.Parse(f[8], ci);
+                        ZvZWinner = int.Parse(f[9], ci);
+                    }
                 }
+                break;
+            case 'G': // client → host: release one of my (team-1) zombies
+                if (IsHost) lock (gate) zvzSpawns++;
                 break;
             case 'H':
                 if (IsHost && f.Length >= 3) lock (gate)
@@ -256,7 +275,10 @@ public class LanManager : MonoBehaviour
         }
         if (places != null)
             foreach (var p in places)
-                Buildable.Create(p.type, p.pos, Quaternion.Euler(0f, p.yaw, 0f), localPlayer);
+            {
+                var go = Buildable.Create(p.type, p.pos, Quaternion.Euler(0f, p.yaw, 0f), localPlayer);
+                if (GameRoot.IsZvZ && go != null) { var bb = go.GetComponent<Buildable>(); if (bb != null) bb.Team = 1; } // client = side 1
+            }
         if (acts != null)
             foreach (var a in acts)
             {
@@ -363,6 +385,16 @@ public class LanManager : MonoBehaviour
         catch { }
     }
 
+    /// <summary>Client → host: request to release one of my (team-1) zombies.</summary>
+    public void SendZvZSpawn()
+    {
+        if (!Active || IsHost || udp == null) return;
+        try { byte[] b = Encoding.ASCII.GetBytes("G"); udp.Send(b, b.Length, hostEndpoint); } catch { }
+    }
+
+    /// <summary>Host: drain queued client zombie-release requests since the last call.</summary>
+    public int TakeZvZSpawns() { lock (gate) { int n = zvzSpawns; zvzSpawns = 0; return n; } }
+
     // ---- host: expose remote player positions for zombie targeting ----
     void RefreshRemotePlayers()
     {
@@ -412,12 +444,13 @@ public class LanManager : MonoBehaviour
         byte[] zb = Encoding.ASCII.GetBytes(sb.ToString());
 
         var gm = GameManager.Instance;
-        byte[] wb = Encoding.ASCII.GetBytes(string.Format(ci, "W {0} {1} {2:0.#} {3} {4}",
+        byte[] wb = Encoding.ASCII.GetBytes(string.Format(ci, "W {0} {1} {2:0.#} {3} {4} {5} {6:0.#} {7:0.#} {8}",
             gm != null ? gm.WaveNumber : 0,
             gm != null && gm.IsPrep ? 1 : 0,
             gm != null ? gm.PhaseTimeLeft : 0f,
             gm != null ? gm.ZombiesLeft : 0,
-            GameBootstrap.MapVariant));
+            GameBootstrap.MapVariant,
+            HostZvZActive ? 1 : 0, HostZvZCore0, HostZvZCore1, HostZvZWinner)); // ZvZ trailer
 
         lock (gate)
         {

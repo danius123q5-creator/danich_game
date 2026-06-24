@@ -155,14 +155,19 @@ public class GameRoot : MonoBehaviour
         FreeCursor(false);
     }
 
-    /// <summary>Start a Zombie-vs-Zombie match (2.0). Flat arena, two cores; ZvZManager runs it.</summary>
-    void StartZvZ()
+    /// <summary>Start a Zombie-vs-Zombie match (2.0). kind: 0 = offline vs AI, 1 = LAN host
+    /// (you are side 0), 2 = LAN join (you are side 1). Flat arena, two cores; ZvZManager runs it.</summary>
+    void StartZvZ(int kind)
     {
-        IsZvZ = true;
         IsTutorial = false;
-        CurrentMode = Mode.Offline;
         Hardcore = false;
+        CurrentMode = Mode.Offline;
         GameBootstrap.MapVariant = 2; // Arena — flat, fair field for the two bases
+
+        if (kind == 1) lan.StartHost();
+        else if (kind == 2) { if (!lan.StartClient(joinIp)) return; }
+
+        IsZvZ = true;
         if (menuCam != null) menuCam.gameObject.SetActive(false);
         GameBootstrap.BuildWorld();
 
@@ -343,10 +348,6 @@ public class GameRoot : MonoBehaviour
         if (GUI.Button(new Rect(x, y, bw, bh), tutDone ? "Обучение" : "ОБУЧЕНИЕ (рекомендуется)", btn)) StartTutorial();
         GUI.backgroundColor = Color.white;
         y += 58f;
-        GUI.backgroundColor = new Color(0.7f, 0.35f, 0.7f);
-        if (GUI.Button(new Rect(x, y, bw, bh), "ЗОМБИ vs ЗОМБИ (2.0)", btn)) StartZvZ();
-        GUI.backgroundColor = Color.white;
-        y += 58f;
         if (GUI.Button(new Rect(x, y, bw, bh), "Режимы", btn)) inModes = true;
         y += 58f;
         if (GUI.Button(new Rect(x, y, bw, bh), "Настройки", btn)) { settingsFromPause = false; inSettings = true; }
@@ -454,15 +455,24 @@ public class GameRoot : MonoBehaviour
             CurrentMode = Mode.Pvp; Hardcore = false; if (lan.StartClient(joinIp)) StartGame(false);
         }
 
+        // ---- 4) Zombie-vs-Zombie (2.0): grow a horde and crush the enemy core ----
+        GUI.Label(new Rect(x, cy + 120f, bw, 18f), "ЗОМБИ vs ЗОМБИ (2.0)", lab);
+        float zw = bw / 3f;
+        GUI.backgroundColor = new Color(0.7f, 0.4f, 0.72f);
+        if (GUI.Button(new Rect(x, cy + 140f, zw - 3f, 40f), "vs ИИ", small)) { CurrentMode = Mode.Offline; StartZvZ(0); }
+        if (GUI.Button(new Rect(x + zw, cy + 140f, zw - 3f, 40f), "Хост LAN", small)) StartZvZ(1);
+        if (GUI.Button(new Rect(x + 2f * zw, cy + 140f, zw - 3f, 40f), "Join LAN", small)) StartZvZ(2); // joins the IP above
+        GUI.backgroundColor = Color.white;
+
         var hint = new GUIStyle(GUI.skin.label) { fontSize = 12, alignment = TextAnchor.MiddleCenter, wordWrap = true };
         GUI.color = new Color(0.8f, 0.85f, 0.9f);
-        GUI.Label(new Rect(cx - 320f, cy + 138f, 640f, 86f),
+        GUI.Label(new Rect(cx - 320f, cy + 186f, 640f, 70f),
             $"LAN: хост сообщает свой IP, остальные вбивают его и жмут Join (UDP порт {LanManager.Port}). " +
-            "Кооп: общие зомби, волны и постройки. PvP: стреляй по чужой команде (по своим урона нет). " +
-            "Карту диктует хост — присоединившиеся подхватывают её автоматически.", hint);
+            "Кооп: общие зомби/волны/постройки. PvP: стреляй по чужой команде. " +
+            "ЗвЗ: расти орду (G) и снеси вражеское ядро — vs ИИ или 2 игрока по LAN.", hint);
         GUI.color = Color.white;
 
-        if (GUI.Button(new Rect(x, cy + 230f, bw, 42f), "Назад", small)) inModes = false;
+        if (GUI.Button(new Rect(x, cy + 256f, bw, 40f), "Назад", small)) inModes = false;
     }
 
     void DrawPauseMenu()
