@@ -20,7 +20,10 @@ static class Launcher
     {
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
-        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+        // Enable TLS 1.2 AND 1.3 (numeric flags so it compiles even on older reference
+        // assemblies where Tls13 isn't named). GitHub's CDN negotiates whichever it prefers.
+        try { ServicePointManager.SecurityProtocol = (SecurityProtocolType)(3072 | 12288); }
+        catch { ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12; }
 
         var form = new Form
         {
@@ -89,42 +92,54 @@ static class Launcher
             // large setup blocks the window and Windows shows "(Не отвечает)". WebClient's
             // event-based async posts these callbacks back on the UI thread.
             string tmp = Path.Combine(Path.GetTempPath(), "ZombieShooterSetup_" + ver + ".exe");
-            var wc = new WebClient();
-            wc.Headers.Add("User-Agent", "ZSLauncher");
-            wc.DownloadProgressChanged += (ws, we) =>
-                status.Text = "Скачивание версии " + ver + "… " + we.ProgressPercentage + "%";
-            wc.DownloadFileCompleted += (ws, we) =>
+
+            // Retry the download a few times — transient network/TLS hiccups are common.
+            Action<int> attempt = null;
+            attempt = n =>
             {
-                wc.Dispose();
-                if (we.Cancelled) { play.Enabled = true; combo.Enabled = true; return; }
-                if (we.Error != null)
+                string tag = n > 1 ? "(попытка " + n + "/3) " : "";
+                status.ForeColor = Color.Gainsboro;
+                status.Text = "Скачивание версии " + ver + "… " + tag + "0%";
+                var wc = new WebClient();
+                wc.Headers.Add("User-Agent", "ZSLauncher");
+                wc.DownloadProgressChanged += (ws, we) =>
+                    status.Text = "Скачивание версии " + ver + "… " + tag + we.ProgressPercentage + "%";
+                wc.DownloadFileCompleted += (ws, we) =>
                 {
-                    status.ForeColor = Color.FromArgb(230, 120, 110);
-                    status.Text = "Не удалось: " + we.Error.Message;
-                    play.Enabled = true; combo.Enabled = true;
-                    return;
-                }
-                status.Text = "Запуск установщика версии " + ver + "…";
-                try
-                {
-                    Process.Start(new ProcessStartInfo { FileName = tmp, UseShellExecute = true });
-                    Application.Exit();
-                }
+                    wc.Dispose();
+                    if (we.Cancelled) { play.Enabled = true; combo.Enabled = true; return; }
+                    if (we.Error != null)
+                    {
+                        if (n < 3) { attempt(n + 1); return; } // ride out the hiccup
+                        status.ForeColor = Color.FromArgb(230, 120, 110);
+                        status.Text = "Не удалось скачать (сеть/TLS): " + we.Error.Message;
+                        play.Enabled = true; combo.Enabled = true;
+                        return;
+                    }
+                    status.Text = "Запуск установщика версии " + ver + "…";
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo { FileName = tmp, UseShellExecute = true });
+                        Application.Exit();
+                    }
+                    catch (Exception ex)
+                    {
+                        status.ForeColor = Color.FromArgb(230, 120, 110);
+                        status.Text = "Не удалось запустить: " + ex.Message;
+                        play.Enabled = true; combo.Enabled = true;
+                    }
+                };
+                try { wc.DownloadFileAsync(new Uri(url), tmp); }
                 catch (Exception ex)
                 {
+                    wc.Dispose();
+                    if (n < 3) { attempt(n + 1); return; }
                     status.ForeColor = Color.FromArgb(230, 120, 110);
-                    status.Text = "Не удалось запустить: " + ex.Message;
+                    status.Text = "Не удалось: " + ex.Message;
                     play.Enabled = true; combo.Enabled = true;
                 }
             };
-            try { wc.DownloadFileAsync(new Uri(url), tmp); }
-            catch (Exception ex)
-            {
-                wc.Dispose();
-                status.ForeColor = Color.FromArgb(230, 120, 110);
-                status.Text = "Не удалось: " + ex.Message;
-                play.Enabled = true; combo.Enabled = true;
-            }
+            attempt(1);
         };
 
         Application.Run(form);
