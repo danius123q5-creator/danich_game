@@ -41,7 +41,7 @@ public class TutorialManager : MonoBehaviour
         {
             case 0: // welcome
                 HighlightBuild = -1;
-                if (stepTime > 3.5f || (stepTime > 0.4f && Input.anyKeyDown)) Advance();
+                if (stepTime > 6f || (stepTime > 2f && Input.anyKeyDown)) Advance(); // give time to read the intro
                 break;
 
             case 1: // move around
@@ -78,7 +78,10 @@ public class TutorialManager : MonoBehaviour
             case 6: // build a ladder and climb up
                 HighlightBuild = 20;
                 EnsureMetal(45);
-                if ((HasBuilding(20) || HasBuilding(23)) && player.transform.position.y > spawnPos.y + 3f) Advance();
+                // Height ABOVE the terrain under the player (robust wherever they wandered) —
+                // climbing the 4 m ladder/tower clears this easily; standing on the ground doesn't.
+                Vector3 pp = player.transform.position;
+                if ((HasBuilding(20) || HasBuilding(23)) && pp.y - GameBootstrap.Hill(pp.x, pp.z) > 2.5f) Advance();
                 break;
 
             case 7: // start the wave early with J
@@ -149,15 +152,15 @@ public class TutorialManager : MonoBehaviour
     // ---- hints ----
     static readonly string[] Hints =
     {
-        "Добро пожаловать! Это быстрое обучение основам. (любая клавиша — далее)",
-        "Шаг 1: осмотрись. WASD — идти, мышь — крутить камеру. Пройди немного вперёд.",
-        "Шаг 2: зажми Q, выбери РАЗДАТЧИК (подсвечен) и поставь его ЛКМ. Это сердце базы.",
-        "Шаг 3: встань вплотную к раздатчику — он даёт металл, лечит и пополняет патроны.",
-        "Шаг 4: построй СТЕНУ (подсвечена) — она задержит зомби.",
-        "Шаг 5: построй ТУРЕЛЬ (подсвечена) — она стреляет по зомби сама.",
-        "Шаг 6: построй ВЕРТ. ЛЕСТНИЦУ (подсвечена) и заберись наверх — встань вплотную и держи W.",
-        "Шаг 7: между волнами идёт ПОДГОТОВКА. Нажми J — начать волну раньше за бонус металла.",
-        "Шаг 8: защити базу! Уничтожь всех зомби — турель и твоя пушка помогут.",
+        "Добро пожаловать! Это быстрое обучение основам управления и базой.",
+        "Осмотрись: WASD — идти, мышь — крутить камеру. Пройди немного вперёд.",
+        "Зажми Q, выбери РАЗДАТЧИК (подсвечен) и поставь его ЛКМ — это сердце базы.",
+        "Встань вплотную к раздатчику: он даёт металл, лечит и пополняет патроны.",
+        "Построй СТЕНУ (подсвечена) — она задержит зомби.",
+        "Построй ТУРЕЛЬ (подсвечена) — она стреляет по зомби сама.",
+        "Построй ВЕРТ. ЛЕСТНИЦУ (подсвечена) и заберись наверх: встань вплотную и держи W.",
+        "Между волнами идёт ПОДГОТОВКА. Нажми J, чтобы начать волну раньше за бонус металла.",
+        "Защити базу! Уничтожь всех зомби — турель и твоя пушка помогут.",
         "Готово! Ты освоил основы. Обучение завершено — удачи в обороне!",
     };
 
@@ -169,29 +172,29 @@ public class TutorialManager : MonoBehaviour
         UI.Begin();
         float cx = UI.W * 0.5f;
 
-        GUI.color = new Color(0f, 0f, 0f, 0.72f);
-        GUI.DrawTexture(new Rect(cx - 460f, 70f, 920f, 64f), Texture2D.whiteTexture);
+        GUI.color = new Color(0f, 0f, 0f, 0.75f);
+        GUI.DrawTexture(new Rect(cx - 500f, 60f, 1000f, 112f), Texture2D.whiteTexture); // bigger board so the text fits
         GUI.color = Color.white;
 
-        _head ??= new GUIStyle(GUI.skin.label) { fontSize = 17, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-        _body ??= new GUIStyle(GUI.skin.label) { fontSize = 21, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = true };
+        _head ??= new GUIStyle(GUI.skin.label) { fontSize = 19, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+        _body ??= new GUIStyle(GUI.skin.label) { fontSize = 22, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = true };
         _btn  ??= new GUIStyle(GUI.skin.button) { fontSize = 15, fontStyle = FontStyle.Bold };
 
         int s = Mathf.Clamp(step, 0, Hints.Length - 1);
         GUI.color = new Color(0.6f, 0.95f, 0.6f);
-        GUI.Label(new Rect(cx - 450f, 74f, 900f, 22f), done ? "ОБУЧЕНИЕ ЗАВЕРШЕНО" : $"ОБУЧЕНИЕ — шаг {Mathf.Min(step + 1, 9)}/9", _head);
+        GUI.Label(new Rect(cx - 490f, 66f, 980f, 26f), done ? "ОБУЧЕНИЕ ЗАВЕРШЕНО" : $"ОБУЧЕНИЕ — шаг {Mathf.Min(step + 1, 9)}/9", _head);
         GUI.color = new Color(1f, 0.97f, 0.8f);
-        GUI.Label(new Rect(cx - 450f, 98f, 900f, 34f), Hints[s], _body);
+        GUI.Label(new Rect(cx - 480f, 96f, 960f, 70f), Hints[s], _body);
         GUI.color = Color.white;
 
         if (done)
         {
-            if (GUI.Button(new Rect(cx - 110f, 142f, 220f, 36f), "В меню", _btn))
+            if (GUI.Button(new Rect(cx - 110f, 182f, 220f, 38f), "В меню", _btn))
                 { if (GameRoot.Instance != null) GameRoot.Instance.ExitToMenu(); }
         }
         else
         {
-            if (GUI.Button(new Rect(cx + 322f, 142f, 138f, 30f), "Пропустить ▶", _btn)) Advance();
+            if (GUI.Button(new Rect(cx + 360f, 182f, 140f, 32f), "Пропустить ▶", _btn)) Advance();
         }
     }
 }

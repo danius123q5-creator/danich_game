@@ -110,20 +110,40 @@ public class OrbitalStation : Buildable
 /// tumbling, and detonates in a big blast on impact.</summary>
 public class FallingStation : MonoBehaviour
 {
-    public float delay = 1.8f;
+    public float delay = 1.5f;
     public float groundY;
     float t, vy;
+
+    void Start()
+    {
+        // Light the wreck up so it reads as a burning satellite against the mushroom cloud.
+        foreach (var r in GetComponentsInChildren<Renderer>())
+            if (r != null) GameBootstrap.SetColor(r.gameObject, new Color(1f, 0.5f, 0.2f));
+
+        // Fat fire/smoke trail — visible streaking down across the whole frame.
+        var tr = gameObject.AddComponent<TrailRenderer>();
+        tr.time = 1.4f;
+        tr.startWidth = 4.5f; tr.endWidth = 0.3f;
+        tr.minVertexDistance = 0.2f;
+        var mat = new Material(GameBootstrap.LineShader());
+        mat.color = new Color(1f, 0.55f, 0.2f);
+        tr.sharedMaterial = mat;
+        tr.startColor = new Color(1f, 0.65f, 0.2f, 1f);
+        tr.endColor = new Color(1f, 0.3f, 0.1f, 0f);
+    }
 
     void Update()
     {
         t += Time.deltaTime;
         if (t < delay) return;
-        vy += 50f * Time.deltaTime;
+        vy += 42f * Time.deltaTime;
         transform.position += Vector3.down * vy * Time.deltaTime;
-        transform.Rotate(45f * Time.deltaTime, 90f * Time.deltaTime, 25f * Time.deltaTime, Space.Self);
+        transform.Rotate(60f * Time.deltaTime, 110f * Time.deltaTime, 35f * Time.deltaTime, Space.Self);
         if (transform.position.y <= groundY + 1.5f)
         {
-            Effects.AirBlast(new Vector3(transform.position.x, groundY + 1f, transform.position.z), 24f); // big crash blast
+            var at = new Vector3(transform.position.x, groundY + 1f, transform.position.z);
+            Effects.AirBlast(at, 34f); // big crash blast (double-punched)
+            Effects.AirBlast(at, 18f);
             Destroy(gameObject);
         }
     }
