@@ -3,16 +3,14 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
 
-/// <summary>At launch, asks GitHub for the latest release tag and flags whether a newer
-/// version exists. Runs once, non-blocking, and fails silently when offline (or when the
-/// repo isn't reachable). The main menu reads UpdateAvailable / Latest / ReleasesUrl to
-/// show a "download update" notice.</summary>
+/// <summary>At launch, finds the latest release version and flags whether a newer one exists.
+/// Resolves it via the github.com "releases/latest" REDIRECT (it 302s to .../releases/tag/danichgameX.Y)
+/// rather than api.github.com — same host as releases/download, and no API rate limits. Runs once,
+/// non-blocking, and fails silently when offline. The main menu reads UpdateAvailable / Latest /
+/// ReleasesUrl to show the "download update" notice.</summary>
 public class UpdateChecker : MonoBehaviour
 {
-    // GitHub "latest release" API for the repo. NOTE: this only returns data while the
-    // repo (its releases) is reachable without auth — i.e. the repo is public. On a
-    // private repo the request 404s and no update is ever shown (handled gracefully).
-    const string ApiUrl = "https://api.github.com/repos/danius123q5-creator/danich_game/releases/latest";
+    const string LatestUrl = "https://github.com/danius123q5-creator/danich_game/releases/latest";
     public const string ReleasesUrl = "https://github.com/danius123q5-creator/danich_game/releases";
 
     public static bool Checked { get; private set; }
@@ -31,39 +29,41 @@ public class UpdateChecker : MonoBehaviour
 
     IEnumerator Check()
     {
-        using (var req = UnityWebRequest.Get(ApiUrl))
+        for (int attempt = 0; attempt < 3 && string.IsNullOrEmpty(Latest); attempt++)
         {
-            req.SetRequestHeader("User-Agent", "ZombieShooter");
-            req.SetRequestHeader("Accept", "application/vnd.github+json");
-            req.timeout = 8;
-            yield return req.SendWebRequest();
-            Checked = true;
-            if (req.result != UnityWebRequest.Result.Success) yield break;
+            using (var req = UnityWebRequest.Get(LatestUrl))
+            {
+                req.SetRequestHeader("User-Agent", "ZombieShooter");
+                req.redirectLimit = 0;   // don't follow — we only want the Location header (the tag URL)
+                req.timeout = 8;
+                yield return req.SendWebRequest();
+                Checked = true;
 
-            string tag = ParseTag(req.downloadHandler.text);
-            if (string.IsNullOrEmpty(tag)) yield break;
-            Latest = VersionNumber(tag);                 // "danichgame1.7" → "1.7" (short, for the banner)
-            UpdateAvailable = IsNewer(Latest, VersionNumber(GameVersion.Current));
+                // releases/latest 302s to .../releases/tag/danichgameX.Y — pull the version off it.
+                string loc = req.GetResponseHeader("Location");
+                if (string.IsNullOrEmpty(loc)) loc = req.url; // fallback if a proxy already resolved it
+                string ver = TrailingVersion(loc);
+                if (!string.IsNullOrEmpty(ver))
+                {
+                    Latest = ver;
+                    UpdateAvailable = IsNewer(Latest, TrailingVersion(GameVersion.Current));
+                    yield break;
+                }
+            }
         }
     }
 
-    // Pull "tag_name":"danichgame1.4" out of the JSON without a full parser.
-    static string ParseTag(string json)
+    // Trailing run of digits/dots, e.g. ".../tag/danichgame2.0" -> "2.0", "danichgame1.4" -> "1.4".
+    static string TrailingVersion(string s)
     {
-        const string key = "\"tag_name\"";
-        int i = json.IndexOf(key);
-        if (i < 0) return null;
-        i = json.IndexOf('"', i + key.Length);
-        if (i < 0) return null;
-        int j = json.IndexOf('"', i + 1);
-        return j > i ? json.Substring(i + 1, j - i - 1) : null;
-    }
-
-    // Keep only digits and dots, so a tag like "danichgame1.4" → "1.4".
-    static string VersionNumber(string s)
-    {
+        if (string.IsNullOrEmpty(s)) return "";
         var sb = new StringBuilder();
-        foreach (char c in s) if (char.IsDigit(c) || c == '.') sb.Append(c);
+        for (int i = s.Length - 1; i >= 0; i--)
+        {
+            char c = s[i];
+            if (char.IsDigit(c) || c == '.') sb.Insert(0, c);
+            else if (sb.Length > 0) break; // stop once the version run ends
+        }
         return sb.ToString().Trim('.');
     }
 

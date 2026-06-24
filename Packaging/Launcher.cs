@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Net;
-using System.Text.RegularExpressions;
+using System.Text;
 using System.Windows.Forms;
 
 // ZombieShooter Launcher (v1.8) — pick a game version and run it, and see which
@@ -13,7 +13,6 @@ using System.Windows.Forms;
 static class Launcher
 {
     const string Repo = "danius123q5-creator/danich_game";
-    const string Api = "https://api.github.com/repos/" + Repo + "/releases?per_page=50";
 
     [STAThread]
     static void Main()
@@ -145,32 +144,72 @@ static class Launcher
         Application.Run(form);
     }
 
+    // Build the version list from the github.com releases area (NOT api.github.com, which
+    // rate-limits): resolve the latest via the releases/latest redirect, then list every
+    // version up to it with a direct releases/download URL.
     static SortedDictionary<string, string> LoadVersions()
     {
         var map = new SortedDictionary<string, string>(StringComparer.Ordinal);
-        try
+        string latest = GetLatestVersion();
+        if (string.IsNullOrEmpty(latest)) return map;
+
+        var lp = latest.Split('.');
+        int lMaj = ParseInt(lp.Length > 0 ? lp[0] : "0");
+        int lMin = ParseInt(lp.Length > 1 ? lp[1] : "0");
+        for (int maj = 1; maj <= lMaj; maj++)
         {
-            using (var wc = new WebClient())
+            int minStart = (maj == 1) ? 1 : 0;  // first shipped setup is 1.1
+            int minEnd = (maj == lMaj) ? lMin : 9;
+            for (int min = minStart; min <= minEnd; min++)
             {
-                wc.Headers.Add("User-Agent", "ZSLauncher");
-                string json = wc.DownloadString(Api);
-                var tags = Regex.Matches(json, "\"tag_name\"\\s*:\\s*\"([^\"]+)\"");
-                for (int i = 0; i < tags.Count; i++)
-                {
-                    string tag = tags[i].Groups[1].Value;
-                    int start = tags[i].Index;
-                    int end = (i + 1 < tags.Count) ? tags[i + 1].Index : json.Length;
-                    if (json.Substring(start, end - start).Contains("ZombieShooterSetup.exe"))
-                    {
-                        string ver = Regex.Replace(tag, "[^0-9.]", ""); // "danichgame1.7" -> "1.7"
-                        if (ver.Length > 0)
-                            map[ver] = "https://github.com/" + Repo + "/releases/download/" + tag + "/ZombieShooterSetup.exe";
-                    }
-                }
+                string v = maj + "." + min;
+                map[v] = "https://github.com/" + Repo + "/releases/download/danichgame" + v + "/ZombieShooterSetup.exe";
             }
         }
-        catch { }
         return map;
+    }
+
+    // Resolve the latest version via the releases/latest 302 (→ .../tag/danichgameX.Y).
+    static string GetLatestVersion()
+    {
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            try
+            {
+                var req = (HttpWebRequest)WebRequest.Create("https://github.com/" + Repo + "/releases/latest");
+                req.UserAgent = "ZSLauncher";
+                req.AllowAutoRedirect = false;
+                req.Timeout = 8000;
+                using (var resp = (HttpWebResponse)req.GetResponse())
+                {
+                    string v = VersionFromTag(resp.Headers["Location"]);
+                    if (!string.IsNullOrEmpty(v)) return v;
+                }
+            }
+            catch (WebException wex)
+            {
+                if (wex.Response != null)
+                {
+                    string v = VersionFromTag(wex.Response.Headers["Location"]);
+                    if (!string.IsNullOrEmpty(v)) return v;
+                }
+            }
+            catch { }
+        }
+        return null;
+    }
+
+    static string VersionFromTag(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return "";
+        var sb = new StringBuilder();
+        for (int i = s.Length - 1; i >= 0; i--)
+        {
+            char c = s[i];
+            if (char.IsDigit(c) || c == '.') sb.Insert(0, c);
+            else if (sb.Length > 0) break;
+        }
+        return sb.ToString().Trim('.');
     }
 
     // Compare dotted version strings numerically (1.10 > 1.9).

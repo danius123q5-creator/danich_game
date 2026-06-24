@@ -171,9 +171,12 @@ public class ZvZManager : MonoBehaviour
         DrawCoreBar(20f, "ТВОЁ ЯДРО", cores[myTeam], new Color(0.35f, 0.65f, 1f));
         DrawCoreBar(UI.W - 360f, "ВРАЖЕСКОЕ ЯДРО", cores[1 - myTeam], new Color(1f, 0.45f, 0.35f));
 
-        var s = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-        GUI.color = new Color(0.7f, 1f, 0.7f);
-        GUI.Label(new Rect(cx - 360f, UI.H - 150f, 720f, 26f), $"G — выпустить зомби ({SpawnCost} мет.)   •   круши вражеское ядро   •   Q — стройка, защищай своё ядро", s);
+        var s = new GUIStyle(GUI.skin.label) { fontSize = 16, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = true };
+        var box = new Rect(cx - 470f, UI.H - 150f, 940f, 50f);
+        GUI.color = new Color(0f, 0f, 0f, 0.55f);
+        GUI.DrawTexture(box, Texture2D.whiteTexture);
+        GUI.color = new Color(0.75f, 1f, 0.75f);
+        GUI.Label(box, $"G — выпустить зомби ({SpawnCost} мет.)    •    снеси вражеское ядро    •    Q — стройка/защита", s);
         GUI.color = Color.white;
 
         if (over)
