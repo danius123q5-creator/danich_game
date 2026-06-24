@@ -48,6 +48,9 @@ public class GameManager : MonoBehaviour
         // Tutorial owns the world: TutorialManager spawns its own practice zombies.
         if (GameRoot.IsTutorial) return;
 
+        // ZvZ owns the world: ZvZManager runs the match (no AI defense waves).
+        if (GameRoot.IsZvZ) return;
+
         // On a LAN client the host owns the wave/zombie sim — keep the client's world calm.
         if (LanManager.Instance != null && LanManager.Instance.Active && !LanManager.Instance.IsHost) return;
 

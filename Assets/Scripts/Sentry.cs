@@ -76,6 +76,7 @@ public class Sentry : Buildable
         Vector3 c = transform.position + Vector3.up * 0.6f;
         foreach (var z in Zombie.All)
         {
+            if (GameRoot.IsZvZ && z.team == Team) continue; // ZvZ: don't shoot your own side's horde
             float d = (z.transform.position - c).sqrMagnitude;
             if (d < bestSq && HasLineOfSight(c, z)) { best = z; bestSq = d; }
         }

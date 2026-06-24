@@ -13,6 +13,7 @@ public class Buildable : MonoBehaviour
     public int UpgradeCost = 200;   // metal needed to gain a level
     public int InvestAmount = 50;   // metal added per E press (upgrades)
     public virtual int FundChunk => 136; // metal poured into a super-weapon's funding per E press
+    public int Team = 0;            // ZvZ side: 0 = player, 1 = enemy. Ignored outside ZvZ mode.
     public int Invested = 0;        // accumulated toward the next level
     public int MaxLevel = 3;
     public int Level = 1;

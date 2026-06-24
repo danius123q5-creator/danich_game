@@ -21,6 +21,7 @@ public class GameRoot : MonoBehaviour
     public static int PvpTeam = 0; // 0 = Team A, 1 = Team B (PvP friendly-fire / colours)
     public static bool Hardcore = false; // die = restart from wave 1, pricier builds, 170 metal cap
     public static bool IsTutorial = false; // scripted tutorial session: normal waves are disabled, TutorialManager drives the world
+    public static bool IsZvZ = false;      // zombie-vs-zombie match: ZvZManager drives the world (no defense waves)
 
     static readonly string[] TeamNames = { "Команда A", "Команда Б" };
 
@@ -30,7 +31,6 @@ public class GameRoot : MonoBehaviour
     bool inModes; // showing the Modes sub-screen instead of the main menu
     bool inSettings;        // showing the Settings (UI customization) screen
     bool settingsFromPause; // remember whether Settings was opened from the pause menu
-    string musicUrl = "";   // edit buffer for the custom-music URL (Settings)
 
     bool splashActive = true;
     float splashStart;
@@ -40,7 +40,6 @@ public class GameRoot : MonoBehaviour
         Instance = this;
         lan = gameObject.AddComponent<LanManager>(); // persists with GameRoot
         UISettings.Load();                           // apply saved HUD customization
-        musicUrl = GameMusic.Url;                     // load the saved custom-music URL into the edit buffer
         Application.runInBackground = true;          // keep running when the window loses focus (no freeze)
     }
     void Start() { splashStart = Time.unscaledTime; EnterMenu(); }
@@ -90,7 +89,7 @@ public class GameRoot : MonoBehaviour
 
     void StartGame(bool continueProgress)
     {
-        IsTutorial = false; // a normal game clears any prior tutorial state
+        IsTutorial = false; IsZvZ = false; // a normal game clears any prior special-mode state
         if (menuCam != null) menuCam.gameObject.SetActive(false);
         GameBootstrap.BuildWorld();
         if (continueProgress)
@@ -131,6 +130,7 @@ public class GameRoot : MonoBehaviour
     void StartTutorial()
     {
         IsTutorial = true;
+        IsZvZ = false;
         CurrentMode = Mode.Offline;
         Hardcore = false;
         if (menuCam != null) menuCam.gameObject.SetActive(false);
@@ -155,9 +155,33 @@ public class GameRoot : MonoBehaviour
         FreeCursor(false);
     }
 
+    /// <summary>Start a Zombie-vs-Zombie match (2.0). Flat arena, two cores; ZvZManager runs it.</summary>
+    void StartZvZ()
+    {
+        IsZvZ = true;
+        IsTutorial = false;
+        CurrentMode = Mode.Offline;
+        Hardcore = false;
+        GameBootstrap.MapVariant = 2; // Arena — flat, fair field for the two bases
+        if (menuCam != null) menuCam.gameObject.SetActive(false);
+        GameBootstrap.BuildWorld();
+
+        if (GameBootstrap.World != null)
+        {
+            var z = new GameObject("ZvZManager");
+            z.transform.SetParent(GameBootstrap.World);
+            z.AddComponent<ZvZManager>();
+        }
+
+        State = GState.Playing;
+        Time.timeScale = 1f;
+        FreeCursor(false);
+    }
+
     void QuitToMenu()
     {
         IsTutorial = false;
+        IsZvZ = false;
         GameBootstrap.DestroyWorld();
         EnterMenu();
     }
@@ -317,6 +341,10 @@ public class GameRoot : MonoBehaviour
         bool tutDone = PlayerPrefs.GetInt("tutorial_done", 0) == 1;
         if (!tutDone) GUI.backgroundColor = new Color(0.3f, 0.72f, 0.36f); // highlight until completed
         if (GUI.Button(new Rect(x, y, bw, bh), tutDone ? "Обучение" : "ОБУЧЕНИЕ (рекомендуется)", btn)) StartTutorial();
+        GUI.backgroundColor = Color.white;
+        y += 58f;
+        GUI.backgroundColor = new Color(0.7f, 0.35f, 0.7f);
+        if (GUI.Button(new Rect(x, y, bw, bh), "ЗОМБИ vs ЗОМБИ (2.0)", btn)) StartZvZ();
         GUI.backgroundColor = Color.white;
         y += 58f;
         if (GUI.Button(new Rect(x, y, bw, bh), "Режимы", btn)) inModes = true;
@@ -502,16 +530,6 @@ public class GameRoot : MonoBehaviour
         GUI.color = Color.white;
         y += 56f;
 
-        // Custom music: a direct audio-file URL (mp3/ogg/wav). Empty = built-in procedural music.
-        GUI.Label(new Rect(x, y, bw, 22f), "Музыка — URL трека (прямая ссылка mp3/ogg/wav):", lab);
-        var fld = new GUIStyle(GUI.skin.textField) { fontSize = 14, alignment = TextAnchor.MiddleLeft };
-        musicUrl = GUI.TextField(new Rect(x, y + 26f, bw, 28f), musicUrl ?? "", 400, fld);
-        var note = new GUIStyle(GUI.skin.label) { fontSize = 12, alignment = TextAnchor.MiddleLeft, wordWrap = true };
-        GUI.color = new Color(0.8f, 0.85f, 0.9f);
-        GUI.Label(new Rect(x, y + 56f, bw, 32f), "Пусто = встроенная музыка. Обычная ссылка YouTube не играет — нужна прямая ссылка на аудио. Применяется при старте новой игры.", note);
-        GUI.color = Color.white;
-        y += 96f;
-
         // Move HUD elements — only meaningful in-game (the HUD must be on screen to drag it).
         if (settingsFromPause)
         {
@@ -529,7 +547,6 @@ public class GameRoot : MonoBehaviour
         if (GUI.Button(new Rect(x + hw + 6f, y, hw - 6f, 44f), "Назад", small))
         {
             UISettings.Save();
-            GameMusic.Url = (musicUrl ?? "").Trim(); // persist the custom-music URL (takes effect next game start)
             inSettings = false;
         }
     }

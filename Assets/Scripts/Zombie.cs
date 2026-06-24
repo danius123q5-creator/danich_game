@@ -20,6 +20,7 @@ public class Zombie : MonoBehaviour
     public float MaxMoveSpeed = 9f;
 
     public Kind kind = Kind.Normal;
+    public int team = -1; // -1 = normal AI-wave zombie (chases players); 0/1 = a ZvZ side's unit
 
     float health;
     float lastAttack = -99f;
@@ -175,6 +176,8 @@ public class Zombie : MonoBehaviour
 
         if (Time.time >= slowUntil) speedMul = 1f; // slow wears off once clear of the wire
 
+        if (team >= 0) { ZvZMove(); return; } // ZvZ unit: march on the enemy core instead of chasing players
+
         // Re-acquire the nearest attackable building only occasionally (the scan is
         // the costly part with many zombies); attack/move checks below are cheap.
         if (Time.time >= nextBScan)
@@ -267,6 +270,64 @@ public class Zombie : MonoBehaviour
         lastAttack = Time.time;
         var p = target.GetComponent<PlayerController>();
         if (p != null) p.TakeDamage(AttackDamage);
+        var b = target.GetComponent<Buildable>();
+        if (b != null) b.TakeDamage(AttackDamage);
+    }
+
+    // ---- ZvZ behaviour: march on the enemy core; fight enemy units/buildings in the way ----
+    void ZvZMove()
+    {
+        float dt = Time.deltaTime;
+        var enemyCore = ZvZManager.Instance != null ? ZvZManager.Instance.CoreOf(1 - team) : null;
+        Vector3 target = enemyCore != null ? enemyCore.transform.position : transform.position;
+
+        Vector3 move = Vector3.zero;
+        GameObject atk = ZvZFindTarget(enemyCore);
+        if (atk != null)
+        {
+            FaceTowards(atk.transform.position);
+            ZvZMelee(atk);
+        }
+        else
+        {
+            Vector3 to = target - transform.position; to.y = 0f;
+            float dist = to.magnitude;
+            FaceTowards(target);
+            move = (dist > 1f ? to / dist : Vector3.zero) * MoveSpeed * speedMul;
+        }
+
+        if (cc.isGrounded) vSpeed = -1f; else vSpeed -= 18f * dt;
+        cc.Move((move + Vector3.up * vSpeed) * dt);
+    }
+
+    GameObject ZvZFindTarget(Core enemyCore)
+    {
+        float rSq = AttackRange * AttackRange;
+        // enemy core (big, so use a slightly longer reach)
+        if (enemyCore != null)
+        {
+            float cr = AttackRange + 2.6f;
+            if ((enemyCore.transform.position - transform.position).sqrMagnitude < cr * cr) return enemyCore.gameObject;
+        }
+        // an enemy-side zombie in melee
+        foreach (var z in All)
+            if (z != null && z.team >= 0 && z.team != team && !z.puppet &&
+                (z.transform.position - transform.position).sqrMagnitude < rSq) return z.gameObject;
+        // an enemy-side building in melee
+        foreach (var b in Buildable.All)
+            if (b != null && !b.IsTrap && b.Team != team &&
+                (b.transform.position - transform.position).sqrMagnitude < rSq) return b.gameObject;
+        return null;
+    }
+
+    void ZvZMelee(GameObject target)
+    {
+        if (Time.time - lastAttack < AttackCooldown) return;
+        lastAttack = Time.time;
+        var core = target.GetComponent<Core>();
+        if (core != null) { core.TakeDamage(AttackDamage); return; }
+        var z = target.GetComponent<Zombie>();
+        if (z != null) { z.TakeDamage(AttackDamage); return; }
         var b = target.GetComponent<Buildable>();
         if (b != null) b.TakeDamage(AttackDamage);
     }

@@ -863,9 +863,9 @@ public class PlayerController : MonoBehaviour
         Panel(toolR);
         GUI.color = Color.white; GUI.Label(new Rect(toolR.x, toolR.y + 1f, toolR.width, 30f), toolLine, Tool16);
 
-        // Top-center wave banner (hidden in PvP and the tutorial — no normal waves there)
+        // Top-center wave banner (hidden in PvP, tutorial and ZvZ — no normal waves there)
         var gm = GameManager.Instance;
-        if (gm != null && !GameRoot.IsPvp && !GameRoot.IsTutorial)
+        if (gm != null && !GameRoot.IsPvp && !GameRoot.IsTutorial && !GameRoot.IsZvZ)
         {
             if (gm.IsPrep)
             {
