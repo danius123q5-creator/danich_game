@@ -25,7 +25,7 @@ static class Launcher
 
         var form = new Form
         {
-            Text = "ZombieShooter — Лаунчер 1.8",
+            Text = "ZombieShooter — Лаунчер 2.0",
             ClientSize = new Size(440, 270),
             StartPosition = FormStartPosition.CenterScreen,
             FormBorderStyle = FormBorderStyle.FixedSingle,
