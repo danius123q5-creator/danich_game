@@ -26,9 +26,9 @@ public class Rpg : Buildable
     {
         switch (Mathf.Clamp(Level, 1, 3))
         {
-            case 1: MaxHealth = 120f; rate = 1.8f; blastDamage = 40f; blastRadius = 2.8f; range = 22f; break;
-            case 2: MaxHealth = 150f; rate = 1.4f; blastDamage = 65f; blastRadius = 3.3f; range = 25f; break;
-            default: MaxHealth = 190f; rate = 1.1f; blastDamage = 95f; blastRadius = 3.8f; range = 28f; break;
+            case 1: MaxHealth = 120f; rate = 1.8f; blastDamage = 65f; blastRadius = 2.8f; range = 22f; break;
+            case 2: MaxHealth = 150f; rate = 1.4f; blastDamage = 105f; blastRadius = 3.3f; range = 25f; break;
+            default: MaxHealth = 190f; rate = 1.1f; blastDamage = 155f; blastRadius = 3.8f; range = 28f; break;
         }
         Health = MaxHealth;
     }

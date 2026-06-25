@@ -178,6 +178,16 @@ public class Refinery : MonoBehaviour
         Effects.Burst(barrel.position + Vector3.up * 0.8f, new Color(0.1f, 0.09f, 0.08f), 8);
     }
 
+    /// <summary>Pull oil out of the barrel (used by the oil pipe/doser network). Only a
+    /// captured refinery yields oil; returns the amount actually drawn.</summary>
+    public float DrawOil(float amount)
+    {
+        if (!Captured || Oil <= 0f || amount <= 0f) return 0f;
+        float take = Mathf.Min(amount, Oil);
+        Oil -= take;
+        return take;
+    }
+
     GameObject Prim(PrimitiveType t, Transform parent, Vector3 lp, Vector3 ls, Color c, bool collider, Vector3 euler = default)
     {
         var g = GameObject.CreatePrimitive(t);

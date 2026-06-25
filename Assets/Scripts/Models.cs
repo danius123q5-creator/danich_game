@@ -47,6 +47,8 @@ public static class Models
             case 24: return BuildBladeTrap(level);
             case 25: return BuildMissileSilo(level);
             case 26: return BuildBigPlatform(level);
+            case 27: return BuildOilPipe(level);
+            case 28: return BuildOilDispenser(level);
             case 18: return BuildCar(level);
             case 19: return BuildRpg(level);
             default: return BuildProxyMine(level);
@@ -152,6 +154,37 @@ public static class Models
         Prim(PrimitiveType.Cube, t, new Vector3(0.35f, lh * 0.5f, front), new Vector3(0.09f, lh, 0.09f), rail);
         for (float y = 0.4f; y < H + 0.2f; y += 0.5f)
             Prim(PrimitiveType.Cube, t, new Vector3(0f, y, front), new Vector3(0.78f, 0.08f, 0.1f), rail);
+        return root;
+    }
+
+    // Oil pipe: a long horizontal pipe (runs along Z) on two short supports, dark oily steel.
+    public static GameObject BuildOilPipe(int level)
+    {
+        var root = new GameObject("OilPipeModel");
+        var t = root.transform;
+        Color steel = new Color(0.26f, 0.27f, 0.30f);
+        Color band = new Color(0.55f, 0.40f, 0.15f);
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.95f, 0f), new Vector3(0.45f, 1.5f, 0.45f), steel, new Vector3(90f, 0f, 0f)); // main pipe
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.95f, -0.9f), new Vector3(0.5f, 0.1f, 0.5f), band, new Vector3(90f, 0f, 0f));  // flange
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.95f, 0.9f), new Vector3(0.5f, 0.1f, 0.5f), band, new Vector3(90f, 0f, 0f));   // flange
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.35f, -1.1f), new Vector3(0.5f, 0.7f, 0.2f), steel); // support
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.35f, 1.1f), new Vector3(0.5f, 0.7f, 0.2f), steel);  // support
+        return root;
+    }
+
+    // Oil doser: a stout tank with a gauge and a delivery spout — oily black with orange trim.
+    public static GameObject BuildOilDispenser(int level)
+    {
+        var root = new GameObject("OilDispenserModel");
+        var t = root.transform;
+        Color tank = new Color(0.16f, 0.15f, 0.14f);
+        Color trim = new Color(0.85f, 0.55f, 0.15f);
+        Color steel = new Color(0.30f, 0.31f, 0.34f);
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.12f, 0f), new Vector3(1.7f, 0.24f, 1.7f), steel);      // base
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.85f, 0f), new Vector3(1.3f, 0.7f, 1.3f), tank);    // tank body
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 1.35f, 0f), new Vector3(1.35f, 0.18f, 1.35f), trim);     // top rim
+        Prim(PrimitiveType.Cube, t, new Vector3(0.75f, 0.9f, 0f), new Vector3(0.1f, 0.5f, 0.18f), trim);     // gauge
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.55f, 0.85f), new Vector3(0.18f, 0.3f, 0.18f), steel, new Vector3(90f, 0f, 0f)); // spout
         return root;
     }
 
