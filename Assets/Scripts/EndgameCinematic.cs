@@ -227,7 +227,7 @@ public class EndgameCinematic : MonoBehaviour
 
         // level the base into rubble and wipe every zombie
         for (int i = baseBuildings.Count - 1; i >= 0; i--)
-            if (baseBuildings[i] != null) Shred(baseBuildings[i], baseCenter, 16f);
+            if (baseBuildings[i] != null) Shred(baseBuildings[i], baseCenter, 22f);
         foreach (var z in Zombie.All) z.TakeDamage(99999f);
     }
 
@@ -307,10 +307,15 @@ public class EndgameCinematic : MonoBehaviour
             GameBootstrap.SetColor(c, new Color(g, g, g + 0.03f));
             var rb = c.AddComponent<Rigidbody>();
             rb.mass = 1f;
-            // VelocityChange => the value is the velocity added (mass-independent), so it's
-            // easy to keep slow. Gentle outward + slight upward toss, lazy tumble.
-            rb.AddExplosionForce(speed, blast, 18f, 1.5f, ForceMode.VelocityChange);
-            rb.angularVelocity = Random.insideUnitSphere * Random.Range(1.5f, 3.5f);
+            // Strong, energetic scatter: each chunk gets its OWN launch velocity (independent
+            // of distance from the blast), biased outward + upward so they really fly apart
+            // and arc down, instead of just dropping where they spawned.
+            Vector3 dir = Random.onUnitSphere;
+            dir.y = Mathf.Abs(dir.y);                          // never launch downward
+            Vector3 outward = c.transform.position - blast; outward.y = 0f;
+            if (outward.sqrMagnitude > 0.01f) dir += outward.normalized; // push away from centre
+            rb.linearVelocity = dir.normalized * Random.Range(speed * 0.7f, speed * 1.2f) + Vector3.up * Random.Range(3f, 6f);
+            rb.angularVelocity = Random.insideUnitSphere * Random.Range(4f, 9f);
             Object.Destroy(c, 16f);
         }
         Object.Destroy(b.gameObject);

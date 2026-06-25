@@ -135,17 +135,27 @@ public class Buildable : MonoBehaviour
             case 15: AddBox(new Vector3(0f, 0.8f, 0f), new Vector3(1.4f, 1.6f, 1.4f)); break;          // anti-air (ПВО)
             case 21: AddBox(new Vector3(0f, 1.0f, 0f), new Vector3(1.5f, 2.0f, 1.5f)); break;          // freeze tower
             case 22: AddBox(new Vector3(0f, 0.7f, 0f), new Vector3(1.8f, 1.4f, 1.8f)); break;          // orbital control block
-            case 23: // watchtower: solid top platform + a climb column up the OUTSIDE front
-                AddBox(new Vector3(0f, 19.7f, 0f), new Vector3(3.4f, 0.4f, 3.4f));      // walkable platform
+            case 23: // watchtower: huge top platform on 4 columns + a climb column up the OUTSIDE front
+                AddBox(new Vector3(0f, 19.7f, 0f), new Vector3(WatchTower.Half * 2f, 0.4f, WatchTower.Half * 2f)); // walkable platform
                 var cz = new GameObject("ClimbZone");
                 cz.transform.SetParent(root.transform, false);
-                cz.transform.localPosition = new Vector3(0f, 10.4f, 2.3f);              // front, just outside the platform
+                cz.transform.localPosition = new Vector3(0f, 10.4f, WatchTower.Front);  // front, just outside the platform
                 var czc = cz.AddComponent<BoxCollider>();
                 czc.isTrigger = true;
                 czc.size = new Vector3(1.2f, 20.8f, 1.0f);                              // full-height climb column
                 cz.AddComponent<ClimbZone>();
                 break;
             case 24: AddBox(new Vector3(0f, 0.55f, 0f), new Vector3(1.4f, 1.1f, 1.4f)); break;          // spinning blades hub
+            case 26: // big platform: huge top deck on 4 columns + a climb column up the OUTSIDE front
+                AddBox(new Vector3(0f, BigPlatform.Height - 0.3f, 0f), new Vector3(BigPlatform.Half * 2f, 0.4f, BigPlatform.Half * 2f)); // walkable deck
+                var cz2 = new GameObject("ClimbZone");
+                cz2.transform.SetParent(root.transform, false);
+                cz2.transform.localPosition = new Vector3(0f, BigPlatform.Height * 0.5f + 0.2f, BigPlatform.Front);
+                var cz2c = cz2.AddComponent<BoxCollider>();
+                cz2c.isTrigger = true;
+                cz2c.size = new Vector3(1.2f, BigPlatform.Height + 1.2f, 1.0f);          // full-height climb column
+                cz2.AddComponent<ClimbZone>();
+                break;
             case 25: AddBox(new Vector3(0f, 1.1f, 0f), new Vector3(1.7f, 2.2f, 1.7f)); break;          // missile silo
             case 18: AddBox(new Vector3(0f, 0.6f, 0f), new Vector3(2.0f, 1.2f, 4.0f)); break;          // car
             case 19: AddBox(new Vector3(0f, 0.6f, 0f), new Vector3(1.0f, 1.2f, 1.2f)); break;          // rpg turret
@@ -187,6 +197,7 @@ public class Buildable : MonoBehaviour
             case 22: return root.AddComponent<OrbitalStation>();
             case 23: return root.AddComponent<WatchTower>();
             case 24: return root.AddComponent<BladeTrap>();
+            case 26: return root.AddComponent<BigPlatform>();
             case 25: return root.AddComponent<MissileSilo>();
             case 18: return root.AddComponent<Car>();
             case 19: return root.AddComponent<Rpg>();

@@ -71,8 +71,8 @@ public class PlayerController : MonoBehaviour
     float gunHeat;         // 0..1 muzzle heat glow, decays each frame
     GameObject gunMuzzle;  // barrel tip — glows red-hot when firing
 
-    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ", "СМОТР. БАШНЯ", "ЛЕЗВИЯ", "РАКЕТ. ШАХТА" };
-    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 20, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200, 90, 450, 550 };
+    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ", "СМОТР. БАШНЯ", "ЛЕЗВИЯ", "РАКЕТ. ШАХТА", "ПЛАТФОРМА" };
+    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 20, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200, 90, 450, 550, 220 };
 
     // Short "what it is / how it works" blurb per build type — shown in the Q menu on hover.
     static readonly string[] BuildDescriptions =
@@ -103,13 +103,14 @@ public class PlayerController : MonoBehaviour
         "Смотровая башня (20 м): залезь по лестнице через люк на площадку наверху — отличная точка для стрельбы, зомби туда не достанут.",
         "Лезвия: крутящийся ротор рубит всех зомби рядом несколько раз в секунду. Работает как турель — сама, без зарядки и расхода металла. Дорогая в постройке.",
         "Ракетная шахта: ждёт, пока соберётся толпа (3+ зомби), и пускает ракету в самую гущу — мощный взрыв (урон 350). Работает как турель, без расхода металла. Дорогая.",
+        "Платформа: огромная площадка на 4 толстых столбах. Залезь по лестнице наверх — целый этаж под турели и линию обороны, зомби туда не достанут.",
     };
 
     // Build-menu sections: each holds the build-type indices shown under that header.
     static readonly string[] BuildCategories = { "СТРОИТЕЛЬНОЕ", "ОБОРОНА", "ОСТАЛЬНОЕ" };
     static readonly int[][] BuildCategoryItems =
     {
-        new[] { 3, 16, 17, 4, 6, 20, 23, 5 }, // WALL, LONG/TALL WALL, DOOR, STAIRS, LADDER, WATCHTOWER, BRIDGE
+        new[] { 3, 16, 17, 4, 6, 20, 23, 26, 5 }, // WALL, LONG/TALL WALL, DOOR, STAIRS, LADDER, WATCHTOWER, BIG PLATFORM, BRIDGE
         new[] { 0, 19, 1, 2, 7, 8, 15, 24, 25 },  // SENTRY, RPG, DISPENSER, MINE, LANDMINE, BARBED WIRE, AA TURRET, BLADES, MISSILE SILO
         new[] { 9, 10, 11, 21, 22, 18 },          // AIR STRIKE, TESLA, ARTILLERY, FREEZE, ORBITAL, CAR
     };

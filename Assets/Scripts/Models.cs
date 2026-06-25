@@ -46,55 +46,112 @@ public static class Models
             case 23: return BuildWatchTower(level);
             case 24: return BuildBladeTrap(level);
             case 25: return BuildMissileSilo(level);
+            case 26: return BuildBigPlatform(level);
             case 18: return BuildCar(level);
             case 19: return BuildRpg(level);
             default: return BuildProxyMine(level);
         }
     }
 
-    // Tall watchtower: 4 legs, the top platform (with a central hatch), railings, and a
-    // ladder up the middle. Walls/colliders are defined in Buildable.AddColliders.
+    // Tall watchtower: a HUGE top platform held up by 4 thick columns, with railings and a
+    // ladder up the front. Walls/colliders are defined in Buildable.AddColliders (keep WatchTower.Half / Front in sync).
     public static GameObject BuildWatchTower(int level)
     {
         var root = new GameObject("WatchTowerModel");
         var t = root.transform;
         float H = 20f;
+        float half = WatchTower.Half;   // platform half-size (huge)
+        float lx = half - 0.5f;         // 4 columns set just inside the platform edge
+        float front = half + 0.3f;      // ladder sits just outside the front edge
         Color wood = new Color(0.42f, 0.30f, 0.18f);
         Color darkw = new Color(0.34f, 0.24f, 0.15f);
         Color rail = new Color(0.50f, 0.36f, 0.20f);
 
-        // 4 corner legs (slightly splayed look kept simple: vertical posts)
-        float lx = 1.55f;
-        Prim(PrimitiveType.Cube, t, new Vector3(-lx, H * 0.5f, -lx), new Vector3(0.2f, H, 0.2f), wood);
-        Prim(PrimitiveType.Cube, t, new Vector3(lx, H * 0.5f, -lx), new Vector3(0.2f, H, 0.2f), wood);
-        Prim(PrimitiveType.Cube, t, new Vector3(-lx, H * 0.5f, lx), new Vector3(0.2f, H, 0.2f), wood);
-        Prim(PrimitiveType.Cube, t, new Vector3(lx, H * 0.5f, lx), new Vector3(0.2f, H, 0.2f), wood);
+        // 4 thick corner columns ("на 4ух столбах")
+        float colW = 0.55f;
+        Prim(PrimitiveType.Cube, t, new Vector3(-lx, H * 0.5f, -lx), new Vector3(colW, H, colW), wood);
+        Prim(PrimitiveType.Cube, t, new Vector3(lx, H * 0.5f, -lx), new Vector3(colW, H, colW), wood);
+        Prim(PrimitiveType.Cube, t, new Vector3(-lx, H * 0.5f, lx), new Vector3(colW, H, colW), wood);
+        Prim(PrimitiveType.Cube, t, new Vector3(lx, H * 0.5f, lx), new Vector3(colW, H, colW), wood);
 
         // cross braces at a few heights (front/back/sides), for a built look
         for (float y = 4f; y < H; y += 4f)
         {
-            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, -lx), new Vector3(lx * 2f, 0.12f, 0.12f), darkw); // front rung
-            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, lx), new Vector3(lx * 2f, 0.12f, 0.12f), darkw);  // back rung
-            Prim(PrimitiveType.Cube, t, new Vector3(-lx, y, 0f), new Vector3(0.12f, 0.12f, lx * 2f), darkw); // left
-            Prim(PrimitiveType.Cube, t, new Vector3(lx, y, 0f), new Vector3(0.12f, 0.12f, lx * 2f), darkw);  // right
+            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, -lx), new Vector3(lx * 2f, 0.14f, 0.14f), darkw); // front rung
+            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, lx), new Vector3(lx * 2f, 0.14f, 0.14f), darkw);  // back rung
+            Prim(PrimitiveType.Cube, t, new Vector3(-lx, y, 0f), new Vector3(0.14f, 0.14f, lx * 2f), darkw); // left
+            Prim(PrimitiveType.Cube, t, new Vector3(lx, y, 0f), new Vector3(0.14f, 0.14f, lx * 2f), darkw);  // right
         }
 
-        // solid top platform
-        Prim(PrimitiveType.Cube, t, new Vector3(0f, 19.7f, 0f), new Vector3(3.4f, 0.25f, 3.4f), darkw);
+        // huge solid top platform
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 19.7f, 0f), new Vector3(half * 2f, 0.3f, half * 2f), darkw);
 
-        // railings on the back and sides (the front is left open for the ladder)
-        Prim(PrimitiveType.Cube, t, new Vector3(0f, 20.4f, -1.7f), new Vector3(3.4f, 0.7f, 0.1f), rail);
-        Prim(PrimitiveType.Cube, t, new Vector3(-1.7f, 20.4f, 0f), new Vector3(0.1f, 0.7f, 3.4f), rail);
-        Prim(PrimitiveType.Cube, t, new Vector3(1.7f, 20.4f, 0f), new Vector3(0.1f, 0.7f, 3.4f), rail);
-        // short rails flanking the ladder gap at the front
-        Prim(PrimitiveType.Cube, t, new Vector3(-1.35f, 20.4f, 1.7f), new Vector3(0.7f, 0.7f, 0.1f), rail);
-        Prim(PrimitiveType.Cube, t, new Vector3(1.35f, 20.4f, 1.7f), new Vector3(0.7f, 0.7f, 0.1f), rail);
+        // railings around the perimeter (the front centre is left open for the ladder)
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 20.5f, -half), new Vector3(half * 2f, 0.8f, 0.12f), rail);   // back
+        Prim(PrimitiveType.Cube, t, new Vector3(-half, 20.5f, 0f), new Vector3(0.12f, 0.8f, half * 2f), rail);   // left
+        Prim(PrimitiveType.Cube, t, new Vector3(half, 20.5f, 0f), new Vector3(0.12f, 0.8f, half * 2f), rail);    // right
+        // front rails flanking a central ladder gap (~1.2 wide)
+        float frontRail = (half - 0.6f);
+        Prim(PrimitiveType.Cube, t, new Vector3(-(0.6f + frontRail * 0.5f), 20.5f, half), new Vector3(frontRail, 0.8f, 0.12f), rail);
+        Prim(PrimitiveType.Cube, t, new Vector3((0.6f + frontRail * 0.5f), 20.5f, half), new Vector3(frontRail, 0.8f, 0.12f), rail);
 
         // ladder up the outside front (two rails + rungs), reaching just above the platform
-        Prim(PrimitiveType.Cube, t, new Vector3(-0.35f, 10f, 2.3f), new Vector3(0.08f, 20.4f, 0.08f), rail);
-        Prim(PrimitiveType.Cube, t, new Vector3(0.35f, 10f, 2.3f), new Vector3(0.08f, 20.4f, 0.08f), rail);
+        Prim(PrimitiveType.Cube, t, new Vector3(-0.35f, 10f, front), new Vector3(0.08f, 20.4f, 0.08f), rail);
+        Prim(PrimitiveType.Cube, t, new Vector3(0.35f, 10f, front), new Vector3(0.08f, 20.4f, 0.08f), rail);
         for (float y = 0.4f; y < 20.2f; y += 0.5f)
-            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, 2.3f), new Vector3(0.78f, 0.07f, 0.1f), rail);
+            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, front), new Vector3(0.78f, 0.07f, 0.1f), rail);
+        return root;
+    }
+
+    // Huge raised deck on 4 thick columns. Lower and far wider than the watchtower.
+    // Walls/colliders are defined in Buildable.AddColliders (keep BigPlatform.* in sync).
+    public static GameObject BuildBigPlatform(int level)
+    {
+        var root = new GameObject("BigPlatformModel");
+        var t = root.transform;
+        float H = BigPlatform.Height;
+        float half = BigPlatform.Half;     // platform half-size (huge)
+        float lx = half - 0.7f;            // 4 columns set just inside the deck edge
+        float front = BigPlatform.Front;   // ladder sits just outside the front edge
+        Color steel = new Color(0.40f, 0.42f, 0.46f);
+        Color dark = new Color(0.28f, 0.30f, 0.34f);
+        Color deck = new Color(0.34f, 0.35f, 0.38f);
+        Color rail = new Color(0.52f, 0.54f, 0.58f);
+
+        // 4 thick corner columns ("на 4ох столбах")
+        float colW = 0.8f;
+        Prim(PrimitiveType.Cube, t, new Vector3(-lx, H * 0.5f, -lx), new Vector3(colW, H, colW), steel);
+        Prim(PrimitiveType.Cube, t, new Vector3(lx, H * 0.5f, -lx), new Vector3(colW, H, colW), steel);
+        Prim(PrimitiveType.Cube, t, new Vector3(-lx, H * 0.5f, lx), new Vector3(colW, H, colW), steel);
+        Prim(PrimitiveType.Cube, t, new Vector3(lx, H * 0.5f, lx), new Vector3(colW, H, colW), steel);
+
+        // cross braces at a few heights for a built look
+        for (float y = 3f; y < H; y += 3f)
+        {
+            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, -lx), new Vector3(lx * 2f, 0.16f, 0.16f), dark);
+            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, lx), new Vector3(lx * 2f, 0.16f, 0.16f), dark);
+            Prim(PrimitiveType.Cube, t, new Vector3(-lx, y, 0f), new Vector3(0.16f, 0.16f, lx * 2f), dark);
+            Prim(PrimitiveType.Cube, t, new Vector3(lx, y, 0f), new Vector3(0.16f, 0.16f, lx * 2f), dark);
+        }
+
+        // huge solid top deck
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, H - 0.3f, 0f), new Vector3(half * 2f, 0.35f, half * 2f), deck);
+
+        // railings around the perimeter (front centre left open for the ladder)
+        float top = H + 0.5f;
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, top, -half), new Vector3(half * 2f, 0.9f, 0.14f), rail);   // back
+        Prim(PrimitiveType.Cube, t, new Vector3(-half, top, 0f), new Vector3(0.14f, 0.9f, half * 2f), rail);   // left
+        Prim(PrimitiveType.Cube, t, new Vector3(half, top, 0f), new Vector3(0.14f, 0.9f, half * 2f), rail);    // right
+        float frontRail = half - 0.7f;
+        Prim(PrimitiveType.Cube, t, new Vector3(-(0.7f + frontRail * 0.5f), top, half), new Vector3(frontRail, 0.9f, 0.14f), rail);
+        Prim(PrimitiveType.Cube, t, new Vector3((0.7f + frontRail * 0.5f), top, half), new Vector3(frontRail, 0.9f, 0.14f), rail);
+
+        // ladder up the outside front
+        float lh = H + 0.4f;
+        Prim(PrimitiveType.Cube, t, new Vector3(-0.35f, lh * 0.5f, front), new Vector3(0.09f, lh, 0.09f), rail);
+        Prim(PrimitiveType.Cube, t, new Vector3(0.35f, lh * 0.5f, front), new Vector3(0.09f, lh, 0.09f), rail);
+        for (float y = 0.4f; y < H + 0.2f; y += 0.5f)
+            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, front), new Vector3(0.78f, 0.08f, 0.1f), rail);
         return root;
     }
 
