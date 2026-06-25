@@ -442,14 +442,24 @@ public class PlayerController : MonoBehaviour
         }
         int cost = BCost(SelectedBuild);
         if (Metal < cost) return;
-        var rot = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+        var rot = Quaternion.Euler(0f, BuildYaw(), 0f);
         if (NetClient)
         {
-            LanManager.Instance.SendBuildPlace(SelectedBuild, hit.point, transform.eulerAngles.y);
+            LanManager.Instance.SendBuildPlace(SelectedBuild, hit.point, BuildYaw());
             AddMetal(-cost);
             builtSomething = true;
         }
         else if (Buildable.Create(SelectedBuild, hit.point, rot, this) != null) { AddMetal(-cost); builtSomething = true; }
+    }
+
+    // Placement yaw. Watchtower (23) and big platform (26) carry their ladder on the +z
+    // (front) side; flip them 180° so the ladder faces the player — you build it and can
+    // immediately climb up from where you're standing.
+    float BuildYaw()
+    {
+        float yaw = transform.eulerAngles.y;
+        if (SelectedBuild == 23 || SelectedBuild == 26) yaw += 180f;
+        return yaw;
     }
 
     void SellBuild()
@@ -642,7 +652,7 @@ public class PlayerController : MonoBehaviour
         if (show)
         {
             preview.transform.position = pos;
-            preview.transform.rotation = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+            preview.transform.rotation = Quaternion.Euler(0f, BuildYaw(), 0f);
             bool ok = Metal >= BCost(SelectedBuild);
             GameBootstrap.SetGhostColor(preview, ok ? new Color(0.3f, 1f, 0.3f, 0.18f) : new Color(1f, 0.3f, 0.3f, 0.18f));
         }
