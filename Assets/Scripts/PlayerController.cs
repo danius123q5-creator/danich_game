@@ -1135,7 +1135,7 @@ public class PlayerController : MonoBehaviour
                 if (GameRoot.Hardcore)
                 {
                     GUI.color = new Color(1f, 0.7f, 0.3f, pulse);
-                    GUI.Label(new Rect(cx - 400f, 208f, 800f, 26f), "хардкор: турели тратят патроны — пополняй их (E); раздатчик отдаёт лишь накопленное", Sm);
+                    GUI.Label(new Rect(cx - 400f, 208f, 800f, 26f), "хардкор: постройки дороже, раздатчик отдаёт лишь накопленный металл", Sm);
                 }
                 GUI.color = Color.white;
             }

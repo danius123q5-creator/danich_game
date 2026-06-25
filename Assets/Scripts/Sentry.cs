@@ -15,18 +15,15 @@ public class Sentry : Buildable
     float nextRocket;
     Zombie target;
 
-    // Hardcore: turrets run on ammo (metal loaded into their reserve via E). Empty = silent
-    // until you refill. Normal mode keeps infinite ammo (ReserveMax 0 → UsesReserve false).
-    public override int ReserveMax => GameRoot.Hardcore ? 300 : 0;
-    bool HasAmmo => !UsesReserve || Reserve > 0;
-    void UseAmmo(int n) { if (UsesReserve) Reserve = Mathf.Max(0, Reserve - n); }
+    // Turrets have infinite ammo (no reserve). (Hardcore used to require ammo — removed.)
+    bool HasAmmo => true;
+    void UseAmmo(int n) { }
 
     protected override void Awake()
     {
         BuildCost = 130;
         MaxLevel = 3;
         base.Awake();
-        if (GameRoot.Hardcore) Reserve = 150; // start with some ammo (LoadState overrides for saves)
     }
 
     protected override void ApplyLevel()
