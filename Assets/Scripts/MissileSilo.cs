@@ -27,9 +27,9 @@ public class MissileSilo : Buildable
     {
         switch (Mathf.Clamp(Level, 1, 3))
         {
-            case 1: MaxHealth = 500f; blastR = 5.5f; reload = 5f; break;
-            case 2: MaxHealth = 640f; blastR = 6.5f; reload = 4f; break;
-            default: MaxHealth = 800f; blastR = 8f; reload = 3f; break;
+            case 1: MaxHealth = 500f; blastR = 10f; reload = 5f; break;
+            case 2: MaxHealth = 640f; blastR = 13f; reload = 4f; break;
+            default: MaxHealth = 800f; blastR = 16f; reload = 3f; break;
         }
         Health = MaxHealth;
     }
