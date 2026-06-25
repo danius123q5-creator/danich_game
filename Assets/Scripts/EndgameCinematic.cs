@@ -103,6 +103,9 @@ public class EndgameCinematic : MonoBehaviour
             case Phase.Done: DonePhase(dt); break;
         }
 
+        // After the nuke nothing should be left alive — sweep any straggler every frame.
+        if (detonated) WipeZombies();
+
         // Sky-darken ramps in during evac and stays dark.
         if (phase == Phase.Evac) darkness = Mathf.Min(1f, darkness + dt / 6f);
         RenderSettings.ambientLight = Color.Lerp(ambient0, new Color(0.05f, 0.05f, 0.08f), darkness);
@@ -206,6 +209,11 @@ public class EndgameCinematic : MonoBehaviour
         flashAmt = 1f;
         if (bomb != null) Destroy(bomb.gameObject);
 
+        // Wipe every zombie FIRST — before any building/orbital work below, so even if
+        // something there throws, the nuke still cleared the map. A per-frame sweep in
+        // Update() mops up any stragglers after this.
+        WipeZombies();
+
         // expanding fireball
         var fb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         Object.Destroy(fb.GetComponent<Collider>());
@@ -225,10 +233,17 @@ public class EndgameCinematic : MonoBehaviour
             if (os != null) os.Crash(1.8f);
         }
 
-        // level the base into rubble and wipe every zombie
+        // level the base into rubble
         for (int i = baseBuildings.Count - 1; i >= 0; i--)
             if (baseBuildings[i] != null) Shred(baseBuildings[i], baseCenter, 22f);
-        foreach (var z in Zombie.All) z.TakeDamage(99999f);
+    }
+
+    // Kill every zombie currently on the map. Backward index walk: TakeDamage Destroys the
+    // object (deferred), so the list isn't mutated mid-loop, but this stays safe regardless.
+    static void WipeZombies()
+    {
+        for (int i = Zombie.All.Count - 1; i >= 0; i--)
+            if (Zombie.All[i] != null) Zombie.All[i].TakeDamage(99999f);
     }
 
     // ---- Tu-22 bomber ----
