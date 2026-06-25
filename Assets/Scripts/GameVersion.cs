@@ -12,4 +12,8 @@
 public static class GameVersion
 {
     public const string Current = "2.2";
+
+    // Internal joke codename for the cut-down WebGL/browser build. NOT shown to players and
+    // NOT the public store title — Yandex Games moderation forbids it. Working name only.
+    public const string WebCodename = "еблан эдишн zombie shooter";
 }
