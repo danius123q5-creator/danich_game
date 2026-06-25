@@ -14,6 +14,9 @@ public class Refinery : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetRegistry() => All.Clear();
 
+    void OnEnable() { if (!All.Contains(this)) All.Add(this); }
+    void OnDisable() { All.Remove(this); }
+
     public const float Zone = 10f;          // capture / contest radius
     public const float CaptureTime = 4f;    // seconds to capture from neutral
     public const float OilCap = 200f;       // barrel capacity
