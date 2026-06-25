@@ -5,9 +5,10 @@ using UnityEngine;
 /// targets, fire rate and enormous damage. Each arc costs a little metal.</summary>
 public class TeslaCoil : Buildable
 {
-    public override int FundingRequired => 1500;
-    public override int OilRequired => 150;
-    public override int ReserveMax => 1500;
+    public override int FundingRequired => 0;   // oil-only super-weapon (no metal)
+    public override int OilRequired => 250;
+    public override bool ReserveIsOil => true;
+    public override int ReserveMax => 400;      // ammo reserve, paid in oil
 
     float range = 16f;
     float rate = 0.25f;     // seconds between volleys

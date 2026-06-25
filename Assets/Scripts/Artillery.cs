@@ -5,9 +5,10 @@ using UnityEngine;
 /// costs a hefty chunk of metal.</summary>
 public class Artillery : Buildable
 {
-    public override int FundingRequired => 2200;
-    public override int OilRequired => 180;
-    public override int ReserveMax => 1600;
+    public override int FundingRequired => 0;   // oil-only super-weapon (no metal)
+    public override int OilRequired => 300;
+    public override bool ReserveIsOil => true;
+    public override int ReserveMax => 450;      // ammo reserve, paid in oil
 
     float range = 70f;
     float rate = 1.4f;       // seconds between shells

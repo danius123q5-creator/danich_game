@@ -6,9 +6,10 @@ using System.Collections.Generic;
 /// Levels 1-3 add bombs, radius, rate and colossal damage. Each run burns metal.</summary>
 public class AirStrike : Buildable
 {
-    public override int FundingRequired => 3000;
-    public override int OilRequired => 200;
-    public override int ReserveMax => 1800;
+    public override int FundingRequired => 0;   // oil-only super-weapon (no metal)
+    public override int OilRequired => 350;
+    public override bool ReserveIsOil => true;
+    public override int ReserveMax => 500;      // ammo reserve, paid in oil
 
     const float ScanRange = 90f;
     int strikeCost = 120;   // metal per bombing run

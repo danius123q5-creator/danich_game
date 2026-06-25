@@ -9,9 +9,10 @@ using UnityEngine;
 ///   3) PRISM      — three long beams in a triangle, spinning around the base and slicing the horde.</summary>
 public class OrbitalStation : Buildable
 {
-    public override int FundingRequired => 3000;
-    public override int OilRequired => 250;
-    public override int ReserveMax => 1500;       // metal pool the beams drain as they fire
+    public override int FundingRequired => 0;     // oil-only super-weapon (no metal)
+    public override int OilRequired => 400;
+    public override bool ReserveIsOil => true;
+    public override int ReserveMax => 450;        // oil pool the beams drain as they fire
     const int ShotCost = 20;                       // metal burned per single-shot laser
 
     enum Mode { Single, Burn, Prism }

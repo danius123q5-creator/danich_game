@@ -27,7 +27,7 @@ public class PlayerController : MonoBehaviour
     static int BCost(int i) => GameRoot.Hardcore ? Mathf.RoundToInt(BuildCosts[i] * 1.5f) : BuildCosts[i];
 
     [HideInInspector] public float Health;
-    [HideInInspector] public int Metal = 600; // base stockpile (2.2 economy) — enough to start
+    [HideInInspector] public int Metal = 700; // base stockpile (2.2 economy) — enough to start
     public const int OilMax = 500;                 // personal oil carry capacity (from refineries)
     [HideInInspector] public int Oil = 500;        // oil carried, poured into super-weapons (start with a base stock)
     [HideInInspector] public int Score = 0;
@@ -84,9 +84,9 @@ public class PlayerController : MonoBehaviour
         "Лестница/пандус: заехать или забраться наверх.",
         "Фугас-лепёшка: лежит на земле, наступил зомби — взрыв. Зомби его не атакуют.",
         "Колючая проволока: сильно замедляет зомби, идущих сквозь неё.",
-        "Авиаудар (супероружие): копи металл + нефть с НПЗ (E), затем вызывает удары по толпе на всю карту.",
-        "Катушка Тесла (супероружие): копи металл + нефть с НПЗ (E). Бьёт молнией по ближним зомби, тратит металл из резерва.",
-        "Артиллерия (супероружие): копи металл + нефть с НПЗ (E). Фугасы по площади на всю карту, наводится на цель.",
+        "Авиаудар (супероружие): работает на НЕФТИ — залей нефть с НПЗ (E), затем вызывает удары по толпе на всю карту. Металл не нужен.",
+        "Катушка Тесла (супероружие): работает на НЕФТИ — залей нефть с НПЗ (E). Бьёт молнией по ближним зомби, тратит нефть из резерва.",
+        "Артиллерия (супероружие): работает на НЕФТИ — залей нефть с НПЗ (E). Фугасы по площади на всю карту, наводится на цель.",
         "Угловой мост (Г): поворот настила.",
         "Т-мост: развилка настила.",
         "Крест-мост: перекрёсток настила.",
@@ -97,10 +97,10 @@ public class PlayerController : MonoBehaviour
         "РПГ: дешёвая ракетная турель. Сама бьёт ракетами по площади — хороша против толпы, но хрупкая и медленно перезаряжается.",
         "Вертикальная лестница: встань вплотную и лезь вверх/вниз на W/S. Заберись на стены и мосты. Пробел — спрыгнуть.",
         "Стоп-пушка: раз в ~16с пускает волну, замораживающую ВСЕХ зомби на карте на 10 секунд. Дёшево, без расхода металла.",
-        "Орбитальная станция: блок управления (копи 3000 металла + нефть с НПЗ, E). Когда готов — в небе появляется станция и циклит 3 атаки: точные лазеры со взрывом, выжигающий луч (ползёт от зомби к зомби) и тройная призма (3 луча крутятся вокруг базы). Тратит металл из своего бака — заряжай E.",
+        "Орбитальная станция: блок управления, работает на НЕФТИ — залей нефть с НПЗ (E), металл не нужен. Когда готов — в небе появляется станция и циклит 3 атаки: точные лазеры со взрывом, выжигающий луч (ползёт от зомби к зомби) и тройная призма (3 луча крутятся вокруг базы). Тратит металл из своего бака — заряжай E.",
         "Смотровая башня (20 м): залезь по лестнице через люк на площадку наверху — отличная точка для стрельбы, зомби туда не достанут.",
         "Лезвия: крутящийся ротор рубит всех зомби рядом несколько раз в секунду. Работает как турель — сама, без зарядки и расхода металла. Дорогая в постройке.",
-        "Ракетная шахта: ждёт, пока соберётся толпа (3+ зомби), и пускает ракету в самую гущу — мощный взрыв (урон 350). Работает как турель, без расхода металла. Дорогая.",
+        "Ракетная шахта: ждёт толпу (3+ зомби) и пускает ракету — она взлетает в небо и падает прямо на толпу, выжигая всех в радиусе взрыва. Работает как турель, без расхода металла. Дорогая.",
         "Платформа: огромная площадка на 4 толстых столбах. Залезь по лестнице наверх — целый этаж под турели и линию обороны, зомби туда не достанут.",
         "Труба нефти: зажми ЛКМ у захваченного НПЗ и веди к базе — отпустишь, и труба ляжет цепочкой (15 мет./звено). Тянет нефть к дозатору. Зомби её ломают — защищай.",
         "Дозатор нефти: качает нефть из подключённого НПЗ (через трубы) и сам выдаёт её тебе, когда стоишь рядом. Поставь у базы — нефть течёт без беготни.",
@@ -114,7 +114,7 @@ public class PlayerController : MonoBehaviour
     static readonly int[][] BuildCategoryItems =
     {
         new[] { 3, 16, 17, 4, 6, 20, 23, 26, 29, 5 }, // WALL, LONG/TALL WALL, DOOR, STAIRS, LADDER, WATCHTOWER, BIG PLATFORM, OIL DERRICK, BRIDGE
-        new[] { 0, 19, 1, 2, 7, 8, 15, 24, 25 },  // SENTRY, RPG, DISPENSER, MINE, LANDMINE, BARBED WIRE, AA TURRET, BLADES, MISSILE SILO
+        new[] { 0, 19, 2, 7, 8, 15, 24, 25 },     // SENTRY, RPG, MINE, LANDMINE, BARBED WIRE, AA TURRET, BLADES, MISSILE SILO (dispenser removed — metal comes from the mine economy)
         new[] { 27, 28, 30, 31 },                 // ЭКОНОМИКА: OIL PIPE, OIL DOSER, CONVEYOR, METAL VAT
         new[] { 9, 10, 11, 21, 22, 18 },          // AIR STRIKE, TESLA, ARTILLERY, FREEZE, ORBITAL, CAR
     };
@@ -574,20 +574,23 @@ public class PlayerController : MonoBehaviour
             }
         }
         // Funded special weapon: keep its ammo reserve topped up first; once full, E upgrades it.
+        // Super-weapons run on OIL (ReserveIsOil); hardcore turret ammo still uses metal.
         else if (b.UsesReserve)
         {
-            if (b.Reserve < b.ReserveMax && Metal > 0)
+            bool oilFuel = b.ReserveIsOil;
+            int wallet = oilFuel ? Oil : Metal;
+            if (b.Reserve < b.ReserveMax && wallet > 0)
             {
-                int load = Mathf.Min(Metal, Mathf.Min(ReserveLoadChunk, b.ReserveMax - b.Reserve));
+                int load = Mathf.Min(wallet, Mathf.Min(ReserveLoadChunk, b.ReserveMax - b.Reserve));
                 if (load <= 0) return;
-                if (NetClient) { AddMetal(-load); LanManager.Instance.SendBuildAction(b.NetId, 2, load); }
-                else AddMetal(-b.Refill(load));
+                if (NetClient) { if (oilFuel) AddOil(-load); else AddMetal(-load); LanManager.Instance.SendBuildAction(b.NetId, 2, load); }
+                else { int got = b.Refill(load); if (oilFuel) AddOil(-got); else AddMetal(-got); }
             }
-            else if (b.CanUpgrade && Metal > 0)
+            else if (b.CanUpgrade && wallet > 0)
             {
-                int amount = Mathf.Min(Metal, b.InvestAmount);
-                if (NetClient) { if (b.UpgradeReadyIn <= 0f) { AddMetal(-amount); b.MarkNetCooldown(); LanManager.Instance.SendBuildAction(b.NetId, 0, amount); } }
-                else if (b.Invest(amount)) AddMetal(-amount);
+                int amount = Mathf.Min(wallet, b.InvestAmount);
+                if (NetClient) { if (b.UpgradeReadyIn <= 0f) { if (oilFuel) AddOil(-amount); else AddMetal(-amount); b.MarkNetCooldown(); LanManager.Instance.SendBuildAction(b.NetId, 0, amount); } }
+                else if (b.Invest(amount)) { if (oilFuel) AddOil(-amount); else AddMetal(-amount); }
             }
         }
         // Ordinary building: upgrade if possible & affordable; otherwise repair.
@@ -1140,8 +1143,8 @@ public class PlayerController : MonoBehaviour
             // funding, a normal upgrade, OR upgrading a fully-charged reserve weapon.
             bool reserveUpgrade = aimed.UsesReserve && aimed.Reserve >= aimed.ReserveMax && aimed.CanUpgrade;
             bool twoBars = !aimed.Building && (aimed.IsFunding || (aimed.CanUpgrade && !aimed.UsesReserve) || reserveUpgrade); // 2-bar layouts
-            bool fundingOil = aimed.IsFunding && aimed.OilRequired > 0; // metal + oil + cooldown = an extra bar
-            Panel(new Rect(px - 8f, py - 8f, pw + 16f, fundingOil ? 140f : (twoBars ? 116f : 92f)));
+            bool fundingFour = aimed.IsFunding && aimed.FundingRequired > 0 && aimed.OilRequired > 0; // metal+oil+cooldown = 4 bars
+            Panel(new Rect(px - 8f, py - 8f, pw + 16f, fundingFour ? 140f : (twoBars ? 116f : 92f)));
             GUI.color = Color.white;
             GUI.Label(new Rect(px, py, pw, 22f), $"{BuildNames[aimed.Type]}  -  УР {aimed.Level}  -  ваше", Sm);
             Bar(px, py + 24f, pw, 20f, aimed.Health / aimed.MaxHealth, new Color(0.2f, 0.8f, 0.25f), $"{Mathf.Max(0, Mathf.RoundToInt(aimed.Health))} / {Mathf.RoundToInt(aimed.MaxHealth)} ХП");
@@ -1152,55 +1155,59 @@ public class PlayerController : MonoBehaviour
             }
             else if (aimed.IsFunding)
             {
-                // Bar 2: metal funding (capped chunk per press).
+                // Funding bars, top to bottom: (metal if needed) → (oil if needed) → cooldown.
+                bool hasMetal = aimed.FundingRequired > 0, hasOil = aimed.OilRequired > 0;
                 bool metalDone = aimed.FundingPaid >= aimed.FundingRequired;
-                float f = (float)aimed.FundingPaid / Mathf.Max(1, aimed.FundingRequired);
-                int chunk = Mathf.Min(Metal, Mathf.Min(aimed.FundChunk, aimed.FundingRemaining));
-                string mtxt = metalDone ? $"металл готов ({aimed.FundingRequired})"
-                    : Metal > 0 ? $"E: вложить +{chunk}   ({aimed.FundingPaid}/{aimed.FundingRequired})"
-                    : $"нужен металл   ({aimed.FundingPaid}/{aimed.FundingRequired})";
-                Bar(px, py + 48f, pw, 20f, f, metalDone ? new Color(0.3f, 0.6f, 0.45f) : new Color(0.4f, 0.8f, 1f), mtxt);
+                float row = py + 48f;
 
-                if (aimed.OilRequired > 0)
+                if (hasMetal)
                 {
-                    // Bar 3: oil funding (from your reserve) — unlocks once the metal is in.
+                    float f = (float)aimed.FundingPaid / Mathf.Max(1, aimed.FundingRequired);
+                    int chunk = Mathf.Min(Metal, Mathf.Min(aimed.FundChunk, aimed.FundingRemaining));
+                    string mtxt = metalDone ? $"металл готов ({aimed.FundingRequired})"
+                        : Metal > 0 ? $"E: вложить +{chunk}   ({aimed.FundingPaid}/{aimed.FundingRequired})"
+                        : $"нужен металл   ({aimed.FundingPaid}/{aimed.FundingRequired})";
+                    Bar(px, row, pw, 20f, f, metalDone ? new Color(0.3f, 0.6f, 0.45f) : new Color(0.4f, 0.8f, 1f), mtxt);
+                    row += 24f;
+                }
+                if (hasOil)
+                {
                     float of = (float)aimed.OilPaid / Mathf.Max(1, aimed.OilRequired);
                     int ochunk = Mathf.Min(Oil, Mathf.Min(OilFundChunk, aimed.OilRemaining));
                     string otxt = aimed.OilPaid >= aimed.OilRequired ? $"нефть готова ({aimed.OilRequired})"
-                        : !metalDone ? $"потом нефть   ({aimed.OilPaid}/{aimed.OilRequired})"
+                        : (hasMetal && !metalDone) ? $"потом нефть   ({aimed.OilPaid}/{aimed.OilRequired})"
                         : Oil > 0 ? $"E: нефть +{ochunk}   ({aimed.OilPaid}/{aimed.OilRequired})"
                         : $"нужна нефть с НПЗ   ({aimed.OilPaid}/{aimed.OilRequired})";
-                    Bar(px, py + 72f, pw, 20f, of, new Color(1f, 0.8f, 0.3f), otxt);
-
-                    // Bar 4: deposit cooldown (kept visible — it just moved down a row).
-                    if (aimed.UpgradeReadyIn > 0f)
-                        Bar(px, py + 96f, pw, 20f, 1f - aimed.UpgradeReadyIn / aimed.UpgradeCooldown, new Color(0.9f, 0.6f, 0.2f), $"перезаряд {aimed.UpgradeReadyIn:0.0}с");
-                    else
-                        Bar(px, py + 96f, pw, 20f, 1f, new Color(0.25f, 0.6f, 0.3f), "готово (E)");
+                    Bar(px, row, pw, 20f, of, new Color(1f, 0.8f, 0.3f), otxt);
+                    row += 24f;
                 }
-                else if (aimed.UpgradeReadyIn > 0f)
-                    Bar(px, py + 72f, pw, 20f, 1f - aimed.UpgradeReadyIn / aimed.UpgradeCooldown, new Color(0.9f, 0.6f, 0.2f), $"перезаряд {aimed.UpgradeReadyIn:0.0}с");
+                if (aimed.UpgradeReadyIn > 0f)
+                    Bar(px, row, pw, 20f, 1f - aimed.UpgradeReadyIn / aimed.UpgradeCooldown, new Color(0.9f, 0.6f, 0.2f), $"перезаряд {aimed.UpgradeReadyIn:0.0}с");
                 else
-                    Bar(px, py + 72f, pw, 20f, 1f, new Color(0.25f, 0.6f, 0.3f), "готово (E)");
+                    Bar(px, row, pw, 20f, 1f, new Color(0.25f, 0.6f, 0.3f), "готово (E)");
             }
             else if (aimed.UsesReserve)
             {
                 // Funded special weapon: fill its ammo reserve; once full, E upgrades it.
+                // Super-weapons charge from OIL (ReserveIsOil); hardcore turrets from metal.
+                bool oilFuel = aimed.ReserveIsOil;
+                int wallet = oilFuel ? Oil : Metal;
+                string needRes = oilFuel ? "нужна нефть" : "нужен металл";
                 float rf = (float)aimed.Reserve / Mathf.Max(1, aimed.ReserveMax);
                 if (aimed.Reserve < aimed.ReserveMax)
                 {
-                    int load = Mathf.Min(Metal, Mathf.Min(ReserveLoadChunk, aimed.ReserveMax - aimed.Reserve));
-                    string txt = Metal > 0
+                    int load = Mathf.Min(wallet, Mathf.Min(ReserveLoadChunk, aimed.ReserveMax - aimed.Reserve));
+                    string txt = wallet > 0
                         ? $"E: зарядить +{load}   (заряд {aimed.Reserve}/{aimed.ReserveMax})"
-                        : $"нужен металл   (заряд {aimed.Reserve}/{aimed.ReserveMax})";
-                    Bar(px, py + 48f, pw, 20f, rf, new Color(0.4f, 0.8f, 1f), txt);
+                        : $"{needRes}   (заряд {aimed.Reserve}/{aimed.ReserveMax})";
+                    Bar(px, py + 48f, pw, 20f, rf, oilFuel ? new Color(1f, 0.8f, 0.3f) : new Color(0.4f, 0.8f, 1f), txt);
                 }
                 else if (aimed.CanUpgrade)
                 {
                     float invFrac2 = (float)aimed.Invested / aimed.UpgradeCost;
-                    string txt = Metal > 0
-                        ? $"E: апгрейд +{Mathf.Min(Metal, aimed.InvestAmount)}   ({aimed.Invested}/{aimed.UpgradeCost})"
-                        : $"ПОЛНО — нужен металл на апгрейд";
+                    string txt = wallet > 0
+                        ? $"E: апгрейд +{Mathf.Min(wallet, aimed.InvestAmount)}   ({aimed.Invested}/{aimed.UpgradeCost})"
+                        : $"ПОЛНО — {needRes} на апгрейд";
                     Bar(px, py + 48f, pw, 20f, invFrac2, new Color(0.2f, 0.7f, 0.9f), txt);
 
                     // Bar 3: cooldown before the next investment (same gate as normal upgrades).

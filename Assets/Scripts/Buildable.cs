@@ -68,6 +68,9 @@ public class Buildable : MonoBehaviour
     public virtual int ReserveMax => 0;        // 0 = doesn't use a reserve
     public int Reserve { get; protected set; }
     public bool UsesReserve => ReserveMax > 0;
+    // Super-weapons run entirely on OIL (no metal): their funding, ammo reserve and upgrades
+    // are all paid in oil. Hardcore turret ammo keeps using metal (this stays false there).
+    public virtual bool ReserveIsOil => false;
 
     float noMetalUntil;                                   // set when a shot is denied for lack of metal
     bool NoMetalWarning => Time.time < noMetalUntil;      // drives the floating "NO METAL" alert
