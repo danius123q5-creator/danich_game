@@ -21,6 +21,9 @@ public class GameRoot : MonoBehaviour
     public static int PvpTeam = 0; // 0 = Team A, 1 = Team B (PvP friendly-fire / colours)
     public static bool Hardcore = false; // die = restart from wave 1, pricier builds, 170 metal cap
     public static bool Infinite = false; // endless mode: same as default but no evac finale
+
+    // WebGL ("инвалид эдишн") has no UDP sockets — hide all LAN/co-op/PvP networking in browser.
+    public static bool NetSupported => Application.platform != RuntimePlatform.WebGLPlayer;
     public static bool IsTutorial = false; // scripted tutorial session: normal waves are disabled, TutorialManager drives the world
     public static bool IsZvZ = false;      // zombie-vs-zombie match: ZvZManager drives the world (no defense waves)
     public static bool BaseLost = false;   // the one critical dispenser was destroyed → game over (default mode)
@@ -515,44 +518,54 @@ public class GameRoot : MonoBehaviour
         }
         GUI.backgroundColor = Color.white;
 
-        // ---- 2) Online co-op — host or join over LAN ----
-        if (GUI.Button(new Rect(x, cy - 6f, bw, 42f), "Кооп — Хост (LAN)", small))
+        // ---- LAN networking (co-op / PvP / ZvZ-LAN): hidden in the WebGL build (no UDP) ----
+        if (NetSupported)
         {
-            CurrentMode = Mode.Coop; Hardcore = false; lan.StartHost(); StartGame(false);
-        }
-
-        // ---- 3) PvP (players vs players) — host or join ----
-        if (GUI.Button(new Rect(x, cy + 42f, bw, 42f), "PvP — Хост (LAN)", small))
-        {
-            CurrentMode = Mode.Pvp; Hardcore = false; lan.StartHost(); StartGame(false);
-        }
-
-        // Shared join row (IP) — joins whatever the host is running.
-        joinIp = GUI.TextField(new Rect(x, cy + 90f, bw - 150f, 42f), joinIp, fld);
-        if (GUI.Button(new Rect(x + bw - 144f, cy + 90f, 70f, 42f), "Кооп", small))
-        {
-            CurrentMode = Mode.Coop; Hardcore = false; if (lan.StartClient(joinIp)) StartGame(false);
-        }
-        if (GUI.Button(new Rect(x + bw - 70f, cy + 90f, 70f, 42f), "PvP", small))
-        {
-            CurrentMode = Mode.Pvp; Hardcore = false; if (lan.StartClient(joinIp)) StartGame(false);
+            // 2) Online co-op — host or join over LAN
+            if (GUI.Button(new Rect(x, cy - 6f, bw, 42f), "Кооп — Хост (LAN)", small))
+            {
+                CurrentMode = Mode.Coop; Hardcore = false; lan.StartHost(); StartGame(false);
+            }
+            // 3) PvP (players vs players) — host or join
+            if (GUI.Button(new Rect(x, cy + 42f, bw, 42f), "PvP — Хост (LAN)", small))
+            {
+                CurrentMode = Mode.Pvp; Hardcore = false; lan.StartHost(); StartGame(false);
+            }
+            // Shared join row (IP) — joins whatever the host is running.
+            joinIp = GUI.TextField(new Rect(x, cy + 90f, bw - 150f, 42f), joinIp, fld);
+            if (GUI.Button(new Rect(x + bw - 144f, cy + 90f, 70f, 42f), "Кооп", small))
+            {
+                CurrentMode = Mode.Coop; Hardcore = false; if (lan.StartClient(joinIp)) StartGame(false);
+            }
+            if (GUI.Button(new Rect(x + bw - 70f, cy + 90f, 70f, 42f), "PvP", small))
+            {
+                CurrentMode = Mode.Pvp; Hardcore = false; if (lan.StartClient(joinIp)) StartGame(false);
+            }
         }
 
         // ---- 4) Zombie-vs-Zombie (2.0): grow a horde and crush the enemy core ----
         GUI.Label(new Rect(x, cy + 120f, bw, 18f), "ЗОМБИ vs ЗОМБИ (2.0)", lab);
-        float zw = bw / 3f;
         GUI.backgroundColor = new Color(0.7f, 0.4f, 0.72f);
-        if (GUI.Button(new Rect(x, cy + 140f, zw - 3f, 40f), "vs ИИ", small)) { CurrentMode = Mode.Offline; StartZvZ(0); }
-        if (GUI.Button(new Rect(x + zw, cy + 140f, zw - 3f, 40f), "Хост LAN", small)) StartZvZ(1);
-        if (GUI.Button(new Rect(x + 2f * zw, cy + 140f, zw - 3f, 40f), "Join LAN", small)) StartZvZ(2); // joins the IP above
+        if (NetSupported)
+        {
+            float zw = bw / 3f;
+            if (GUI.Button(new Rect(x, cy + 140f, zw - 3f, 40f), "vs ИИ", small)) { CurrentMode = Mode.Offline; StartZvZ(0); }
+            if (GUI.Button(new Rect(x + zw, cy + 140f, zw - 3f, 40f), "Хост LAN", small)) StartZvZ(1);
+            if (GUI.Button(new Rect(x + 2f * zw, cy + 140f, zw - 3f, 40f), "Join LAN", small)) StartZvZ(2); // joins the IP above
+        }
+        else // WebGL: only the offline AI match
+        {
+            if (GUI.Button(new Rect(x, cy + 140f, bw, 40f), "vs ИИ", small)) { CurrentMode = Mode.Offline; StartZvZ(0); }
+        }
         GUI.backgroundColor = Color.white;
 
         var hint = new GUIStyle(GUI.skin.label) { fontSize = 12, alignment = TextAnchor.MiddleCenter, wordWrap = true };
         GUI.color = new Color(0.8f, 0.85f, 0.9f);
-        GUI.Label(new Rect(cx - 320f, cy + 186f, 640f, 70f),
-            $"LAN: хост сообщает свой IP, остальные вбивают его и жмут Join (UDP порт {LanManager.Port}). " +
-            "Кооп: общие зомби/волны/постройки. PvP: стреляй по чужой команде. " +
-            "ЗвЗ: расти орду (G) и снеси вражеское ядро — vs ИИ или 2 игрока по LAN.", hint);
+        GUI.Label(new Rect(cx - 320f, cy + 186f, 640f, 70f), NetSupported
+            ? $"LAN: хост сообщает свой IP, остальные вбивают его и жмут Join (UDP порт {LanManager.Port}). " +
+              "Кооп: общие зомби/волны/постройки. PvP: стреляй по чужой команде. " +
+              "ЗвЗ: расти орду (G) и снеси вражеское ядро — vs ИИ или 2 игрока по LAN."
+            : "Веб-версия (инвалид эдишн): только одиночка и ЗвЗ vs ИИ — сетевые режимы недоступны в браузере.", hint);
         GUI.color = Color.white;
 
         if (GUI.Button(new Rect(x, cy + 256f, bw, 40f), "Назад", small)) inModes = false;

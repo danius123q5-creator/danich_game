@@ -32,4 +32,37 @@ public static class BuildScript
         if (summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
             EditorApplication.Exit(1);
     }
+
+    /// <summary>WebGL ("инвалид эдишн") build for Yandex Games / itch.io — single-player only
+    /// (networking is hidden in browser since WebGL has no UDP). Outputs to Build/WebGL/.</summary>
+    public static void BuildWebGL()
+    {
+        string[] scenes = EditorBuildSettings.scenes
+            .Where(s => s.enabled)
+            .Select(s => s.path)
+            .ToArray();
+        if (scenes.Length == 0)
+            scenes = new[] { "Assets/Scenes/SampleScene.unity" };
+
+        // Browser-friendly settings: gzip compression + smaller heap, no exceptions overhead.
+        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
+        PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.None;
+        PlayerSettings.WebGL.dataCaching = true;
+        PlayerSettings.runInBackground = true;
+
+        var opts = new BuildPlayerOptions
+        {
+            scenes = scenes,
+            locationPathName = "Build/WebGL",
+            target = BuildTarget.WebGL,
+            options = BuildOptions.None,
+        };
+
+        var report = BuildPipeline.BuildPlayer(opts);
+        var summary = report.summary;
+        Debug.Log($"BUILD RESULT: {summary.result}  size={summary.totalSize} bytes  errors={summary.totalErrors}");
+
+        if (summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
+            EditorApplication.Exit(1);
+    }
 }
