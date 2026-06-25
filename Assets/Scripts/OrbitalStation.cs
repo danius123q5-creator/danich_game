@@ -1,17 +1,32 @@
 using UnityEngine;
 
 /// <summary>Control block for an orbital laser station (super weapon). Costs 3000, paid
-/// incrementally (E) like the other super-weapons. Once online, a satellite appears high
-/// in the sky and fires a killing laser at the nearest zombie — burning metal from its own
-/// reserve on every shot (top it up with E; an empty reserve stops the beam).</summary>
+/// incrementally (E) like the other super-weapons. Once online, a satellite appears high in
+/// the sky and cycles through THREE attacks, burning metal from its own reserve (top it up
+/// with E; an empty reserve stops the beams):
+///   1) SINGLE SHOT — a few pinpoint lasers, each detonating in a big blast.
+///   2) BURN       — one long beam that slides from zombie to zombie, scorching everything under it.
+///   3) PRISM      — three long beams in a triangle, spinning around the base and slicing the horde.</summary>
 public class OrbitalStation : Buildable
 {
     public override int FundingRequired => 3000;
-    public override int ReserveMax => 1500;       // metal pool the beam drains as it fires
-    const int ShotCost = 20;                       // metal burned per laser shot
+    public override int ReserveMax => 1500;       // metal pool the beams drain as they fire
+    const int ShotCost = 20;                       // metal burned per single-shot laser
+
+    enum Mode { Single, Burn, Prism }
+    Mode mode = Mode.Single;
 
     Transform station;
-    float next;
+    float restUntil;        // brief pause between attacks
+    float phaseEnd;         // when the current Burn/Prism attack ends
+    float fireTimer;        // single-shot pacing
+    float dmgTimer;         // continuous-beam damage ticking
+    int shotsLeft;          // single-shot burst counter
+    float prismAngle;       // spinning offset for the triple prism
+    Vector3 burnPoint;      // current endpoint of the burning beam
+    bool burnReady;         // burnPoint has been seeded this attack
+    readonly LineRenderer[] beams = new LineRenderer[3];
+    Material beamMat;
 
     protected override void Awake()
     {
@@ -31,32 +46,171 @@ public class OrbitalStation : Buildable
     protected override void BuildableTick()
     {
         if (station == null) BuildStation();
-        if (Time.time < next) return;
-        next = Time.time + 0.45f;
 
+        // Idle (beams off) while resting between attacks or when the map is clear.
+        if (Time.time < restUntil || !AnyTarget()) { HideBeams(); return; }
+
+        switch (mode)
+        {
+            case Mode.Single: TickSingle(); break;
+            case Mode.Burn:   TickBurn();   break;
+            default:          TickPrism();  break;
+        }
+    }
+
+    // --- attack 1: a short burst of pinpoint lasers, each with a big blast ---
+    void TickSingle()
+    {
+        fireTimer -= Time.deltaTime;
+        if (fireTimer > 0f) return;
+        fireTimer = 0.45f;
+
+        Zombie best = Nearest(transform.position);
+        if (best == null) { NextMode(); return; }
+        if (!SpendMetal(ShotCost)) { HideBeams(); return; }
+
+        Vector3 to = best.transform.position + Vector3.up * 1f;
+        Effects.Laser(station.position, to, new Color(1f, 0.25f, 0.2f));
+        Effects.AirBlast(to, 9f);                 // big explosion on impact
+        Scorch(to, 6.5f, 160f);
+
+        if (--shotsLeft <= 0) NextMode();
+    }
+
+    // --- attack 2: one long beam that slides from zombie to zombie, burning a trail ---
+    void TickBurn()
+    {
+        if (Time.time >= phaseEnd) { NextMode(); return; }
+
+        Zombie t = Nearest(burnReady ? burnPoint : transform.position);
+        if (t == null) { NextMode(); return; }
+        Vector3 targetPos = t.transform.position + Vector3.up * 1f;
+        if (!burnReady) { burnPoint = targetPos; burnReady = true; }
+
+        burnPoint = Vector3.MoveTowards(burnPoint, targetPos, 26f * Time.deltaTime); // sweeps over
+        SetBeam(0, station.position, burnPoint, new Color(1f, 0.5f, 0.12f), 0.9f);
+
+        dmgTimer -= Time.deltaTime;
+        if (dmgTimer <= 0f)
+        {
+            dmgTimer = 0.12f;
+            if (!SpendMetal(6)) { HideBeams(); return; } // empty reserve halts the burn
+            Scorch(burnPoint, 4.5f, 110f);
+            Effects.Burst(burnPoint, new Color(1f, 0.6f, 0.2f), 6);
+        }
+    }
+
+    // --- attack 3: three long beams in a triangle, spinning around the base ---
+    void TickPrism()
+    {
+        if (Time.time >= phaseEnd) { NextMode(); return; }
+
+        prismAngle += 130f * Time.deltaTime; // rotation speed
+        const float R = 8.5f;
+        var ends = new Vector3[3];
+        for (int k = 0; k < 3; k++)
+        {
+            float a = (prismAngle + k * 120f) * Mathf.Deg2Rad;
+            Vector3 gp = transform.position + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * R;
+            gp.y = GameBootstrap.Hill(gp.x, gp.z) + 0.5f;
+            ends[k] = gp;
+            SetBeam(k, station.position, gp, new Color(0.55f, 0.4f, 1f), 0.8f);
+        }
+
+        dmgTimer -= Time.deltaTime;
+        if (dmgTimer <= 0f)
+        {
+            dmgTimer = 0.12f;
+            if (!SpendMetal(8)) { HideBeams(); return; } // empty reserve halts the prism
+            for (int k = 0; k < 3; k++)
+            {
+                Scorch(ends[k], 3.6f, 70f);
+                Effects.Burst(ends[k], new Color(0.7f, 0.5f, 1f), 4);
+            }
+        }
+    }
+
+    // Advance to the next attack in the cycle, after a short rest.
+    void NextMode()
+    {
+        HideBeams();
+        mode = mode == Mode.Single ? Mode.Burn : mode == Mode.Burn ? Mode.Prism : Mode.Single;
+        restUntil = Time.time + 0.8f;
+        StartMode();
+    }
+
+    void StartMode()
+    {
+        dmgTimer = 0f;
+        if (mode == Mode.Single) { shotsLeft = 4; fireTimer = 0f; }
+        else { phaseEnd = restUntil + 4.5f; burnReady = false; prismAngle = 0f; }
+    }
+
+    // --- helpers ---
+    bool AnyTarget()
+    {
+        foreach (var z in Zombie.All)
+            if (z != null && !z.IsPuppet && !(GameRoot.IsZvZ && z.team == Team)) return true;
+        return false;
+    }
+
+    Zombie Nearest(Vector3 from)
+    {
         Zombie best = null; float bestSq = float.MaxValue;
         foreach (var z in Zombie.All)
         {
             if (z == null || z.IsPuppet) continue;
-            float d = (z.transform.position - transform.position).sqrMagnitude;
+            if (GameRoot.IsZvZ && z.team == Team) continue;
+            float d = (z.transform.position - from).sqrMagnitude;
             if (d < bestSq) { bestSq = d; best = z; }
         }
-        if (best == null) return;
-        if (!SpendMetal(ShotCost)) return; // burns metal from its reserve; empty → beam stops (RELOAD)
+        return best;
+    }
 
-        Vector3 to = best.transform.position + Vector3.up * 1f;
-        Effects.Laser(station.position, to, new Color(1f, 0.25f, 0.2f));
-
-        // Big explosion on impact: heavy splash damage to every zombie nearby.
-        Effects.AirBlast(to, 9f);
-        const float blastR = 6.5f;
-        float rSq = blastR * blastR;
-        var hitList = new System.Collections.Generic.List<Zombie>(Zombie.All);
-        foreach (var z in hitList)
+    void Scorch(Vector3 at, float radius, float dmg)
+    {
+        float rSq = radius * radius;
+        var list = new System.Collections.Generic.List<Zombie>(Zombie.All);
+        foreach (var z in list)
         {
             if (z == null || z.IsPuppet) continue;
-            if ((z.transform.position - to).sqrMagnitude <= rSq) z.TakeDamage(160f);
+            if (GameRoot.IsZvZ && z.team == Team) continue;
+            if ((z.transform.position - at).sqrMagnitude <= rSq) z.TakeDamage(dmg);
         }
+    }
+
+    LineRenderer Beam(int i)
+    {
+        if (beams[i] == null)
+        {
+            var go = new GameObject("OrbBeam" + i);
+            go.transform.SetParent(station, false);
+            var lr = go.AddComponent<LineRenderer>();
+            if (beamMat == null) beamMat = new Material(GameBootstrap.LineShader());
+            lr.sharedMaterial = beamMat;
+            lr.useWorldSpace = true;
+            lr.positionCount = 2;
+            lr.numCapVertices = 2;
+            lr.enabled = false;
+            beams[i] = lr;
+        }
+        return beams[i];
+    }
+
+    void SetBeam(int i, Vector3 from, Vector3 to, Color c, float w)
+    {
+        var lr = Beam(i);
+        lr.enabled = true;
+        lr.startColor = lr.endColor = c;
+        lr.startWidth = w * 0.6f; lr.endWidth = w;
+        lr.SetPosition(0, from);
+        lr.SetPosition(1, to);
+    }
+
+    void HideBeams()
+    {
+        for (int i = 0; i < beams.Length; i++)
+            if (beams[i] != null) beams[i].enabled = false;
     }
 
     void BuildStation()
@@ -74,6 +228,7 @@ public class OrbitalStation : Buildable
         SP(PrimitiveType.Cylinder, new Vector3(0f, -1.1f, 0f), new Vector3(0.7f, 0.7f, 0.7f), emit);  // down-firing emitter
 
         if (Reserve <= 0) Reserve = 600; // starting charge so it fires right after coming online
+        StartMode();                     // begin the attack cycle on the single shot
     }
 
     void SP(PrimitiveType t, Vector3 pos, Vector3 scale, Color c)
