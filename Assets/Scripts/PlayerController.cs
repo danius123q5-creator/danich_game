@@ -117,7 +117,7 @@ public class PlayerController : MonoBehaviour
     {
         new[] { 3, 16, 17, 4, 6, 20, 23, 26, 5 }, // WALL, LONG/TALL WALL, DOOR, STAIRS, LADDER, WATCHTOWER, BIG PLATFORM, BRIDGE
         new[] { 0, 19, 1, 2, 7, 8, 15, 24, 25 },  // SENTRY, RPG, DISPENSER, MINE, LANDMINE, BARBED WIRE, AA TURRET, BLADES, MISSILE SILO
-        new[] { 1, 27, 28 },                      // ЭКОНОМИКА: DISPENSER (metal), OIL PIPE, OIL DOSER (conveyor/vat come with the mine in 2.2)
+        new[] { 27, 28 },                         // ЭКОНОМИКА: OIL PIPE, OIL DOSER (metal mine/conveyor/vat come in 2.2)
         new[] { 9, 10, 11, 21, 22, 18 },          // AIR STRIKE, TESLA, ARTILLERY, FREEZE, ORBITAL, CAR
     };
 
