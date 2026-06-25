@@ -11,6 +11,7 @@ public class MissileSilo : Buildable
 
     float reload = 5f;       // seconds between launches
     float blastR = 5.5f;     // explosion radius (everything inside dies)
+    float range = 55f;       // only targets crowds within this distance of the silo
     int minCrowd = 3;        // only fire at a cluster of at least this many zombies
     float next;
 
@@ -27,9 +28,9 @@ public class MissileSilo : Buildable
     {
         switch (Mathf.Clamp(Level, 1, 3))
         {
-            case 1: MaxHealth = 500f; blastR = 10f; reload = 5f; break;
-            case 2: MaxHealth = 640f; blastR = 13f; reload = 4f; break;
-            default: MaxHealth = 800f; blastR = 16f; reload = 3f; break;
+            case 1: MaxHealth = 500f; blastR = 10f; reload = 5f; range = 50f; break;
+            case 2: MaxHealth = 640f; blastR = 13f; reload = 4f; range = 60f; break;
+            default: MaxHealth = 800f; blastR = 16f; reload = 3f; range = 70f; break;
         }
         Health = MaxHealth;
     }
@@ -55,11 +56,14 @@ public class MissileSilo : Buildable
     Zombie FindCrowd(float radius, out int bestCount)
     {
         float rSq = radius * radius;
+        float rangeSq = range * range;
+        Vector3 silo = transform.position;
         Zombie best = null; bestCount = 0;
         foreach (var z in Zombie.All)
         {
             if (z == null || z.IsPuppet) continue;
             if (GameRoot.IsZvZ && z.team == Team) continue;
+            if ((z.transform.position - silo).sqrMagnitude > rangeSq) continue; // only crowds within range
             int c = 0;
             foreach (var w in Zombie.All)
             {
