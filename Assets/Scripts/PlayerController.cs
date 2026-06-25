@@ -71,8 +71,8 @@ public class PlayerController : MonoBehaviour
     float gunHeat;         // 0..1 muzzle heat glow, decays each frame
     GameObject gunMuzzle;  // barrel tip — glows red-hot when firing
 
-    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ", "СМОТР. БАШНЯ" };
-    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 20, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200, 90 };
+    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ", "СМОТР. БАШНЯ", "ЛЕЗВИЯ" };
+    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 20, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200, 90, 250 };
 
     // Short "what it is / how it works" blurb per build type — shown in the Q menu on hover.
     static readonly string[] BuildDescriptions =
@@ -101,6 +101,7 @@ public class PlayerController : MonoBehaviour
         "Стоп-пушка: раз в ~16с пускает волну, замораживающую ВСЕХ зомби на карте на 10 секунд. Дёшево, без расхода металла.",
         "Орбитальная станция: блок управления (копи 3000 металла, E). Когда готов — в небе появляется станция и бьёт лазером по зомби.",
         "Смотровая башня (20 м): залезь по лестнице через люк на площадку наверху — отличная точка для стрельбы, зомби туда не достанут.",
+        "Лезвия: крутящийся ротор рубит всех зомби рядом несколько раз в секунду. Работает от своего бака — заряжай металлом (E). Кончился заряд — лезвия встают.",
     };
 
     // Build-menu sections: each holds the build-type indices shown under that header.
@@ -108,7 +109,7 @@ public class PlayerController : MonoBehaviour
     static readonly int[][] BuildCategoryItems =
     {
         new[] { 3, 16, 17, 4, 6, 20, 23, 5 }, // WALL, LONG/TALL WALL, DOOR, STAIRS, LADDER, WATCHTOWER, BRIDGE
-        new[] { 0, 19, 1, 2, 7, 8, 15 },          // SENTRY, RPG, DISPENSER, MINE, LANDMINE, BARBED WIRE, AA TURRET
+        new[] { 0, 19, 1, 2, 7, 8, 15, 24 },      // SENTRY, RPG, DISPENSER, MINE, LANDMINE, BARBED WIRE, AA TURRET, BLADES
         new[] { 9, 10, 11, 21, 22, 18 },          // AIR STRIKE, TESLA, ARTILLERY, FREEZE, ORBITAL, CAR
     };
 

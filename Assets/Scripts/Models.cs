@@ -44,6 +44,7 @@ public static class Models
             case 21: return BuildFreezeGun(level);
             case 22: return BuildOrbitalControl(level);
             case 23: return BuildWatchTower(level);
+            case 24: return BuildBladeTrap(level);
             case 18: return BuildCar(level);
             case 19: return BuildRpg(level);
             default: return BuildProxyMine(level);
@@ -506,6 +507,41 @@ public static class Models
             Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.85f + i * 0.28f, 0f), new Vector3(0.4f - i * 0.05f, 0.12f, 0.4f - i * 0.05f), copper); // coil rings
         Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 2.0f, 0f), new Vector3(0.12f, 0.18f, 0.12f), baseC); // top post
         Prim(PrimitiveType.Sphere, t, new Vector3(0f, 2.35f, 0f), new Vector3(0.75f, 0.45f, 0.75f), spark);  // toroid electrode
+        return root;
+    }
+
+    // Spinning blade trap: a squat hub with a low post and a "Rotor" child carrying
+    // several flat blades that radiate outward. BladeTrap.cs spins the Rotor node and
+    // its radius/colliders are defined in Buildable.AddColliders.
+    public static GameObject BuildBladeTrap(int level)
+    {
+        var root = new GameObject("BladeTrapModel");
+        var t = root.transform;
+        Color baseC = new Color(0.22f, 0.23f, 0.26f);
+        Color steel = new Color(0.72f, 0.74f, 0.78f);
+        Color edge = new Color(0.85f, 0.2f, 0.15f);
+
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.12f, 0f), new Vector3(1.3f, 0.12f, 1.3f), baseC);   // ground plate
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.4f, 0f), new Vector3(0.5f, 0.2f, 0.5f), baseC);     // motor housing
+
+        // The spinning assembly: a hub and blades. BladeTrap rotates this node by name.
+        var rotorGO = new GameObject("Rotor");
+        rotorGO.transform.SetParent(t, false);
+        rotorGO.transform.localPosition = new Vector3(0f, 0.62f, 0f);
+        var r = rotorGO.transform;
+        Prim(PrimitiveType.Cylinder, r, new Vector3(0f, 0f, 0f), new Vector3(0.3f, 0.06f, 0.3f), steel);      // hub disc
+        int blades = 3 + Mathf.Clamp(level - 1, 0, 1); // 3 blades, 4 at L3+
+        float span = 2.6f + (level - 1) * 0.5f;        // blade reach grows with level
+        for (int i = 0; i < blades; i++)
+        {
+            float ang = i * (360f / blades);
+            var bGO = new GameObject("Blade");
+            bGO.transform.SetParent(r, false);
+            bGO.transform.localRotation = Quaternion.Euler(0f, ang, 0f);
+            var bt = bGO.transform;
+            Prim(PrimitiveType.Cube, bt, new Vector3(0f, 0f, span * 0.5f), new Vector3(0.12f, 0.05f, span), steel);          // blade arm
+            Prim(PrimitiveType.Cube, bt, new Vector3(0f, 0f, span - 0.15f), new Vector3(0.28f, 0.08f, 0.45f), edge, new Vector3(0f, 45f, 0f)); // sharpened tip
+        }
         return root;
     }
 
