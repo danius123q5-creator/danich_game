@@ -28,7 +28,18 @@ public class PlayerController : MonoBehaviour
 
     [HideInInspector] public float Health;
     [HideInInspector] public int Metal = 700; // base stockpile (2.2 economy) — enough to start
-    public const int OilMax = 500;                 // personal oil carry capacity (from refineries)
+    // Personal oil carry capacity: base 500, grows after wave 12 so late-game super-weapons
+    // (which run on oil) stay feasible.
+    public static int OilMax
+    {
+        get
+        {
+            int cap = 500;
+            var gm = GameManager.Instance;
+            if (gm != null && gm.WaveNumber > 12) cap += (gm.WaveNumber - 12) * 50;
+            return cap;
+        }
+    }
     [HideInInspector] public int Oil = 500;        // oil carried, poured into super-weapons (start with a base stock)
     [HideInInspector] public int Score = 0;
     [HideInInspector] public int Deaths = 0; // how many times the player has died (HUD counter)
