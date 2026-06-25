@@ -50,6 +50,8 @@ public static class Models
             case 27: return BuildOilPipe(level);
             case 28: return BuildOilDispenser(level);
             case 29: return BuildOilDerrick(level);
+            case 30: return BuildConveyor(level);
+            case 31: return BuildMetalVat(level);
             case 18: return BuildCar(level);
             case 19: return BuildRpg(level);
             default: return BuildProxyMine(level);
@@ -191,6 +193,37 @@ public static class Models
         Prim(PrimitiveType.Cube, t, new Vector3(1.6f, 0.7f, 0f), new Vector3(0.7f, 1.4f, 0.7f), dark);   // pump post
         Prim(PrimitiveType.Cube, t, new Vector3(2.1f, 1.4f, 0f), new Vector3(2.6f, 0.25f, 0.25f), steel); // walking beam
         Prim(PrimitiveType.Cylinder, t, new Vector3(-1.8f, 0.7f, 0f), new Vector3(1.5f, 0.7f, 1.5f), tank); // oil tank
+        return root;
+    }
+
+    // Conveyor: a belt deck (runs along Z) on two end rollers, dark rubber with steel frame.
+    public static GameObject BuildConveyor(int level)
+    {
+        var root = new GameObject("ConveyorModel");
+        var t = root.transform;
+        Color frame = new Color(0.30f, 0.31f, 0.34f);
+        Color belt = new Color(0.14f, 0.14f, 0.15f);
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.5f, 0f), new Vector3(1.0f, 0.12f, 3.0f), belt);          // belt deck
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.5f, -1.4f), new Vector3(0.55f, 0.5f, 0.55f), frame, new Vector3(0f, 0f, 90f)); // roller
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.5f, 1.4f), new Vector3(0.55f, 0.5f, 0.55f), frame, new Vector3(0f, 0f, 90f));  // roller
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.22f, -1.1f), new Vector3(0.6f, 0.45f, 0.18f), frame);     // leg
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.22f, 1.1f), new Vector3(0.6f, 0.45f, 0.18f), frame);      // leg
+        return root;
+    }
+
+    // Metal vat: an ore hopper/tank with steel bands and a chute — bluish-grey with metal trim.
+    public static GameObject BuildMetalVat(int level)
+    {
+        var root = new GameObject("MetalVatModel");
+        var t = root.transform;
+        Color tank = new Color(0.34f, 0.36f, 0.40f);
+        Color trim = new Color(0.55f, 0.6f, 0.7f);
+        Color steel = new Color(0.28f, 0.29f, 0.32f);
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.12f, 0f), new Vector3(1.8f, 0.24f, 1.8f), steel);      // base
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.85f, 0f), new Vector3(1.5f, 1.3f, 1.5f), tank);        // hopper body
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 1.5f, 0f), new Vector3(1.6f, 0.18f, 1.6f), trim);        // top rim
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.7f, 0f), new Vector3(1.55f, 0.12f, 1.55f), trim);      // band
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.45f, 0.85f), new Vector3(0.5f, 0.3f, 0.3f), steel);    // chute
         return root;
     }
 

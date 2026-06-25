@@ -129,7 +129,12 @@ public class Refinery : MonoBehaviour, IOilSource
             if (playerInZone && zc == 0)
             {
                 Capture += dt;
-                if (Capture >= CaptureTime) { Captured = true; Capture = CaptureTime; Control = ControlMax; Effects.Upgrade(p + Vector3.up * 6f); }
+                if (Capture >= CaptureTime)
+                {
+                    Captured = true; Capture = CaptureTime; Control = ControlMax;
+                    if (player != null) player.AddMetal(PlayerController.CaptureMetalBonus); // +2500 on capture
+                    Effects.Upgrade(p + Vector3.up * 6f);
+                }
             }
             else Capture = Mathf.Max(0f, Capture - dt * 0.6f); // slowly decays if you step out / zombies arrive
         }

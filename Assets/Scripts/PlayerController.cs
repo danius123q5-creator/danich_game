@@ -16,16 +16,10 @@ public class PlayerController : MonoBehaviour
 
     // Hardcore caps the wallet lower and makes builds pricier. After wave 12 the cap grows
     // each wave (+30/wave) so late-game super-weapons stay affordable.
-    public static int MetalMax
-    {
-        get
-        {
-            int cap = GameRoot.Hardcore ? 170 : 300;
-            var gm = GameManager.Instance;
-            if (gm != null && gm.WaveNumber > 12) cap += (gm.WaveNumber - 12) * 30;
-            return cap;
-        }
-    }
+    // 2.2 economy: you keep a big metal stockpile (base 2000, +2500 per captured point),
+    // so the cap is high enough to hold it. Hardcore is a bit tighter.
+    public static int MetalMax => GameRoot.Hardcore ? 4000 : 6000;
+    public const int CaptureMetalBonus = 2500; // metal granted when you capture a refinery/mine
     const int ReserveLoadChunk = 100; // metal loaded into a special weapon's reserve per E press
     const int OilFundChunk = 50;      // oil poured into a super-weapon's funding per E press
 
@@ -33,7 +27,7 @@ public class PlayerController : MonoBehaviour
     static int BCost(int i) => GameRoot.Hardcore ? Mathf.RoundToInt(BuildCosts[i] * 1.5f) : BuildCosts[i];
 
     [HideInInspector] public float Health;
-    [HideInInspector] public int Metal = 250;
+    [HideInInspector] public int Metal = 2000; // base stockpile (2.2 economy)
     public const int OilMax = 500;                 // personal oil carry capacity (from refineries)
     [HideInInspector] public int Oil = 500;        // oil carried, poured into super-weapons (start with a base stock)
     [HideInInspector] public int Score = 0;
@@ -75,8 +69,8 @@ public class PlayerController : MonoBehaviour
     float gunHeat;         // 0..1 muzzle heat glow, decays each frame
     GameObject gunMuzzle;  // barrel tip — glows red-hot when firing
 
-    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ", "СМОТР. БАШНЯ", "ЛЕЗВИЯ", "РАКЕТ. ШАХТА", "ПЛАТФОРМА", "ТРУБА НЕФТИ", "ДОЗАТОР НЕФТИ", "НЕФТ. ВЫШКА" };
-    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 20, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200, 90, 450, 550, 220, 15, 150, 870 };
+    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ", "СМОТР. БАШНЯ", "ЛЕЗВИЯ", "РАКЕТ. ШАХТА", "ПЛАТФОРМА", "ТРУБА НЕФТИ", "ДОЗАТОР НЕФТИ", "НЕФТ. ВЫШКА", "КОНВЕЙЕР", "ЧАН РУДЫ" };
+    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 20, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200, 90, 450, 550, 220, 15, 150, 870, 15, 200 };
 
     // Short "what it is / how it works" blurb per build type — shown in the Q menu on hover.
     static readonly string[] BuildDescriptions =
@@ -111,6 +105,8 @@ public class PlayerController : MonoBehaviour
         "Труба нефти: зажми ЛКМ у захваченного НПЗ и веди к базе — отпустишь, и труба ляжет цепочкой (15 мет./звено). Тянет нефть к дозатору. Зомби её ломают — защищай.",
         "Дозатор нефти: качает нефть из подключённого НПЗ (через трубы) и сам выдаёт её тебе, когда стоишь рядом. Поставь у базы — нефть течёт без беготни.",
         "Нефтяная вышка: своя нефтяная скважина (870 мет.) — не нужно захватывать НПЗ. Качает нефть в свой бак; подключи к ней трубу и веди к дозатору.",
+        "Конвейер: зажми ЛКМ у захваченной ШАХТЫ и веди к базе — ляжет цепочкой (15 мет./звено). Возит руду к чану. Зомби ломают — защищай.",
+        "Чан для руды: качает руду из подключённой шахты (через конвейеры) и сам выдаёт металл тебе, когда стоишь рядом. Поставь у базы — металл течёт без беготни.",
     };
 
     // Build-menu sections: each holds the build-type indices shown under that header.
@@ -119,7 +115,7 @@ public class PlayerController : MonoBehaviour
     {
         new[] { 3, 16, 17, 4, 6, 20, 23, 26, 29, 5 }, // WALL, LONG/TALL WALL, DOOR, STAIRS, LADDER, WATCHTOWER, BIG PLATFORM, OIL DERRICK, BRIDGE
         new[] { 0, 19, 1, 2, 7, 8, 15, 24, 25 },  // SENTRY, RPG, DISPENSER, MINE, LANDMINE, BARBED WIRE, AA TURRET, BLADES, MISSILE SILO
-        new[] { 27, 28 },                         // ЭКОНОМИКА: OIL PIPE, OIL DOSER (metal mine/conveyor/vat come in 2.2)
+        new[] { 27, 28, 30, 31 },                 // ЭКОНОМИКА: OIL PIPE, OIL DOSER, CONVEYOR, METAL VAT
         new[] { 9, 10, 11, 21, 22, 18 },          // AIR STRIKE, TESLA, ARTILLERY, FREEZE, ORBITAL, CAR
     };
 
@@ -480,7 +476,7 @@ public class PlayerController : MonoBehaviour
     Vector3 dragStart;
     public const float DragSegment = 3f; // pipe/conveyor segment length (metres)
 
-    static bool IsDragBuild(int type) => type == 27; // oil pipe (conveyor joins here in 2.2)
+    static bool IsDragBuild(int type) => type == 27 || type == 30; // oil pipe / conveyor — laid as a line
 
     void BeginDragBuild()
     {
@@ -981,6 +977,40 @@ public class PlayerController : MonoBehaviour
         GUI.color = Color.white;
     }
 
+    // Floating ШАХТА status: name + state, capture/control bar, ore pile. Metal twin of DrawRefineries.
+    void DrawMines()
+    {
+        if (cam == null) return;
+        _refStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false };
+        foreach (var mn in OreMine.All)
+        {
+            if (mn == null) continue;
+            Vector3 sp = cam.WorldToScreenPoint(mn.transform.position + Vector3.up * 6.6f);
+            if (sp.z <= 0.5f || sp.z > 140f) continue;
+            float gx = sp.x / UI.Scale, gy = (Screen.height - sp.y) / UI.Scale;
+            float w = 188f;
+            Rect box = new Rect(gx - w * 0.5f, gy - 18f, w, 52f);
+            GUI.color = new Color(0f, 0f, 0f, 0.5f); GUI.DrawTexture(box, Texture2D.whiteTexture);
+
+            string state; Color sc;
+            if (!mn.Captured) { state = mn.Capture > 0f ? $"ЗАХВАТ {Mathf.RoundToInt(mn.Capture / OreMine.CaptureTime * 100f)}%" : "НЕЙТРАЛЬНА"; sc = new Color(0.8f, 0.8f, 0.8f); }
+            else if (mn.NearZombies > 0) { state = "ПОД АТАКОЙ!"; sc = new Color(1f, 0.5f, 0.2f); }
+            else { state = "ЗАХВАЧЕНА"; sc = new Color(0.4f, 1f, 0.5f); }
+
+            GUI.color = sc; GUI.Label(new Rect(box.x, box.y + 1f, w, 18f), $"ШАХТА — {state}", _refStyle);
+
+            float frac = mn.Captured ? mn.Control / OreMine.ControlMax : mn.Capture / OreMine.CaptureTime;
+            Rect bar = new Rect(box.x + 8f, box.y + 21f, w - 16f, 7f);
+            GUI.color = new Color(0f, 0f, 0f, 0.6f); GUI.DrawTexture(bar, Texture2D.whiteTexture);
+            GUI.color = mn.Captured ? (mn.NearZombies > 0 ? new Color(1f, 0.5f, 0.2f) : new Color(0.4f, 0.9f, 0.5f)) : new Color(0.6f, 0.8f, 1f);
+            GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(frac), bar.height), Texture2D.whiteTexture);
+
+            GUI.color = new Color(0.8f, 0.85f, 1f);
+            GUI.Label(new Rect(box.x, box.y + 30f, w, 18f), $"руда: {Mathf.FloorToInt(mn.Ore)}/{Mathf.RoundToInt(OreMine.OreCap)}   конвейер→чан", _refStyle);
+        }
+        GUI.color = Color.white;
+    }
+
     void OnGUI()
     {
         UI.Begin(); // scale the whole HUD to the screen resolution
@@ -1001,6 +1031,8 @@ public class PlayerController : MonoBehaviour
 
         // Refineries (НПЗ): floating capture/control/oil status over each (default mode only).
         if (Refinery.All.Count > 0 && !buildMenuOpen) DrawRefineries();
+        // Mines (ШАХТА): same floating status for the metal source points.
+        if (OreMine.All.Count > 0 && !buildMenuOpen) DrawMines();
 
         // Top-left stats panel (kills only — metal moved to bottom-centre)
         // Kills counter — top-right corner (movable).
@@ -1038,7 +1070,7 @@ public class PlayerController : MonoBehaviour
         // Bottom-center tool line (smaller font + centred so the longer RU text fits)
         string toolLine;
         if (tool == Tool.Gun) toolLine = $"[1] ПУШКА {Guns[gunTier].name}   патроны {ammo}/{Guns[gunTier].mag}";
-        else if (tool == Tool.Build && IsDragBuild(SelectedBuild)) toolLine = $"[2] {BuildNames[SelectedBuild]} ({BCost(SelectedBuild)}/звено)   зажми ЛКМ у НПЗ, веди к базе, отпусти   ПКМ=продать  Q=меню";
+        else if (tool == Tool.Build && IsDragBuild(SelectedBuild)) toolLine = $"[2] {BuildNames[SelectedBuild]} ({BCost(SelectedBuild)}/звено)   зажми ЛКМ у источника, веди к базе, отпусти   ПКМ=продать  Q=меню";
         else if (tool == Tool.Build) toolLine = $"[2] СТРОЙКА {BuildNames[SelectedBuild]} ({BCost(SelectedBuild)})   ЛКМ=ставить/чинить  E=улучшить  ПКМ=продать  Q=меню";
         else if (tool == Tool.Wrench) toolLine = "[3] КЛЮЧ — ближний бой + починка";
         else toolLine = "[4] ЛОПАТА — зажми ЛКМ чтобы копать";

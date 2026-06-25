@@ -43,6 +43,7 @@ public class GameManager : MonoBehaviour
         bool defaultMode = !GameRoot.IsPvp && !GameRoot.IsTutorial && !GameRoot.IsZvZ &&
                            !(LanManager.Instance != null && LanManager.Instance.Active && !LanManager.Instance.IsHost);
         if (defaultMode && Refinery.All.Count == 0) Refinery.SpawnAll();
+        if (defaultMode && OreMine.All.Count == 0) OreMine.SpawnAll();
     }
 
     void Update()

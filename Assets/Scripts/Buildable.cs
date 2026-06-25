@@ -154,6 +154,8 @@ public class Buildable : MonoBehaviour
             case 27: AddBox(new Vector3(0f, 0.7f, 0f), new Vector3(0.7f, 0.9f, 3.0f)); break;          // oil pipe segment
             case 28: AddBox(new Vector3(0f, 0.8f, 0f), new Vector3(1.7f, 1.6f, 1.7f)); break;          // oil doser tank
             case 29: AddBox(new Vector3(0f, 2.4f, 0f), new Vector3(2.4f, 4.8f, 2.4f)); break;          // oil derrick tower
+            case 30: AddBox(new Vector3(0f, 0.5f, 0f), new Vector3(1.2f, 0.8f, 3.0f)); break;          // conveyor segment
+            case 31: AddBox(new Vector3(0f, 0.8f, 0f), new Vector3(1.8f, 1.6f, 1.8f)); break;          // metal vat tank
             case 26: // big platform: huge top deck on 4 columns + a climb column up the OUTSIDE front
                 AddBox(new Vector3(0f, BigPlatform.Height - 0.3f, 0f), new Vector3(BigPlatform.Half * 2f, 0.4f, BigPlatform.Half * 2f)); // walkable deck
                 var cz2 = new GameObject("ClimbZone");
@@ -209,6 +211,8 @@ public class Buildable : MonoBehaviour
             case 27: return root.AddComponent<OilPipe>();
             case 28: return root.AddComponent<OilDispenser>();
             case 29: return root.AddComponent<OilDerrick>();
+            case 30: return root.AddComponent<Conveyor>();
+            case 31: return root.AddComponent<MetalVat>();
             case 25: return root.AddComponent<MissileSilo>();
             case 18: return root.AddComponent<Car>();
             case 19: return root.AddComponent<Rpg>();
