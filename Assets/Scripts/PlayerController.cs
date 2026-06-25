@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -74,8 +75,8 @@ public class PlayerController : MonoBehaviour
     float gunHeat;         // 0..1 muzzle heat glow, decays each frame
     GameObject gunMuzzle;  // barrel tip — glows red-hot when firing
 
-    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ", "СМОТР. БАШНЯ", "ЛЕЗВИЯ", "РАКЕТ. ШАХТА", "ПЛАТФОРМА", "ТРУБА НЕФТИ", "ДОЗАТОР НЕФТИ" };
-    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 20, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200, 90, 450, 550, 220, 15, 150 };
+    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ", "СМОТР. БАШНЯ", "ЛЕЗВИЯ", "РАКЕТ. ШАХТА", "ПЛАТФОРМА", "ТРУБА НЕФТИ", "ДОЗАТОР НЕФТИ", "НЕФТ. ВЫШКА" };
+    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 20, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200, 90, 450, 550, 220, 15, 150, 870 };
 
     // Short "what it is / how it works" blurb per build type — shown in the Q menu on hover.
     static readonly string[] BuildDescriptions =
@@ -109,13 +110,14 @@ public class PlayerController : MonoBehaviour
         "Платформа: огромная площадка на 4 толстых столбах. Залезь по лестнице наверх — целый этаж под турели и линию обороны, зомби туда не достанут.",
         "Труба нефти: зажми ЛКМ у захваченного НПЗ и веди к базе — отпустишь, и труба ляжет цепочкой (15 мет./звено). Тянет нефть к дозатору. Зомби её ломают — защищай.",
         "Дозатор нефти: качает нефть из подключённого НПЗ (через трубы) и сам выдаёт её тебе, когда стоишь рядом. Поставь у базы — нефть течёт без беготни.",
+        "Нефтяная вышка: своя нефтяная скважина (870 мет.) — не нужно захватывать НПЗ. Качает нефть в свой бак; подключи к ней трубу и веди к дозатору.",
     };
 
     // Build-menu sections: each holds the build-type indices shown under that header.
     static readonly string[] BuildCategories = { "СТРОИТЕЛЬНОЕ", "ОБОРОНА", "ЭКОНОМИКА", "ОСТАЛЬНОЕ" };
     static readonly int[][] BuildCategoryItems =
     {
-        new[] { 3, 16, 17, 4, 6, 20, 23, 26, 5 }, // WALL, LONG/TALL WALL, DOOR, STAIRS, LADDER, WATCHTOWER, BIG PLATFORM, BRIDGE
+        new[] { 3, 16, 17, 4, 6, 20, 23, 26, 29, 5 }, // WALL, LONG/TALL WALL, DOOR, STAIRS, LADDER, WATCHTOWER, BIG PLATFORM, OIL DERRICK, BRIDGE
         new[] { 0, 19, 1, 2, 7, 8, 15, 24, 25 },  // SENTRY, RPG, DISPENSER, MINE, LANDMINE, BARBED WIRE, AA TURRET, BLADES, MISSILE SILO
         new[] { 27, 28 },                         // ЭКОНОМИКА: OIL PIPE, OIL DOSER (metal mine/conveyor/vat come in 2.2)
         new[] { 9, 10, 11, 21, 22, 18 },          // AIR STRIKE, TESLA, ARTILLERY, FREEZE, ORBITAL, CAR
@@ -698,6 +700,57 @@ public class PlayerController : MonoBehaviour
     }
 
     // ---- Placement ghost ----
+    // ---- drag-build path preview: a pooled chain of transparent ghost segments ----
+    readonly List<GameObject> dragGhosts = new List<GameObject>();
+    int dragGhostType = -1;
+
+    void ShowDragPath(Vector3 a, Vector3 b)
+    {
+        if (dragGhostType != SelectedBuild) { ClearDragGhosts(); dragGhostType = SelectedBuild; } // rebuilt for the right model
+
+        Vector3 d = b - a; d.y = 0f;
+        float len = d.magnitude;
+        Vector3 dir = len > 0.01f ? d / len : Vector3.forward;
+        float yaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
+        int count = len < 1f ? 0 : Mathf.Max(1, Mathf.RoundToInt(len / DragSegment));
+        float step = count > 0 ? len / count : 0f;
+        int need = count + 1;
+
+        int cost = BCost(SelectedBuild);
+        bool ok = Metal >= need * cost;
+        Color col = ok ? new Color(0.3f, 1f, 0.3f, 0.16f) : new Color(1f, 0.4f, 0.3f, 0.16f);
+
+        for (int i = 0; i < need; i++)
+        {
+            if (i >= dragGhosts.Count)
+            {
+                var g = Models.BuildVisual(SelectedBuild, 1);
+                GameBootstrap.MakeGhost(g, col);
+                dragGhosts.Add(g);
+            }
+            var go = dragGhosts[i];
+            if (go == null) { go = Models.BuildVisual(SelectedBuild, 1); GameBootstrap.MakeGhost(go, col); dragGhosts[i] = go; }
+            go.SetActive(true);
+            Vector3 p = a + dir * (i * step);
+            p.y = GameBootstrap.Hill(p.x, p.z) + 0.02f;
+            go.transform.position = p;
+            go.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            GameBootstrap.SetGhostColor(go, col);
+        }
+        for (int i = need; i < dragGhosts.Count; i++) if (dragGhosts[i] != null) dragGhosts[i].SetActive(false);
+    }
+
+    void HideDragPath()
+    {
+        for (int i = 0; i < dragGhosts.Count; i++) if (dragGhosts[i] != null) dragGhosts[i].SetActive(false);
+    }
+
+    void ClearDragGhosts()
+    {
+        for (int i = 0; i < dragGhosts.Count; i++) if (dragGhosts[i] != null) Destroy(dragGhosts[i]);
+        dragGhosts.Clear();
+    }
+
     void UpdatePreview()
     {
         bool show = false;
@@ -723,18 +776,20 @@ public class PlayerController : MonoBehaviour
             }
         }
 
+        // Drag-build: show the WHOLE path as a chain of ghost segments, not a single ghost.
+        if (layingDrag && IsDragBuild(SelectedBuild))
+        {
+            if (preview != null) preview.SetActive(false);
+            if (show) ShowDragPath(dragStart, pos); else HideDragPath();
+            return;
+        }
+        HideDragPath();
+
         if (preview != null) preview.SetActive(show);
         if (show)
         {
             preview.transform.position = pos;
-            // While dragging a pipe, face the ghost along the line you're pulling.
-            float yaw = BuildYaw();
-            if (layingDrag && IsDragBuild(SelectedBuild))
-            {
-                Vector3 d = pos - dragStart; d.y = 0f;
-                if (d.sqrMagnitude > 0.04f) yaw = Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg;
-            }
-            preview.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            preview.transform.rotation = Quaternion.Euler(0f, BuildYaw(), 0f);
             bool ok = Metal >= BCost(SelectedBuild);
             GameBootstrap.SetGhostColor(preview, ok ? new Color(0.3f, 1f, 0.3f, 0.18f) : new Color(1f, 0.3f, 0.3f, 0.18f));
         }

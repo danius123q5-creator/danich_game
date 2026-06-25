@@ -29,8 +29,8 @@ public class OilDispenser : Buildable
 
     protected override void BuildableTick()
     {
-        // Draw oil from the connected refinery network into the tank.
-        var src = OilPipe.SupplySource(transform.position);
+        // Draw oil from the connected source network (refinery or derrick) into the tank.
+        IOilSource src = OilPipe.SupplySource(transform.position);
         Supplied = src != null;
         if (src != null && stock < TankCap)
             stock += src.DrawOil(Mathf.Min(PullRate * Time.deltaTime, TankCap - stock));

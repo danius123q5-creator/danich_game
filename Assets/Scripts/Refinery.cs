@@ -7,15 +7,19 @@ using UnityEngine;
 /// your personal reserve, then pour it into a super-weapon (oil is needed ON TOP of metal).
 /// Zombies that wander into the zone drain your CONTROL; if it hits zero you lose the НПЗ and
 /// must recapture it — so defend it with turrets and walls.</summary>
-public class Refinery : MonoBehaviour
+public class Refinery : MonoBehaviour, IOilSource
 {
     public static readonly List<Refinery> All = new List<Refinery>();
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetRegistry() => All.Clear();
 
-    void OnEnable() { if (!All.Contains(this)) All.Add(this); }
-    void OnDisable() { All.Remove(this); }
+    void OnEnable() { if (!All.Contains(this)) All.Add(this); OilSources.Add(this); }
+    void OnDisable() { All.Remove(this); OilSources.Remove(this); }
+
+    // IOilSource: the pipe network can pull oil from a captured refinery.
+    public bool OilActive => Captured;
+    public Transform OilTransform => transform;
 
     public const float Zone = 10f;          // capture / contest radius
     public const float CaptureTime = 4f;    // seconds to capture from neutral

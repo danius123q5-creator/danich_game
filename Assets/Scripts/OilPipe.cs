@@ -46,7 +46,7 @@ public class OilPipe : Buildable
         foreach (var p in All) if (p != null) p.Live = false;
         var q = new Queue<OilPipe>();
         foreach (var p in All)
-            if (p != null && !p.Building && NearCaptured(p.transform.position, Link) != null) { p.Live = true; q.Enqueue(p); }
+            if (p != null && !p.Building && NearSource(p.transform.position, Link) != null) { p.Live = true; q.Enqueue(p); }
         while (q.Count > 0)
         {
             var p = q.Dequeue();
@@ -57,27 +57,27 @@ public class OilPipe : Buildable
         }
     }
 
-    /// <summary>The captured refinery feeding the given position, if any — directly within Link,
-    /// or via a live pipe within Link. Returns null when nothing connects (no supply).</summary>
-    public static Refinery SupplySource(Vector3 pos)
+    /// <summary>The oil source (НПЗ or derrick) feeding the given position, if any — directly
+    /// within Link, or via a live pipe within Link. Returns null when nothing connects.</summary>
+    public static IOilSource SupplySource(Vector3 pos)
     {
-        var direct = NearCaptured(pos, Link);
+        var direct = NearSource(pos, Link);
         if (direct != null) return direct;
         Flood();
         foreach (var p in All)
             if (p != null && p.Live && (p.transform.position - pos).sqrMagnitude <= Link * Link)
-                return NearCaptured(pos, 99999f); // connected — draw from the nearest captured НПЗ
+                return NearSource(pos, 99999f); // connected — draw from the nearest active source
         return null;
     }
 
-    static Refinery NearCaptured(Vector3 pos, float range)
+    static IOilSource NearSource(Vector3 pos, float range)
     {
-        Refinery best = null; float bestSq = range * range;
-        foreach (var r in Refinery.All)
+        IOilSource best = null; float bestSq = range * range;
+        foreach (var s in OilSources.All)
         {
-            if (r == null || !r.Captured) continue;
-            float d = (r.transform.position - pos).sqrMagnitude;
-            if (d <= bestSq) { bestSq = d; best = r; }
+            if (s == null || !s.OilActive || s.OilTransform == null) continue;
+            float d = (s.OilTransform.position - pos).sqrMagnitude;
+            if (d <= bestSq) { bestSq = d; best = s; }
         }
         return best;
     }
