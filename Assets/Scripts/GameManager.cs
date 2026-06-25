@@ -10,7 +10,7 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
 
-    public float FirstPrepTime = 320f; // first prep before wave 1 (build your base)
+    public float FirstPrepTime = 400f; // first prep before wave 1 (build your base)
     public float PrepTime = 120f;      // prep between later waves
     public float SpawnInterval = 0.6f;
     public int MaxAlive = 120;
