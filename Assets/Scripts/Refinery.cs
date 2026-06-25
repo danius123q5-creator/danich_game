@@ -11,8 +11,19 @@ public class Refinery : MonoBehaviour, IOilSource
 {
     public static readonly List<Refinery> All = new List<Refinery>();
 
+    // Capture state to restore on continue (filled by GameRoot before SpawnAll runs).
+    public struct SaveState { public bool captured; public float oil; }
+    public static readonly List<SaveState> Pending = new List<SaveState>();
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetRegistry() => All.Clear();
+    static void ResetRegistry() { All.Clear(); Pending.Clear(); }
+
+    /// <summary>Restore a saved capture state (no metal bonus — that's only for a fresh capture).</summary>
+    public void RestoreState(bool cap, float oil)
+    {
+        if (cap) { Captured = true; Capture = CaptureTime; Control = ControlMax; }
+        Oil = Mathf.Clamp(oil, 0f, OilCap);
+    }
 
     void OnEnable() { if (!All.Contains(this)) All.Add(this); OilSources.Add(this); }
     void OnDisable() { All.Remove(this); OilSources.Remove(this); }
@@ -48,12 +59,16 @@ public class Refinery : MonoBehaviour, IOilSource
         // Three points on a wide ring, at angles chosen to dodge the river trench (~x=40).
         float[] deg = { 90f, 205f, 330f };
         float r = 72f;
+        int i = 0;
         foreach (float d in deg)
         {
             float a = d * Mathf.Deg2Rad;
             float x = Mathf.Cos(a) * r, z = Mathf.Sin(a) * r;
-            Create(new Vector3(x, GameBootstrap.Hill(x, z), z));
+            var rf = Create(new Vector3(x, GameBootstrap.Hill(x, z), z));
+            if (rf != null && i < Pending.Count) rf.RestoreState(Pending[i].captured, Pending[i].oil); // continue: restore capture
+            i++;
         }
+        Pending.Clear(); // consume once
     }
 
     public static Refinery Create(Vector3 groundPos)

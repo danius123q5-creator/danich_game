@@ -9,8 +9,19 @@ public class OreMine : MonoBehaviour, IMetalSource
 {
     public static readonly List<OreMine> All = new List<OreMine>();
 
+    // Capture state to restore on continue (filled by GameRoot before SpawnAll runs).
+    public struct SaveState { public bool captured; public float ore; }
+    public static readonly List<SaveState> Pending = new List<SaveState>();
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetRegistry() => All.Clear();
+    static void ResetRegistry() { All.Clear(); Pending.Clear(); }
+
+    /// <summary>Restore a saved capture state (no metal bonus — that's only for a fresh capture).</summary>
+    public void RestoreState(bool cap, float ore)
+    {
+        if (cap) { Captured = true; Capture = CaptureTime; Control = ControlMax; }
+        Ore = Mathf.Clamp(ore, 0f, OreCap);
+    }
 
     void OnEnable() { if (!All.Contains(this)) All.Add(this); MetalSources.Add(this); }
     void OnDisable() { All.Remove(this); MetalSources.Remove(this); }
@@ -39,12 +50,16 @@ public class OreMine : MonoBehaviour, IMetalSource
         // Two mines, on angles that dodge the river trench (~x=40) and the refineries.
         float[] deg = { 150f, 30f };
         float r = 78f;
+        int i = 0;
         foreach (float d in deg)
         {
             float a = d * Mathf.Deg2Rad;
             float x = Mathf.Cos(a) * r, z = Mathf.Sin(a) * r;
-            Create(new Vector3(x, GameBootstrap.Hill(x, z), z));
+            var mn = Create(new Vector3(x, GameBootstrap.Hill(x, z), z));
+            if (mn != null && i < Pending.Count) mn.RestoreState(Pending[i].captured, Pending[i].ore); // continue: restore capture
+            i++;
         }
+        Pending.Clear(); // consume once
     }
 
     public static OreMine Create(Vector3 groundPos)

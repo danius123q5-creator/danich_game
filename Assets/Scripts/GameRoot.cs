@@ -241,8 +241,44 @@ public class GameRoot : MonoBehaviour
         PlayerPrefs.SetInt("save_wave", gm.WaveNumber);
         PlayerPrefs.SetInt("save_metal", p.Metal);
         PlayerPrefs.SetInt("save_score", p.Score);
+        PlayerPrefs.SetInt("save_oil", p.Oil);
         SaveBuildings();
+        SaveSources();
         PlayerPrefs.Save();
+    }
+
+    // Persist capture state of the refineries/mines (fixed spawn order → restored by index).
+    static void SaveSources()
+    {
+        var ci = CultureInfo.InvariantCulture;
+        var rl = new List<string>();
+        foreach (var rf in Refinery.All) rl.Add($"{(rf.Captured ? 1 : 0)},{Mathf.RoundToInt(rf.Oil).ToString(ci)}");
+        PlayerPrefs.SetString("save_refineries", string.Join("|", rl));
+        var ml = new List<string>();
+        foreach (var mn in OreMine.All) ml.Add($"{(mn.Captured ? 1 : 0)},{Mathf.RoundToInt(mn.Ore).ToString(ci)}");
+        PlayerPrefs.SetString("save_mines", string.Join("|", ml));
+    }
+
+    // Continue: queue saved capture state so SpawnAll restores it when the points respawn.
+    static void LoadSources()
+    {
+        var ci = CultureInfo.InvariantCulture;
+        Refinery.Pending.Clear();
+        foreach (var e in PlayerPrefs.GetString("save_refineries", "").Split('|'))
+        {
+            if (string.IsNullOrEmpty(e)) continue;
+            var f = e.Split(',');
+            if (f.Length < 2) continue;
+            Refinery.Pending.Add(new Refinery.SaveState { captured = f[0] == "1", oil = float.Parse(f[1], NumberStyles.Float, ci) });
+        }
+        OreMine.Pending.Clear();
+        foreach (var e in PlayerPrefs.GetString("save_mines", "").Split('|'))
+        {
+            if (string.IsNullOrEmpty(e)) continue;
+            var f = e.Split(',');
+            if (f.Length < 2) continue;
+            OreMine.Pending.Add(new OreMine.SaveState { captured = f[0] == "1", ore = float.Parse(f[1], NumberStyles.Float, ci) });
+        }
     }
 
     // Serialize every placed building as "type,x,y,z,yaw,level,health,funding" joined by '|'.
@@ -302,7 +338,9 @@ public class GameRoot : MonoBehaviour
         {
             p.Metal = PlayerPrefs.GetInt("save_metal", 250);
             p.Score = PlayerPrefs.GetInt("save_score", 0);
+            p.Oil = PlayerPrefs.GetInt("save_oil", 500);
         }
+        LoadSources(); // queue refinery/mine capture for SpawnAll (runs next frame)
     }
 
     // ---- UI ----
