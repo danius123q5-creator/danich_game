@@ -22,7 +22,7 @@ public class Buildable : MonoBehaviour
     public float MaxHealth = 100f;
     public bool Building = true;
     public float BuildTime = 2.5f;
-    public float UpgradeCooldown = 2f; // seconds between investments
+    public float UpgradeCooldown = 1f; // seconds between investments
 
     // ---- networking (co-op): buildings are host-authoritative; clients see puppets ----
     public int NetId;
@@ -356,7 +356,7 @@ public class Buildable : MonoBehaviour
     {
         if (!CanUpgrade || Time.time < upgReady) return false;
         Invested += amount;
-        upgReady = Time.time + UpgradeCooldown; // 3s between investments
+        upgReady = Time.time + UpgradeCooldown; // pace between investments
         if (Invested >= UpgradeCost)
         {
             Invested -= UpgradeCost;            // carry any remainder
