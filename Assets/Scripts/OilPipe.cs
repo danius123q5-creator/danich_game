@@ -19,7 +19,7 @@ public class OilPipe : Buildable
 
     protected override void Awake()
     {
-        BuildCost = 40;
+        BuildCost = 15;   // per segment — a drag lays a whole chain
         MaxLevel = 1;
         BuildTime = 1.5f;
         base.Awake();

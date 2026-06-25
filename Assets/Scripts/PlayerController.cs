@@ -75,7 +75,7 @@ public class PlayerController : MonoBehaviour
     GameObject gunMuzzle;  // barrel tip — glows red-hot when firing
 
     static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ", "СМОТР. БАШНЯ", "ЛЕЗВИЯ", "РАКЕТ. ШАХТА", "ПЛАТФОРМА", "ТРУБА НЕФТИ", "ДОЗАТОР НЕФТИ" };
-    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 20, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200, 90, 450, 550, 220, 40, 150 };
+    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 20, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200, 90, 450, 550, 220, 15, 150 };
 
     // Short "what it is / how it works" blurb per build type — shown in the Q menu on hover.
     static readonly string[] BuildDescriptions =
@@ -107,7 +107,7 @@ public class PlayerController : MonoBehaviour
         "Лезвия: крутящийся ротор рубит всех зомби рядом несколько раз в секунду. Работает как турель — сама, без зарядки и расхода металла. Дорогая в постройке.",
         "Ракетная шахта: ждёт, пока соберётся толпа (3+ зомби), и пускает ракету в самую гущу — мощный взрыв (урон 350). Работает как турель, без расхода металла. Дорогая.",
         "Платформа: огромная площадка на 4 толстых столбах. Залезь по лестнице наверх — целый этаж под турели и линию обороны, зомби туда не достанут.",
-        "Труба нефти: тянет нефть от захваченного НПЗ к дозатору и работает реле — цепочкой труб дотянешь нефть от НПЗ до самой базы. Зомби её ломают — защищай.",
+        "Труба нефти: зажми ЛКМ у захваченного НПЗ и веди к базе — отпустишь, и труба ляжет цепочкой (15 мет./звено). Тянет нефть к дозатору. Зомби её ломают — защищай.",
         "Дозатор нефти: качает нефть из подключённого НПЗ (через трубы) и сам выдаёт её тебе, когда стоишь рядом. Поставь у базы — нефть течёт без беготни.",
     };
 
@@ -189,6 +189,7 @@ public class PlayerController : MonoBehaviour
             buildMenuOpen = qHeld;
             Cursor.lockState = buildMenuOpen ? CursorLockMode.None : CursorLockMode.Locked;
             Cursor.visible = buildMenuOpen;
+            if (buildMenuOpen) layingDrag = false; // cancel any in-progress pipe drag
         }
         if (buildMenuOpen)
         {
@@ -235,7 +236,13 @@ public class PlayerController : MonoBehaviour
                 if (Input.GetMouseButton(0)) FireGun();
                 break;
             case Tool.Build:
-                if (Input.GetMouseButtonDown(0)) BuildPrimary();
+                if (IsDragBuild(SelectedBuild))
+                {
+                    // Pipe/conveyor: hold LMB at the source, walk to base, release to lay the whole run.
+                    if (Input.GetMouseButtonDown(0)) BeginDragBuild();
+                    else if (layingDrag && Input.GetMouseButtonUp(0)) EndDragBuild();
+                }
+                else if (Input.GetMouseButtonDown(0)) BuildPrimary();
                 if (Input.GetMouseButtonDown(1)) SellBuild();
                 break;
             case Tool.Wrench:
@@ -447,16 +454,63 @@ public class PlayerController : MonoBehaviour
             else b.Repair(60f);
             return;
         }
-        int cost = BCost(SelectedBuild);
-        if (Metal < cost) return;
-        var rot = Quaternion.Euler(0f, BuildYaw(), 0f);
+        PlaceOne(SelectedBuild, hit.point, BuildYaw(), BCost(SelectedBuild));
+    }
+
+    // Place a single building (net-aware). Returns true if it went down and metal was spent.
+    bool PlaceOne(int type, Vector3 pos, float yaw, int cost)
+    {
+        if (Metal < cost) return false;
         if (NetClient)
         {
-            LanManager.Instance.SendBuildPlace(SelectedBuild, hit.point, BuildYaw());
-            AddMetal(-cost);
-            builtSomething = true;
+            LanManager.Instance.SendBuildPlace(type, pos, yaw);
+            AddMetal(-cost); builtSomething = true; return true;
         }
-        else if (Buildable.Create(SelectedBuild, hit.point, rot, this) != null) { AddMetal(-cost); builtSomething = true; }
+        if (Buildable.Create(type, pos, Quaternion.Euler(0f, yaw, 0f), this) != null)
+        {
+            AddMetal(-cost); builtSomething = true; return true;
+        }
+        return false;
+    }
+
+    // ---- Drag-build (pipe / conveyor): hold LMB at the source, walk, release to lay a line ----
+    bool layingDrag;
+    Vector3 dragStart;
+    public const float DragSegment = 3f; // pipe/conveyor segment length (metres)
+
+    static bool IsDragBuild(int type) => type == 27; // oil pipe (conveyor joins here in 2.2)
+
+    void BeginDragBuild()
+    {
+        if (RaycastNoSelf(30f, out RaycastHit hit)) { dragStart = hit.point; layingDrag = true; }
+    }
+
+    void EndDragBuild()
+    {
+        layingDrag = false;
+        if (!RaycastNoSelf(30f, out RaycastHit hit)) return;
+        LayLine(SelectedBuild, dragStart, hit.point);
+    }
+
+    // Lay a chain of segments from a→b, evenly spaced and all facing along the line,
+    // spending metal per segment until you run out.
+    void LayLine(int type, Vector3 a, Vector3 b, bool buildState = false)
+    {
+        int cost = BCost(type);
+        Vector3 d = b - a; d.y = 0f;
+        float len = d.magnitude;
+        if (len < 1f) { Vector3 p0 = new Vector3(a.x, GameBootstrap.Hill(a.x, a.z), a.z); PlaceOne(type, p0, 0f, cost); return; }
+        Vector3 dir = d / len;
+        float yaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg; // pipe axis is +Z
+        int count = Mathf.Max(1, Mathf.RoundToInt(len / DragSegment));
+        float step = len / count;
+        for (int i = 0; i <= count; i++)
+        {
+            if (Metal < cost) break;
+            Vector3 p = a + dir * (i * step);
+            p.y = GameBootstrap.Hill(p.x, p.z);
+            PlaceOne(type, p, yaw, cost);
+        }
     }
 
     // Placement yaw. Watchtower (23) and big platform (26) carry their ladder on the +z
@@ -673,7 +727,14 @@ public class PlayerController : MonoBehaviour
         if (show)
         {
             preview.transform.position = pos;
-            preview.transform.rotation = Quaternion.Euler(0f, BuildYaw(), 0f);
+            // While dragging a pipe, face the ghost along the line you're pulling.
+            float yaw = BuildYaw();
+            if (layingDrag && IsDragBuild(SelectedBuild))
+            {
+                Vector3 d = pos - dragStart; d.y = 0f;
+                if (d.sqrMagnitude > 0.04f) yaw = Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg;
+            }
+            preview.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
             bool ok = Metal >= BCost(SelectedBuild);
             GameBootstrap.SetGhostColor(preview, ok ? new Color(0.3f, 1f, 0.3f, 0.18f) : new Color(1f, 0.3f, 0.3f, 0.18f));
         }
@@ -922,6 +983,7 @@ public class PlayerController : MonoBehaviour
         // Bottom-center tool line (smaller font + centred so the longer RU text fits)
         string toolLine;
         if (tool == Tool.Gun) toolLine = $"[1] ПУШКА {Guns[gunTier].name}   патроны {ammo}/{Guns[gunTier].mag}";
+        else if (tool == Tool.Build && IsDragBuild(SelectedBuild)) toolLine = $"[2] {BuildNames[SelectedBuild]} ({BCost(SelectedBuild)}/звено)   зажми ЛКМ у НПЗ, веди к базе, отпусти   ПКМ=продать  Q=меню";
         else if (tool == Tool.Build) toolLine = $"[2] СТРОЙКА {BuildNames[SelectedBuild]} ({BCost(SelectedBuild)})   ЛКМ=ставить/чинить  E=улучшить  ПКМ=продать  Q=меню";
         else if (tool == Tool.Wrench) toolLine = "[3] КЛЮЧ — ближний бой + починка";
         else toolLine = "[4] ЛОПАТА — зажми ЛКМ чтобы копать";
