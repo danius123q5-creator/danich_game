@@ -988,7 +988,8 @@ public class PlayerController : MonoBehaviour
             // funding, a normal upgrade, OR upgrading a fully-charged reserve weapon.
             bool reserveUpgrade = aimed.UsesReserve && aimed.Reserve >= aimed.ReserveMax && aimed.CanUpgrade;
             bool twoBars = !aimed.Building && (aimed.IsFunding || (aimed.CanUpgrade && !aimed.UsesReserve) || reserveUpgrade); // 2-bar layouts
-            Panel(new Rect(px - 8f, py - 8f, pw + 16f, twoBars ? 116f : 92f));
+            bool fundingOil = aimed.IsFunding && aimed.OilRequired > 0; // metal + oil + cooldown = an extra bar
+            Panel(new Rect(px - 8f, py - 8f, pw + 16f, fundingOil ? 140f : (twoBars ? 116f : 92f)));
             GUI.color = Color.white;
             GUI.Label(new Rect(px, py, pw, 22f), $"{BuildNames[aimed.Type]}  -  УР {aimed.Level}  -  ваше", Sm);
             Bar(px, py + 24f, pw, 20f, aimed.Health / aimed.MaxHealth, new Color(0.2f, 0.8f, 0.25f), $"{Mathf.Max(0, Mathf.RoundToInt(aimed.Health))} / {Mathf.RoundToInt(aimed.MaxHealth)} ХП");
@@ -1018,6 +1019,12 @@ public class PlayerController : MonoBehaviour
                         : Oil > 0 ? $"E: нефть +{ochunk}   ({aimed.OilPaid}/{aimed.OilRequired})"
                         : $"нужна нефть с НПЗ   ({aimed.OilPaid}/{aimed.OilRequired})";
                     Bar(px, py + 72f, pw, 20f, of, new Color(1f, 0.8f, 0.3f), otxt);
+
+                    // Bar 4: deposit cooldown (kept visible — it just moved down a row).
+                    if (aimed.UpgradeReadyIn > 0f)
+                        Bar(px, py + 96f, pw, 20f, 1f - aimed.UpgradeReadyIn / aimed.UpgradeCooldown, new Color(0.9f, 0.6f, 0.2f), $"перезаряд {aimed.UpgradeReadyIn:0.0}с");
+                    else
+                        Bar(px, py + 96f, pw, 20f, 1f, new Color(0.25f, 0.6f, 0.3f), "готово (E)");
                 }
                 else if (aimed.UpgradeReadyIn > 0f)
                     Bar(px, py + 72f, pw, 20f, 1f - aimed.UpgradeReadyIn / aimed.UpgradeCooldown, new Color(0.9f, 0.6f, 0.2f), $"перезаряд {aimed.UpgradeReadyIn:0.0}с");
