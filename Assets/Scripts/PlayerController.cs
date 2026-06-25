@@ -919,7 +919,10 @@ public class PlayerController : MonoBehaviour
         if (aimed != null)
         {
             float pw = 460f, px = cx - pw * 0.5f, py = cy + 28f;
-            bool twoBars = !aimed.Building && (aimed.IsFunding || (aimed.CanUpgrade && !aimed.UsesReserve)); // 2-bar layouts
+            // The 3rd "перезаряд" bar appears whenever a cooldown-gated deposit is possible:
+            // funding, a normal upgrade, OR upgrading a fully-charged reserve weapon.
+            bool reserveUpgrade = aimed.UsesReserve && aimed.Reserve >= aimed.ReserveMax && aimed.CanUpgrade;
+            bool twoBars = !aimed.Building && (aimed.IsFunding || (aimed.CanUpgrade && !aimed.UsesReserve) || reserveUpgrade); // 2-bar layouts
             Panel(new Rect(px - 8f, py - 8f, pw + 16f, twoBars ? 116f : 92f));
             GUI.color = Color.white;
             GUI.Label(new Rect(px, py, pw, 22f), $"{BuildNames[aimed.Type]}  -  УР {aimed.Level}  -  ваше", Sm);
@@ -964,6 +967,12 @@ public class PlayerController : MonoBehaviour
                         ? $"E: апгрейд +{Mathf.Min(Metal, aimed.InvestAmount)}   ({aimed.Invested}/{aimed.UpgradeCost})"
                         : $"ПОЛНО — нужен металл на апгрейд";
                     Bar(px, py + 48f, pw, 20f, invFrac2, new Color(0.2f, 0.7f, 0.9f), txt);
+
+                    // Bar 3: cooldown before the next investment (same gate as normal upgrades).
+                    if (aimed.UpgradeReadyIn > 0f)
+                        Bar(px, py + 72f, pw, 20f, 1f - aimed.UpgradeReadyIn / aimed.UpgradeCooldown, new Color(0.9f, 0.6f, 0.2f), $"перезаряд {aimed.UpgradeReadyIn:0.0}с");
+                    else
+                        Bar(px, py + 72f, pw, 20f, 1f, new Color(0.25f, 0.6f, 0.3f), "готово (E)");
                 }
                 else
                 {
