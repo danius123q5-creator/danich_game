@@ -27,7 +27,7 @@ public class PlayerController : MonoBehaviour
     static int BCost(int i) => GameRoot.Hardcore ? Mathf.RoundToInt(BuildCosts[i] * 1.5f) : BuildCosts[i];
 
     [HideInInspector] public float Health;
-    [HideInInspector] public int Metal = 2000; // base stockpile (2.2 economy)
+    [HideInInspector] public int Metal = 600; // base stockpile (2.2 economy) — enough to start
     public const int OilMax = 500;                 // personal oil carry capacity (from refineries)
     [HideInInspector] public int Oil = 500;        // oil carried, poured into super-weapons (start with a base stock)
     [HideInInspector] public int Score = 0;
