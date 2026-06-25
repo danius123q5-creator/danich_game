@@ -17,11 +17,20 @@ public class Dispenser : Buildable
     float accrueRate = 10f; // metal/sec it accumulates
     float stockCap = 150f;  // most it can hold
 
+    // The single starter dispenser is the base's lifeline: if it's destroyed, the game is lost.
+    public bool Critical;
+
     protected override void Awake()
     {
         BuildCost = 100;
         MaxLevel = 3;
         base.Awake();
+    }
+
+    protected override void OnDeath()
+    {
+        if (Critical && !GameRoot.IsZvZ && !GameRoot.IsPvp) GameRoot.BaseLost = true; // base destroyed → defeat
+        base.OnDeath();
     }
 
     protected override void ApplyLevel()

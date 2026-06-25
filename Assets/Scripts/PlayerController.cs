@@ -178,6 +178,16 @@ public class PlayerController : MonoBehaviour
 
         SyncGunToWave();
 
+        if (GameRoot.BaseLost) // base lifeline destroyed → game over, free the cursor for the screen
+        {
+            if (vehicle != null) ExitVehicle();
+            if (preview != null) preview.SetActive(false);
+            SetAimed(null);
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            return;
+        }
+
         if (IsDead)
         {
             if (vehicle != null) ExitVehicle(); // eject if killed while driving
@@ -1255,6 +1265,29 @@ public class PlayerController : MonoBehaviour
             {
                 Bar(px, py + 48f, pw, 20f, 1f, new Color(0.4f, 0.4f, 0.45f), "МАКС УРОВЕНЬ");
             }
+        }
+
+        if (GameRoot.BaseLost && GameRoot.IsPlaying)
+        {
+            // Base lifeline (the critical dispenser) destroyed → game over.
+            GUI.color = new Color(0f, 0f, 0f, 0.82f);
+            GUI.DrawTexture(new Rect(0f, 0f, UI.W, UI.H), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+
+            var big = new GUIStyle(GUI.skin.label) { fontSize = 70, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+            GUI.color = new Color(0.9f, 0.25f, 0.2f);
+            GUI.Label(new Rect(0f, cy - 200f, UI.W, 100f), "БАЗА ПАЛА", big);
+            var sub = new GUIStyle(GUI.skin.label) { fontSize = 28, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+            GUI.color = new Color(0.9f, 0.55f, 0.3f);
+            GUI.Label(new Rect(0f, cy - 110f, UI.W, 40f), "раздатчик уничтожен — игра окончена", sub);
+            GUI.color = Color.white;
+
+            var mbtn = new GUIStyle(GUI.skin.button) { fontSize = 30, fontStyle = FontStyle.Bold };
+            GUI.backgroundColor = new Color(0.75f, 0.35f, 0.32f);
+            if (GUI.Button(new Rect(cx - 180f, cy + 10f, 360f, 84f), "В МЕНЮ", mbtn))
+                { if (GameRoot.Instance != null) GameRoot.Instance.ExitToMenu(); }
+            GUI.backgroundColor = Color.white;
+            return; // defeat screen owns the view
         }
 
         if (IsDead)

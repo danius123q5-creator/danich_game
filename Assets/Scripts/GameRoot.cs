@@ -22,6 +22,7 @@ public class GameRoot : MonoBehaviour
     public static bool Hardcore = false; // die = restart from wave 1, pricier builds, 170 metal cap
     public static bool IsTutorial = false; // scripted tutorial session: normal waves are disabled, TutorialManager drives the world
     public static bool IsZvZ = false;      // zombie-vs-zombie match: ZvZManager drives the world (no defense waves)
+    public static bool BaseLost = false;   // the one critical dispenser was destroyed → game over (default mode)
 
     static readonly string[] TeamNames = { "Команда A", "Команда Б" };
 
@@ -196,6 +197,7 @@ public class GameRoot : MonoBehaviour
     {
         if (lan != null) lan.Shutdown();
         Time.timeScale = 1f;
+        BaseLost = false;
         QuitToMenu();
     }
 

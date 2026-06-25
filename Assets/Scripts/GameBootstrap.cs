@@ -107,16 +107,20 @@ public static class GameBootstrap
         BaseSpawn = nearSpawn;
         HasBaseSpawn = true;
 
+        GameRoot.BaseLost = false; // fresh base — clear any previous defeat
+
         Vector3 c = nearSpawn + new Vector3(0f, 0f, 6f); // a few metres off the spawn so the player isn't inside it
 
-        void Place(int type, Vector3 p, float yaw)
+        Buildable Place(int type, Vector3 p, float yaw)
         {
             var go = Buildable.Create(type, new Vector3(p.x, Hill(p.x, p.z), p.z), Quaternion.Euler(0f, yaw, 0f), owner);
             var b = go != null ? go.GetComponent<Buildable>() : null;
             if (b != null) b.LoadState(1, 9999f, 0); // instantly built, clamped to full health
+            return b;
         }
 
-        Place(1, c, 0f);                                 // dispenser at the centre (heals + metal)
+        var disp = Place(1, c, 0f) as Dispenser;         // dispenser at the centre (heals + metal)
+        if (disp != null) disp.Critical = true;          // the base lifeline — lose it and the game ends
         float r = 4f;
         Place(3, c + new Vector3(0f, 0f, r), 0f);        // back wall
         Place(3, c + new Vector3(r, 0f, 0f), 90f);       // right wall
