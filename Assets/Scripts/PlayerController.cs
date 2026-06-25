@@ -18,7 +18,7 @@ public class PlayerController : MonoBehaviour
     // each wave (+30/wave) so late-game super-weapons stay affordable.
     // 2.2 economy: you keep a big metal stockpile (base 2000, +2500 per captured point),
     // so the cap is high enough to hold it. Hardcore is a bit tighter.
-    public static int MetalMax => GameRoot.Hardcore ? 4000 : 6000;
+    public static int MetalMax => 1400;
     public const int CaptureMetalBonus = 677; // metal granted when you capture a refinery/mine
     const int ReserveLoadChunk = 100; // metal loaded into a special weapon's reserve per E press
     const int OilFundChunk = 50;      // oil poured into a super-weapon's funding per E press

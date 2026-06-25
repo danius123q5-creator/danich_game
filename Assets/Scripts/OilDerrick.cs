@@ -9,6 +9,8 @@ public class OilDerrick : Buildable, IOilSource
     const float Rate = 6f;    // oil/sec pumped
 
     float pool;
+    Transform beam;           // the pumpjack walking beam (rocks up/down)
+    float nod;
 
     protected override void OnEnable() { base.OnEnable(); OilSources.Add(this); }
     protected override void OnDisable() { base.OnDisable(); OilSources.Remove(this); }
@@ -26,6 +28,10 @@ public class OilDerrick : Buildable, IOilSource
     protected override void BuildableTick()
     {
         pool = Mathf.Min(Cap, pool + Rate * Time.deltaTime); // keep pumping while it stands
+
+        // Rock the walking beam (find it once; it's rebuilt with the visual).
+        if (beam == null) { foreach (var tr in GetComponentsInChildren<Transform>()) if (tr.name == "Beam") { beam = tr; break; } }
+        if (beam != null) { nod += Time.deltaTime * 1.6f; beam.localRotation = Quaternion.Euler(Mathf.Sin(nod) * 13f, 0f, 0f); }
     }
 
     // IOilSource: a built (non-puppet) derrick yields oil from its pool.

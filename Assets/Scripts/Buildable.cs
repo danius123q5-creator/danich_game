@@ -156,7 +156,7 @@ public class Buildable : MonoBehaviour
             case 24: AddBox(new Vector3(0f, 0.55f, 0f), new Vector3(1.4f, 1.1f, 1.4f)); break;          // spinning blades hub
             case 27: AddBox(new Vector3(0f, 0.7f, 0f), new Vector3(0.7f, 0.9f, 3.0f)); break;          // oil pipe segment
             case 28: AddBox(new Vector3(0f, 0.8f, 0f), new Vector3(1.7f, 1.6f, 1.7f)); break;          // oil doser tank
-            case 29: AddBox(new Vector3(0f, 2.4f, 0f), new Vector3(2.4f, 4.8f, 2.4f)); break;          // oil derrick tower
+            case 29: AddBox(new Vector3(0f, 1.6f, 0f), new Vector3(2.6f, 3.6f, 5.4f)); break;          // oil derrick (pumpjack)
             case 30: AddBox(new Vector3(0f, 0.5f, 0f), new Vector3(1.2f, 0.8f, 3.0f)); break;          // conveyor segment
             case 31: AddBox(new Vector3(0f, 0.8f, 0f), new Vector3(1.8f, 1.6f, 1.8f)); break;          // metal vat tank
             case 26: // big platform: huge top deck on 4 columns + a climb column up the OUTSIDE front

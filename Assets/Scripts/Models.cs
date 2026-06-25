@@ -160,39 +160,44 @@ public static class Models
         return root;
     }
 
-    // Oil derrick: a tall 4-leg lattice tower narrowing to a crown, with a nodding pump and a
-    // squat oil tank at the base. A player-built oil well (connect a pipe to it).
+    // Oil derrick: a classic pumpjack ("nodding donkey") — base skid, A-frame Sampson post, a
+    // walking beam that rocks (the "Beam" pivot, nodded by OilDerrick), counterweight + horse
+    // head over the wellhead, plus an oil tank. A player-built oil well (connect a pipe to it).
     public static GameObject BuildOilDerrick(int level)
     {
         var root = new GameObject("OilDerrickModel");
         var t = root.transform;
-        Color steel = new Color(0.32f, 0.33f, 0.36f);
+        Color steel = new Color(0.34f, 0.35f, 0.38f);
         Color dark = new Color(0.18f, 0.19f, 0.21f);
-        Color tank = new Color(0.16f, 0.15f, 0.14f);
-        float H = 7.5f;
+        Color paint = new Color(0.55f, 0.42f, 0.15f); // rusty oilfield yellow
+        Color tankC = new Color(0.16f, 0.15f, 0.14f);
 
-        // 4 legs leaning inward to a point
-        for (int i = 0; i < 4; i++)
-        {
-            float sx = (i & 1) == 0 ? 1f : -1f;
-            float sz = (i & 2) == 0 ? 1f : -1f;
-            var leg = Prim(PrimitiveType.Cube, t, new Vector3(sx * 1.0f, H * 0.5f, sz * 1.0f), new Vector3(0.22f, H, 0.22f), steel);
-            leg.transform.localRotation = Quaternion.Euler(sz * 8f, 0f, -sx * 8f);
-        }
-        for (float y = 1.5f; y < H; y += 1.5f) // cross braces
-        {
-            float w = Mathf.Lerp(2.0f, 0.6f, y / H);
-            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, w * 0.5f), new Vector3(w, 0.1f, 0.1f), dark);
-            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, -w * 0.5f), new Vector3(w, 0.1f, 0.1f), dark);
-            Prim(PrimitiveType.Cube, t, new Vector3(w * 0.5f, y, 0f), new Vector3(0.1f, 0.1f, w), dark);
-            Prim(PrimitiveType.Cube, t, new Vector3(-w * 0.5f, y, 0f), new Vector3(0.1f, 0.1f, w), dark);
-        }
-        Prim(PrimitiveType.Cube, t, new Vector3(0f, H + 0.2f, 0f), new Vector3(0.7f, 0.5f, 0.7f), dark); // crown block
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.25f, 0f), new Vector3(2.4f, 0.5f, 5.2f), dark);          // base skid
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.9f, -1.9f), new Vector3(1.2f, 0.9f, 1.2f), steel);       // gearbox/motor
 
-        // pump + oil tank at the base
-        Prim(PrimitiveType.Cube, t, new Vector3(1.6f, 0.7f, 0f), new Vector3(0.7f, 1.4f, 0.7f), dark);   // pump post
-        Prim(PrimitiveType.Cube, t, new Vector3(2.1f, 1.4f, 0f), new Vector3(2.6f, 0.25f, 0.25f), steel); // walking beam
-        Prim(PrimitiveType.Cylinder, t, new Vector3(-1.8f, 0.7f, 0f), new Vector3(1.5f, 0.7f, 1.5f), tank); // oil tank
+        // A-frame Sampson post (two legs meeting ~3 m up)
+        var legL = Prim(PrimitiveType.Cube, t, new Vector3(-0.7f, 1.7f, 0.2f), new Vector3(0.22f, 3.2f, 0.22f), steel);
+        legL.transform.localRotation = Quaternion.Euler(0f, 0f, 12f);
+        var legR = Prim(PrimitiveType.Cube, t, new Vector3(0.7f, 1.7f, 0.2f), new Vector3(0.22f, 3.2f, 0.22f), steel);
+        legR.transform.localRotation = Quaternion.Euler(0f, 0f, -12f);
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 3.15f, 0.2f), new Vector3(0.5f, 0.3f, 0.5f), steel);       // bearing block (pivot)
+
+        // Walking beam pivot — OilDerrick rotates this node so the beam rocks.
+        var beamGO = new GameObject("Beam");
+        beamGO.transform.SetParent(t, false);
+        beamGO.transform.localPosition = new Vector3(0f, 3.15f, 0.2f);
+        var b = beamGO.transform;
+        Prim(PrimitiveType.Cube, b, new Vector3(0f, 0f, 0f), new Vector3(0.32f, 0.32f, 4.6f), paint);          // the beam
+        Prim(PrimitiveType.Cylinder, b, new Vector3(0f, -0.1f, -2.1f), new Vector3(1.1f, 0.35f, 1.1f), dark, new Vector3(90f, 0f, 0f)); // counterweight
+        // horse head at the front, angled down
+        var head = Prim(PrimitiveType.Cube, b, new Vector3(0f, -0.35f, 2.2f), new Vector3(0.5f, 1.0f, 0.7f), paint);
+        head.transform.localRotation = Quaternion.Euler(25f, 0f, 0f);
+
+        // wellhead the head bobs over, + a bridle (cable hint)
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.9f, 2.4f), new Vector3(0.4f, 1.4f, 0.4f), dark);         // wellhead
+        // oil storage tank beside the skid
+        Prim(PrimitiveType.Cylinder, t, new Vector3(-1.9f, 0.85f, 1.4f), new Vector3(1.5f, 0.85f, 1.5f), tankC);
+        Prim(PrimitiveType.Cube, t, new Vector3(-1.9f, 1.4f, 1.4f), new Vector3(1.55f, 0.12f, 1.55f), steel);  // tank rim
         return root;
     }
 
