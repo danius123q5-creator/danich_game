@@ -432,8 +432,8 @@ public class GameRoot : MonoBehaviour
         GUI.color = Color.white;
 
         var btn = new GUIStyle(GUI.skin.button) { fontSize = 22, fontStyle = FontStyle.Bold };
-        var lab = new GUIStyle(GUI.skin.label) { fontSize = 15, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = true };
-        float bw = 360f, bh = 56f, x = cx - bw * 0.5f, y = cy - 130f;
+        var lab = new GUIStyle(GUI.skin.label) { fontSize = 13, fontStyle = FontStyle.Bold, alignment = TextAnchor.UpperCenter, wordWrap = true };
+        float bw = 440f, bh = 50f, capH = 34f, gap = 14f, x = cx - bw * 0.5f, y = cy - 200f;
 
         void StartType(bool hardcore, bool infinite)
         {
@@ -442,26 +442,21 @@ public class GameRoot : MonoBehaviour
             inNewGame = false; StartGame(false);
         }
 
-        if (GUI.Button(new Rect(x, y, bw, bh), "Обычный", btn)) StartType(false, false);
-        GUI.color = new Color(0.8f, 0.85f, 0.8f);
-        GUI.Label(new Rect(x, y + bh, bw, 22f), "стандартная оборона до эвакуации (волна 55)", lab);
-        GUI.color = Color.white;
-        y += bh + 36f;
+        void Row(string name, string desc, bool hc, bool inf)
+        {
+            if (GUI.Button(new Rect(x, y, bw, bh), name, btn)) StartType(hc, inf);
+            GUI.color = new Color(0.78f, 0.83f, 0.78f);
+            GUI.Label(new Rect(x + 6f, y + bh + 2f, bw - 12f, capH), desc, lab);
+            GUI.color = Color.white;
+            y += bh + capH + gap;
+        }
 
-        if (GUI.Button(new Rect(x, y, bw, bh), "Хардкор", btn)) StartType(true, false);
-        GUI.color = new Color(0.8f, 0.85f, 0.8f);
-        GUI.Label(new Rect(x, y + bh, bw, 22f), "смерть = заново с 1-й волны, дороже постройки, патроны турелям", lab);
-        GUI.color = Color.white;
-        y += bh + 36f;
-
-        if (GUI.Button(new Rect(x, y, bw, bh), "Бесконечный", btn)) StartType(false, true);
-        GUI.color = new Color(0.8f, 0.85f, 0.8f);
-        GUI.Label(new Rect(x, y + bh, bw, 22f), "всё как в обычном, но финала нет — волны идут бесконечно", lab);
-        GUI.color = Color.white;
-        y += bh + 44f;
+        Row("Обычный", "стандартная оборона до эвакуации (волна 55)", false, false);
+        Row("Хардкор", "смерть = заново с 1-й волны, дороже постройки, турелям нужны патроны", true, false);
+        Row("Бесконечный", "всё как в обычном, но финала нет — волны идут бесконечно", false, true);
 
         var small = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold };
-        if (GUI.Button(new Rect(x, y, bw, 40f), "Назад", small)) inNewGame = false;
+        if (GUI.Button(new Rect(x, y + 6f, bw, 40f), "Назад", small)) inNewGame = false;
     }
 
     // ---- Modes screen: pick offline / online co-op / PvP, choose a map, host or join ----
