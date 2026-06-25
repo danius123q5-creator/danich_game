@@ -146,6 +146,7 @@ public class Buildable : MonoBehaviour
                 cz.AddComponent<ClimbZone>();
                 break;
             case 24: AddBox(new Vector3(0f, 0.55f, 0f), new Vector3(1.4f, 1.1f, 1.4f)); break;          // spinning blades hub
+            case 25: AddBox(new Vector3(0f, 1.1f, 0f), new Vector3(1.7f, 2.2f, 1.7f)); break;          // missile silo
             case 18: AddBox(new Vector3(0f, 0.6f, 0f), new Vector3(2.0f, 1.2f, 4.0f)); break;          // car
             case 19: AddBox(new Vector3(0f, 0.6f, 0f), new Vector3(1.0f, 1.2f, 1.2f)); break;          // rpg turret
             case 12: // corner bridge (L): north arm + east arm
@@ -186,6 +187,7 @@ public class Buildable : MonoBehaviour
             case 22: return root.AddComponent<OrbitalStation>();
             case 23: return root.AddComponent<WatchTower>();
             case 24: return root.AddComponent<BladeTrap>();
+            case 25: return root.AddComponent<MissileSilo>();
             case 18: return root.AddComponent<Car>();
             case 19: return root.AddComponent<Rpg>();
             case 16: case 17: return root.AddComponent<Wall>(); // long / tall wall behave like a wall

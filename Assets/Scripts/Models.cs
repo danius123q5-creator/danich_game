@@ -45,6 +45,7 @@ public static class Models
             case 22: return BuildOrbitalControl(level);
             case 23: return BuildWatchTower(level);
             case 24: return BuildBladeTrap(level);
+            case 25: return BuildMissileSilo(level);
             case 18: return BuildCar(level);
             case 19: return BuildRpg(level);
             default: return BuildProxyMine(level);
@@ -542,6 +543,29 @@ public static class Models
             Prim(PrimitiveType.Cube, bt, new Vector3(0f, 0f, span * 0.5f), new Vector3(0.12f, 0.05f, span), steel);          // blade arm
             Prim(PrimitiveType.Cube, bt, new Vector3(0f, 0f, span - 0.15f), new Vector3(0.28f, 0.08f, 0.45f), edge, new Vector3(0f, 45f, 0f)); // sharpened tip
         }
+        return root;
+    }
+
+    // Ballistic missile silo: a concrete pad, an open launch tube and a rocket nose poking out.
+    public static GameObject BuildMissileSilo(int level)
+    {
+        var root = new GameObject("MissileSiloModel");
+        var t = root.transform;
+        Color pad = new Color(0.28f, 0.29f, 0.31f);
+        Color tube = new Color(0.20f, 0.22f, 0.25f);
+        Color rim = new Color(0.5f, 0.5f, 0.15f);
+        Color rocket = new Color(0.75f, 0.75f, 0.8f);
+        Color nose = new Color(0.75f, 0.25f, 0.2f);
+
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.18f, 0f), new Vector3(1.7f, 0.36f, 1.7f), pad);        // concrete pad
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 1.0f, 0f), new Vector3(1.1f, 1.0f, 1.1f), tube);     // launch tube
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 2.0f, 0f), new Vector3(1.18f, 0.08f, 1.18f), rim);   // warning rim
+        // the missile sitting in the tube, nose just clearing the rim
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 1.7f, 0f), new Vector3(0.5f, 0.8f, 0.5f), rocket);   // missile body
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 2.55f, 0f), new Vector3(0.46f, 0.28f, 0.46f), nose); // nose cone
+        // hazard stripes on the pad corners
+        Prim(PrimitiveType.Cube, t, new Vector3(0.7f, 0.37f, 0.7f), new Vector3(0.3f, 0.04f, 0.3f), rim);
+        Prim(PrimitiveType.Cube, t, new Vector3(-0.7f, 0.37f, -0.7f), new Vector3(0.3f, 0.04f, 0.3f), rim);
         return root;
     }
 
