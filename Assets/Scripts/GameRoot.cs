@@ -400,7 +400,18 @@ public class GameRoot : MonoBehaviour
         y += 58f;
         if (GUI.Button(new Rect(x, y, bw, bh), "Настройки", btn)) { settingsFromPause = false; inSettings = true; }
         y += 58f;
-        if (GUI.Button(new Rect(x, y, bw, bh), "Выход", btn)) QuitApp();
+        // Desktop: quit. WebGL ("еблан эдишн"): no quit in a browser — link to the full PC build on GitHub.
+        if (NetSupported)
+        {
+            if (GUI.Button(new Rect(x, y, bw, bh), "Выход", btn)) QuitApp();
+        }
+        else
+        {
+            GUI.backgroundColor = new Color(0.3f, 0.55f, 0.8f);
+            if (GUI.Button(new Rect(x, y, bw, bh), "Полная версия на ПК (GitHub)", btn))
+                Application.OpenURL(UpdateChecker.ReleasesUrl);
+            GUI.backgroundColor = Color.white;
+        }
 
         // Update / download banner — ALWAYS shown. GREEN when a newer release exists,
         // RED when you're already on the latest. Wide box so the text never clips.
