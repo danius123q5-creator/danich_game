@@ -10,8 +10,8 @@ public static class UISettings
     public static float PanelAlpha = 0.55f;  // HUD panel background opacity
 
     // Drag-to-move HUD: per-element pixel offset from its default spot.
-    // 0 = HP bar, 1 = Metal, 2 = Kills counter, 3 = Tool line, 4 = Deaths counter.
-    public const int ElementCount = 5;
+    // 0 = HP bar, 1 = Metal, 2 = Kills counter, 3 = Tool line, 4 = Deaths counter, 5 = Oil.
+    public const int ElementCount = 6;
     public static readonly Vector2[] Offsets = new Vector2[ElementCount];
     public static bool EditLayout;           // runtime only: drag-to-move mode is active
 

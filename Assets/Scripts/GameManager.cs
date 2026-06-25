@@ -38,6 +38,11 @@ public class GameManager : MonoBehaviour
         player = FindFirstObjectByType<PlayerController>();
         IsPrep = true;
         PhaseTimeLeft = FirstPrepTime; // long first prep to build your base; later preps use PrepTime
+
+        // Capturable oil refineries — default/waves mode only (not PvP/tutorial/ZvZ; LAN host or SP).
+        bool defaultMode = !GameRoot.IsPvp && !GameRoot.IsTutorial && !GameRoot.IsZvZ &&
+                           !(LanManager.Instance != null && LanManager.Instance.Active && !LanManager.Instance.IsHost);
+        if (defaultMode && Refinery.All.Count == 0) Refinery.SpawnAll();
     }
 
     void Update()

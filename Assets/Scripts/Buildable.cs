@@ -54,7 +54,12 @@ public class Buildable : MonoBehaviour
     // you fund them incrementally (press E to dump metal in) before they switch on.
     public virtual int FundingRequired => 0;       // 0 = ordinary building, no funding gate
     public int FundingPaid { get; protected set; }
-    public bool IsFunding => !Building && FundingRequired > 0 && FundingPaid < FundingRequired;
+    // Super-weapons also need OIL (captured from refineries) on top of the metal funding.
+    public virtual int OilRequired => 0;           // 0 = no oil needed
+    public int OilPaid { get; protected set; }
+    public int OilRemaining => Mathf.Max(0, OilRequired - OilPaid);
+    public bool IsFunding => !Building && (FundingRequired > 0 || OilRequired > 0)
+                             && (FundingPaid < FundingRequired || OilPaid < OilRequired);
     public int FundingRemaining => Mathf.Max(0, FundingRequired - FundingPaid);
 
     // ---- Special weapons: ammo reserve ----
@@ -273,9 +278,12 @@ public class Buildable : MonoBehaviour
             }
             else if (IsFunding)
             {
-                int pct = Mathf.RoundToInt(100f * FundingPaid / Mathf.Max(1, FundingRequired));
-                label.text = $"FUNDING {pct}%";
-                label.color = new Color(0.4f, 0.8f, 1f);
+                // Combined metal+oil progress, so the label never reads 100% while oil's still due.
+                int paid = FundingPaid + OilPaid, need = Mathf.Max(1, FundingRequired + OilRequired);
+                int pct = Mathf.RoundToInt(100f * paid / need);
+                bool oilStage = FundingPaid >= FundingRequired && OilPaid < OilRequired;
+                label.text = oilStage ? $"НЕФТЬ {pct}%" : $"FUNDING {pct}%";
+                label.color = oilStage ? new Color(1f, 0.8f, 0.3f) : new Color(0.4f, 0.8f, 1f);
             }
             else
             {
@@ -384,15 +392,29 @@ public class Buildable : MonoBehaviour
     /// caller and gated by the same cooldown as upgrades. Returns true if accepted.</summary>
     public bool Fund(int amount)
     {
-        if (!IsFunding || amount <= 0 || Time.time < upgReady) return false;
+        if (!IsFunding || amount <= 0 || Time.time < upgReady || FundingPaid >= FundingRequired) return false;
         upgReady = Time.time + UpgradeCooldown; // reuse the upgrade reload pacing
-        FundingPaid += amount;
-        if (FundingPaid >= FundingRequired)
-        {
-            FundingPaid = FundingRequired;
-            Effects.Upgrade(transform.position + Vector3.up * 1f); // "online" flourish
-        }
+        FundingPaid = Mathf.Min(FundingRequired, FundingPaid + amount);
+        CheckOnline();
         return true;
+    }
+
+    /// <summary>Pour oil (from the player's reserve) into a super-weapon's construction.
+    /// Needed ON TOP of the metal funding before the weapon switches on.</summary>
+    public bool FundOil(int amount)
+    {
+        if (!IsFunding || amount <= 0 || Time.time < upgReady || OilPaid >= OilRequired) return false;
+        upgReady = Time.time + UpgradeCooldown;
+        OilPaid = Mathf.Min(OilRequired, OilPaid + amount);
+        CheckOnline();
+        return true;
+    }
+
+    // The weapon only comes online once BOTH metal and oil are fully funded.
+    void CheckOnline()
+    {
+        if (FundingPaid >= FundingRequired && OilPaid >= OilRequired)
+            Effects.Upgrade(transform.position + Vector3.up * 1f); // "online" flourish
     }
 
     /// <summary>Restore a saved building: instantly built, at the given level / health /
@@ -403,6 +425,9 @@ public class Buildable : MonoBehaviour
         ApplyLevel();                                  // sets MaxHealth for this level (and full Health)
         Health = Mathf.Clamp(health, 1f, MaxHealth);
         FundingPaid = Mathf.Clamp(fundingPaid, 0, FundingRequired);
+        // Oil funding isn't persisted: a weapon saved with its metal funding complete was
+        // online, so treat its oil as paid too (mid-funding saves just lose oil progress).
+        OilPaid = FundingPaid >= FundingRequired ? OilRequired : 0;
         Building = false;
         buildEnd = Time.time;
         OnActivated();

@@ -7,6 +7,7 @@ using System.Collections.Generic;
 public class AirStrike : Buildable
 {
     public override int FundingRequired => 3000;
+    public override int OilRequired => 200;
     public override int ReserveMax => 1800;
 
     const float ScanRange = 90f;

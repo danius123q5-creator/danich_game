@@ -10,6 +10,7 @@ using UnityEngine;
 public class OrbitalStation : Buildable
 {
     public override int FundingRequired => 3000;
+    public override int OilRequired => 250;
     public override int ReserveMax => 1500;       // metal pool the beams drain as they fire
     const int ShotCost = 20;                       // metal burned per single-shot laser
 

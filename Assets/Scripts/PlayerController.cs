@@ -26,12 +26,15 @@ public class PlayerController : MonoBehaviour
         }
     }
     const int ReserveLoadChunk = 100; // metal loaded into a special weapon's reserve per E press
+    const int OilFundChunk = 50;      // oil poured into a super-weapon's funding per E press
 
     // Build cost, marked up in hardcore.
     static int BCost(int i) => GameRoot.Hardcore ? Mathf.RoundToInt(BuildCosts[i] * 1.5f) : BuildCosts[i];
 
     [HideInInspector] public float Health;
     [HideInInspector] public int Metal = 250;
+    public const int OilMax = 500;                 // personal oil carry capacity (from refineries)
+    [HideInInspector] public int Oil = 500;        // oil carried, poured into super-weapons (start with a base stock)
     [HideInInspector] public int Score = 0;
     [HideInInspector] public int Deaths = 0; // how many times the player has died (HUD counter)
     [HideInInspector] public int SelectedBuild = 0;
@@ -86,9 +89,9 @@ public class PlayerController : MonoBehaviour
         "Лестница/пандус: заехать или забраться наверх.",
         "Фугас-лепёшка: лежит на земле, наступил зомби — взрыв. Зомби его не атакуют.",
         "Колючая проволока: сильно замедляет зомби, идущих сквозь неё.",
-        "Авиаудар (супероружие): копи металл (E), затем вызывает удары по толпе на всю карту.",
-        "Катушка Тесла (супероружие): бьёт молнией по ближним зомби. Тратит металл из резерва (заряжай E).",
-        "Артиллерия (супероружие): фугасы по площади на всю карту, наводится на цель. Заряжай металлом (E).",
+        "Авиаудар (супероружие): копи металл + нефть с НПЗ (E), затем вызывает удары по толпе на всю карту.",
+        "Катушка Тесла (супероружие): копи металл + нефть с НПЗ (E). Бьёт молнией по ближним зомби, тратит металл из резерва.",
+        "Артиллерия (супероружие): копи металл + нефть с НПЗ (E). Фугасы по площади на всю карту, наводится на цель.",
         "Угловой мост (Г): поворот настила.",
         "Т-мост: развилка настила.",
         "Крест-мост: перекрёсток настила.",
@@ -99,7 +102,7 @@ public class PlayerController : MonoBehaviour
         "РПГ: дешёвая ракетная турель. Сама бьёт ракетами по площади — хороша против толпы, но хрупкая и медленно перезаряжается.",
         "Вертикальная лестница: встань вплотную и лезь вверх/вниз на W/S. Заберись на стены и мосты. Пробел — спрыгнуть.",
         "Стоп-пушка: раз в ~16с пускает волну, замораживающую ВСЕХ зомби на карте на 10 секунд. Дёшево, без расхода металла.",
-        "Орбитальная станция: блок управления (копи 3000 металла, E). Когда готов — в небе появляется станция и циклит 3 атаки: точные лазеры со взрывом, выжигающий луч (ползёт от зомби к зомби) и тройная призма (3 луча крутятся вокруг базы). Тратит металл из своего бака — заряжай E.",
+        "Орбитальная станция: блок управления (копи 3000 металла + нефть с НПЗ, E). Когда готов — в небе появляется станция и циклит 3 атаки: точные лазеры со взрывом, выжигающий луч (ползёт от зомби к зомби) и тройная призма (3 луча крутятся вокруг базы). Тратит металл из своего бака — заряжай E.",
         "Смотровая башня (20 м): залезь по лестнице через люк на площадку наверху — отличная точка для стрельбы, зомби туда не достанут.",
         "Лезвия: крутящийся ротор рубит всех зомби рядом несколько раз в секунду. Работает как турель — сама, без зарядки и расхода металла. Дорогая в постройке.",
         "Ракетная шахта: ждёт, пока соберётся толпа (3+ зомби), и пускает ракету в самую гущу — мощный взрыв (урон 350). Работает как турель, без расхода металла. Дорогая.",
@@ -423,6 +426,7 @@ public class PlayerController : MonoBehaviour
     public void AddAmmo(int n) { ammo = Mathf.Min(Guns[gunTier].mag, ammo + n); }
 
     public void AddMetal(int delta) { Metal = Mathf.Clamp(Metal + delta, 0, MetalMax); }
+    public void AddOil(int delta) { Oil = Mathf.Clamp(Oil + delta, 0, OilMax); }
 
     // ---- Build tool ----
     // Co-op: on a client, buildings are owned by the host. We spend our own metal locally
@@ -479,6 +483,9 @@ public class PlayerController : MonoBehaviour
     void Interact()
     {
         if (!RaycastNoSelf(8f, out RaycastHit hit)) return;
+        // Draw oil from a captured refinery's barrel (E).
+        var refinery = hit.collider.GetComponentInParent<Refinery>();
+        if (refinery != null) { refinery.CollectOil(this); return; }
         // Get into a car (E). Only a real, finished car (not a co-op puppet copy).
         var car = hit.collider.GetComponentInParent<Car>();
         if (car != null && !car.Building && !car.IsPuppet) { EnterVehicle(car); return; }
@@ -491,14 +498,22 @@ public class PlayerController : MonoBehaviour
         }
         var b = hit.collider.GetComponentInParent<Buildable>();
         if (b == null) return;
-        // Special weapon still being funded: add a capped chunk per press (with a
-        // cooldown), not the whole wallet at once.
-        if (b.IsFunding && Metal > 0)
+        // Special weapon still being funded: pour a capped chunk of metal per press, then —
+        // once the metal goal is met — oil from your personal reserve (needed to switch on).
+        if (b.IsFunding)
         {
-            int fund = Mathf.Min(Metal, Mathf.Min(b.FundChunk, b.FundingRemaining));
-            if (fund <= 0) return;
-            if (NetClient) { if (b.UpgradeReadyIn <= 0f) { AddMetal(-fund); b.MarkNetCooldown(); LanManager.Instance.SendBuildAction(b.NetId, 1, fund); } }
-            else if (b.Fund(fund)) AddMetal(-fund);
+            if (b.FundingPaid < b.FundingRequired && Metal > 0)
+            {
+                int fund = Mathf.Min(Metal, Mathf.Min(b.FundChunk, b.FundingRemaining));
+                if (fund <= 0) return;
+                if (NetClient) { if (b.UpgradeReadyIn <= 0f) { AddMetal(-fund); b.MarkNetCooldown(); LanManager.Instance.SendBuildAction(b.NetId, 1, fund); } }
+                else if (b.Fund(fund)) AddMetal(-fund);
+            }
+            else if (b.OilPaid < b.OilRequired && Oil > 0 && !NetClient)
+            {
+                int oil = Mathf.Min(Oil, Mathf.Min(OilFundChunk, b.OilRemaining));
+                if (oil > 0 && b.FundOil(oil)) AddOil(-oil);
+            }
         }
         // Funded special weapon: keep its ammo reserve topped up first; once full, E upgrades it.
         else if (b.UsesReserve)
@@ -806,6 +821,44 @@ public class PlayerController : MonoBehaviour
         GUI.color = Color.white;
     }
 
+    static GUIStyle _refStyle;
+
+    // Floating НПЗ status: name + state, a control/capture bar, barrel oil, and an E-prompt
+    // when you're stood at the barrel. Projects each refinery to GUI space (like turret ammo).
+    void DrawRefineries()
+    {
+        if (cam == null) return;
+        _refStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false };
+        foreach (var rf in Refinery.All)
+        {
+            if (rf == null) continue;
+            Vector3 sp = cam.WorldToScreenPoint(rf.transform.position + Vector3.up * 7.2f);
+            if (sp.z <= 0.5f || sp.z > 140f) continue; // behind camera or too far
+            float gx = sp.x / UI.Scale, gy = (Screen.height - sp.y) / UI.Scale;
+            float w = 188f;
+            Rect box = new Rect(gx - w * 0.5f, gy - 18f, w, 52f);
+            GUI.color = new Color(0f, 0f, 0f, 0.5f); GUI.DrawTexture(box, Texture2D.whiteTexture);
+
+            string state; Color sc;
+            if (!rf.Captured) { state = rf.Capture > 0f ? $"ЗАХВАТ {Mathf.RoundToInt(rf.Capture / Refinery.CaptureTime * 100f)}%" : "НЕЙТРАЛЕН"; sc = new Color(0.8f, 0.8f, 0.8f); }
+            else if (rf.NearZombies > 0) { state = "ПОД АТАКОЙ!"; sc = new Color(1f, 0.5f, 0.2f); }
+            else { state = "ЗАХВАЧЕН"; sc = new Color(0.4f, 1f, 0.5f); }
+
+            GUI.color = sc; GUI.Label(new Rect(box.x, box.y + 1f, w, 18f), $"НПЗ — {state}", _refStyle);
+
+            // bar: capture progress (neutral) or control (held)
+            float frac = rf.Captured ? rf.Control / Refinery.ControlMax : rf.Capture / Refinery.CaptureTime;
+            Rect bar = new Rect(box.x + 8f, box.y + 21f, w - 16f, 7f);
+            GUI.color = new Color(0f, 0f, 0f, 0.6f); GUI.DrawTexture(bar, Texture2D.whiteTexture);
+            GUI.color = rf.Captured ? (rf.NearZombies > 0 ? new Color(1f, 0.5f, 0.2f) : new Color(0.4f, 0.9f, 0.5f)) : new Color(0.6f, 0.8f, 1f);
+            GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(frac), bar.height), Texture2D.whiteTexture);
+
+            GUI.color = new Color(1f, 0.85f, 0.35f);
+            GUI.Label(new Rect(box.x, box.y + 30f, w, 18f), $"бочка: {Mathf.FloorToInt(rf.Oil)}/{Mathf.RoundToInt(Refinery.OilCap)}   E — набрать", _refStyle);
+        }
+        GUI.color = Color.white;
+    }
+
     void OnGUI()
     {
         UI.Begin(); // scale the whole HUD to the screen resolution
@@ -823,6 +876,9 @@ public class PlayerController : MonoBehaviour
 
         // Hardcore: floating ammo readout above each turret (so you can see which need a refill).
         if (GameRoot.Hardcore && !buildMenuOpen) DrawTurretAmmo();
+
+        // Refineries (НПЗ): floating capture/control/oil status over each (default mode only).
+        if (Refinery.All.Count > 0 && !buildMenuOpen) DrawRefineries();
 
         // Top-left stats panel (kills only — metal moved to bottom-centre)
         // Kills counter — top-right corner (movable).
@@ -846,6 +902,16 @@ public class PlayerController : MonoBehaviour
         GUI.color = UISettings.Accent;
         GUI.Label(new Rect(metal.x, metal.y + 2f, 340f, 36f), $"МЕТАЛЛ: {Metal}", Ctr);
         GUI.color = Color.white;
+
+        // Oil readout (only once refineries exist on the map — default mode).
+        if (Refinery.All.Count > 0)
+        {
+            Rect oil = Place(5, new Rect(cx - 170f, UI.H - 134f, 340f, 36f));
+            Panel(oil);
+            GUI.color = Oil > 0 ? new Color(1f, 0.85f, 0.35f) : new Color(0.7f, 0.7f, 0.7f);
+            GUI.Label(new Rect(oil.x, oil.y + 2f, 340f, 32f), $"НЕФТЬ: {Oil}/{OilMax}", Ctr);
+            GUI.color = Color.white;
+        }
 
         // Bottom-center tool line (smaller font + centred so the longer RU text fits)
         string toolLine;
@@ -930,16 +996,27 @@ public class PlayerController : MonoBehaviour
             }
             else if (aimed.IsFunding)
             {
-                // Bar 2: funding progress (capped chunk per press).
+                // Bar 2: metal funding (capped chunk per press).
+                bool metalDone = aimed.FundingPaid >= aimed.FundingRequired;
                 float f = (float)aimed.FundingPaid / Mathf.Max(1, aimed.FundingRequired);
                 int chunk = Mathf.Min(Metal, Mathf.Min(aimed.FundChunk, aimed.FundingRemaining));
-                string txt = Metal > 0
-                    ? $"E: вложить +{chunk}   ({aimed.FundingPaid}/{aimed.FundingRequired})"
+                string mtxt = metalDone ? $"металл готов ({aimed.FundingRequired})"
+                    : Metal > 0 ? $"E: вложить +{chunk}   ({aimed.FundingPaid}/{aimed.FundingRequired})"
                     : $"нужен металл   ({aimed.FundingPaid}/{aimed.FundingRequired})";
-                Bar(px, py + 48f, pw, 20f, f, new Color(0.4f, 0.8f, 1f), txt);
+                Bar(px, py + 48f, pw, 20f, f, metalDone ? new Color(0.3f, 0.6f, 0.45f) : new Color(0.4f, 0.8f, 1f), mtxt);
 
-                // Bar 3: cooldown before the next deposit.
-                if (aimed.UpgradeReadyIn > 0f)
+                if (aimed.OilRequired > 0)
+                {
+                    // Bar 3: oil funding (from your reserve) — unlocks once the metal is in.
+                    float of = (float)aimed.OilPaid / Mathf.Max(1, aimed.OilRequired);
+                    int ochunk = Mathf.Min(Oil, Mathf.Min(OilFundChunk, aimed.OilRemaining));
+                    string otxt = aimed.OilPaid >= aimed.OilRequired ? $"нефть готова ({aimed.OilRequired})"
+                        : !metalDone ? $"потом нефть   ({aimed.OilPaid}/{aimed.OilRequired})"
+                        : Oil > 0 ? $"E: нефть +{ochunk}   ({aimed.OilPaid}/{aimed.OilRequired})"
+                        : $"нужна нефть с НПЗ   ({aimed.OilPaid}/{aimed.OilRequired})";
+                    Bar(px, py + 72f, pw, 20f, of, new Color(1f, 0.8f, 0.3f), otxt);
+                }
+                else if (aimed.UpgradeReadyIn > 0f)
                     Bar(px, py + 72f, pw, 20f, 1f - aimed.UpgradeReadyIn / aimed.UpgradeCooldown, new Color(0.9f, 0.6f, 0.2f), $"перезаряд {aimed.UpgradeReadyIn:0.0}с");
                 else
                     Bar(px, py + 72f, pw, 20f, 1f, new Color(0.25f, 0.6f, 0.3f), "готово (E)");

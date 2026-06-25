@@ -6,6 +6,7 @@ using UnityEngine;
 public class TeslaCoil : Buildable
 {
     public override int FundingRequired => 1500;
+    public override int OilRequired => 150;
     public override int ReserveMax => 1500;
 
     float range = 16f;

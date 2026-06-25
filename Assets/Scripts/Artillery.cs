@@ -6,6 +6,7 @@ using UnityEngine;
 public class Artillery : Buildable
 {
     public override int FundingRequired => 2200;
+    public override int OilRequired => 180;
     public override int ReserveMax => 1600;
 
     float range = 70f;
