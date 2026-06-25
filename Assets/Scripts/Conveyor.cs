@@ -72,4 +72,41 @@ public class Conveyor : Buildable
         }
         return best;
     }
+
+    // ---- collect EVERY captured mine wired to a position (the vat draws from all of them) ----
+    static readonly HashSet<Conveyor> _visited = new HashSet<Conveyor>();
+    static readonly Queue<Conveyor> _bfs = new Queue<Conveyor>();
+
+    /// <summary>Fill 'into' with every active metal source reachable from 'pos' — directly within
+    /// Link, or through a connected chain of conveyors. More mines on the network = more sources.</summary>
+    public static void CollectSources(Vector3 pos, List<IMetalSource> into)
+    {
+        into.Clear();
+        _visited.Clear(); _bfs.Clear();
+
+        // BFS the conveyor graph starting from conveyors within Link of the vat.
+        foreach (var c in All)
+            if (c != null && !c.Building && (c.transform.position - pos).sqrMagnitude <= Link * Link && _visited.Add(c))
+                _bfs.Enqueue(c);
+        while (_bfs.Count > 0)
+        {
+            var c = _bfs.Dequeue();
+            foreach (var o in All)
+                if (o != null && !o.Building && !_visited.Contains(o) &&
+                    (o.transform.position - c.transform.position).sqrMagnitude <= Link * Link)
+                { _visited.Add(o); _bfs.Enqueue(o); }
+        }
+
+        // A captured mine feeds the vat if it's within Link of the vat or any reached conveyor.
+        foreach (var s in MetalSources.All)
+        {
+            if (s == null || !s.MetalActive || s.MetalTransform == null) continue;
+            Vector3 sp = s.MetalTransform.position;
+            bool reach = (sp - pos).sqrMagnitude <= Link * Link;
+            if (!reach)
+                foreach (var c in _visited)
+                    if ((c.transform.position - sp).sqrMagnitude <= Link * Link) { reach = true; break; }
+            if (reach) into.Add(s);
+        }
+    }
 }

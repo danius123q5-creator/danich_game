@@ -52,6 +52,7 @@ public static class Models
             case 29: return BuildOilDerrick(level);
             case 30: return BuildConveyor(level);
             case 31: return BuildMetalVat(level);
+            case 32: return BuildMetalDrill(level);
             case 18: return BuildCar(level);
             case 19: return BuildRpg(level);
             default: return BuildProxyMine(level);
@@ -198,6 +199,45 @@ public static class Models
         // oil storage tank beside the skid
         Prim(PrimitiveType.Cylinder, t, new Vector3(-1.9f, 0.85f, 1.4f), new Vector3(1.5f, 0.85f, 1.5f), tankC);
         Prim(PrimitiveType.Cube, t, new Vector3(-1.9f, 1.4f, 1.4f), new Vector3(1.55f, 0.12f, 1.55f), steel);  // tank rim
+        return root;
+    }
+
+    // Drilling rig: a 4-leg derrick tower with a spinning drill bit ("Bit") in the middle and a
+    // motor + ore hopper at the base. A player-built metal source (connect a conveyor to it).
+    public static GameObject BuildMetalDrill(int level)
+    {
+        var root = new GameObject("MetalDrillModel");
+        var t = root.transform;
+        Color steel = new Color(0.33f, 0.34f, 0.37f);
+        Color dark = new Color(0.18f, 0.19f, 0.21f);
+        Color paint = new Color(0.5f, 0.55f, 0.6f);
+        Color ore = new Color(0.5f, 0.42f, 0.3f);
+        float H = 6.5f;
+
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.25f, 0f), new Vector3(2.2f, 0.5f, 2.2f), dark);          // base pad
+        for (int i = 0; i < 4; i++) // 4 legs leaning to a crown
+        {
+            float sx = (i & 1) == 0 ? 1f : -1f, sz = (i & 2) == 0 ? 1f : -1f;
+            var leg = Prim(PrimitiveType.Cube, t, new Vector3(sx * 0.9f, H * 0.5f, sz * 0.9f), new Vector3(0.2f, H, 0.2f), steel);
+            leg.transform.localRotation = Quaternion.Euler(sz * 7f, 0f, -sx * 7f);
+        }
+        for (float y = 1.6f; y < H; y += 1.6f) // braces
+        {
+            float w = Mathf.Lerp(1.9f, 0.6f, y / H);
+            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, w * 0.5f), new Vector3(w, 0.12f, 0.12f), dark);
+            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, -w * 0.5f), new Vector3(w, 0.12f, 0.12f), dark);
+        }
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, H + 0.1f, 0f), new Vector3(0.8f, 0.3f, 0.8f), steel);       // crown
+
+        // spinning drill bit hanging in the centre ("Bit" — MetalDrill rotates it)
+        var bitGO = new GameObject("Bit");
+        bitGO.transform.SetParent(t, false);
+        bitGO.transform.localPosition = new Vector3(0f, 1.6f, 0f);
+        Prim(PrimitiveType.Cylinder, bitGO.transform, new Vector3(0f, 0.7f, 0f), new Vector3(0.22f, 1.4f, 0.22f), paint); // drill string
+        Prim(PrimitiveType.Cylinder, bitGO.transform, new Vector3(0f, -0.2f, 0f), new Vector3(0.5f, 0.45f, 0.5f), dark);   // bit head (cone-ish)
+
+        Prim(PrimitiveType.Cube, t, new Vector3(1.4f, 0.8f, 0f), new Vector3(0.8f, 0.9f, 0.8f), steel);        // motor
+        Prim(PrimitiveType.Cube, t, new Vector3(-1.4f, 0.7f, 0f), new Vector3(1.0f, 0.8f, 1.2f), ore);         // ore hopper
         return root;
     }
 

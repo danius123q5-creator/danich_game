@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>Metal vat (ЧАН ДЛЯ РУДЫ) — pulls ore from a connected mine (directly or down a line
@@ -13,6 +14,8 @@ public class MetalVat : Buildable
 
     float stock;
     float nextGive;
+    float nextScan;
+    readonly List<IMetalSource> sources = new List<IMetalSource>(); // every mine wired to this vat
 
     protected override void Awake()
     {
@@ -28,10 +31,16 @@ public class MetalVat : Buildable
 
     protected override void BuildableTick()
     {
-        IMetalSource src = Conveyor.SupplySource(transform.position);
-        Supplied = src != null;
-        if (src != null && stock < TankCap)
-            stock += src.DrawMetal(Mathf.Min(PullRate * Time.deltaTime, TankCap - stock));
+        // Draw from EVERY captured mine wired to this vat (more mines = more metal/sec).
+        if (Time.time >= nextScan) { nextScan = Time.time + 0.5f; Conveyor.CollectSources(transform.position, sources); }
+        Supplied = sources.Count > 0;
+        if (stock < TankCap)
+            foreach (var s in sources)
+            {
+                if (s == null || !s.MetalActive) continue;
+                stock += s.DrawMetal(Mathf.Min(PullRate * Time.deltaTime, TankCap - stock));
+                if (stock >= TankCap) break;
+            }
 
         if (Time.time < nextGive) return;
         nextGive = Time.time + Tick;
