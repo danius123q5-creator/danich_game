@@ -502,8 +502,11 @@ public class PlayerController : MonoBehaviour
         // once the metal goal is met — oil from your personal reserve (needed to switch on).
         if (b.IsFunding)
         {
-            if (b.FundingPaid < b.FundingRequired && Metal > 0)
+            // Metal first — fully. Only once the metal goal is met do we start spending oil,
+            // so running out of metal mid-funding never silently drains your oil instead.
+            if (b.FundingPaid < b.FundingRequired)
             {
+                if (Metal <= 0) return; // need metal — don't touch oil yet
                 int fund = Mathf.Min(Metal, Mathf.Min(b.FundChunk, b.FundingRemaining));
                 if (fund <= 0) return;
                 if (NetClient) { if (b.UpgradeReadyIn <= 0f) { AddMetal(-fund); b.MarkNetCooldown(); LanManager.Instance.SendBuildAction(b.NetId, 1, fund); } }
