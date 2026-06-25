@@ -20,6 +20,7 @@ public class GameRoot : MonoBehaviour
     public static bool IsPvp => CurrentMode == Mode.Pvp;
     public static int PvpTeam = 0; // 0 = Team A, 1 = Team B (PvP friendly-fire / colours)
     public static bool Hardcore = false; // die = restart from wave 1, pricier builds, 170 metal cap
+    public static bool Infinite = false; // endless mode: same as default but no evac finale
     public static bool IsTutorial = false; // scripted tutorial session: normal waves are disabled, TutorialManager drives the world
     public static bool IsZvZ = false;      // zombie-vs-zombie match: ZvZManager drives the world (no defense waves)
     public static bool BaseLost = false;   // the one critical dispenser was destroyed → game over (default mode)
@@ -29,7 +30,8 @@ public class GameRoot : MonoBehaviour
     Camera menuCam;
     LanManager lan;
     string joinIp = "127.0.0.1";
-    bool inModes; // showing the Modes sub-screen instead of the main menu
+    bool inModes;   // showing the Modes sub-screen instead of the main menu
+    bool inNewGame; // showing the New Game type picker (Обычный / Хардкор / Бесконечный)
     bool inSettings;        // showing the Settings (UI customization) screen
     bool settingsFromPause; // remember whether Settings was opened from the pause menu
 
@@ -134,6 +136,7 @@ public class GameRoot : MonoBehaviour
         IsZvZ = false;
         CurrentMode = Mode.Offline;
         Hardcore = false;
+        Infinite = false;
         if (menuCam != null) menuCam.gameObject.SetActive(false);
         GameBootstrap.BuildWorld();
 
@@ -162,6 +165,7 @@ public class GameRoot : MonoBehaviour
     {
         IsTutorial = false;
         Hardcore = false;
+        Infinite = false;
         CurrentMode = Mode.Offline;
         GameBootstrap.MapVariant = 2; // Arena — flat, fair field for the two bases
 
@@ -242,6 +246,7 @@ public class GameRoot : MonoBehaviour
         PlayerPrefs.SetInt("save_metal", p.Metal);
         PlayerPrefs.SetInt("save_score", p.Score);
         PlayerPrefs.SetInt("save_oil", p.Oil);
+        PlayerPrefs.SetInt("save_infinite", Infinite ? 1 : 0);
         SaveBuildings();
         SaveSources();
         PlayerPrefs.Save();
@@ -350,7 +355,7 @@ public class GameRoot : MonoBehaviour
         if (splashActive) { DrawSplash(); return; }
         if (UISettings.EditLayout) { DrawLayoutEdit(); return; } // HUD visible + draggable; menus hidden
         if (inSettings) { DrawSettingsMenu(); return; }
-        if (State == GState.Menu) { if (inModes) DrawModesMenu(); else DrawMainMenu(); }
+        if (State == GState.Menu) { if (inNewGame) DrawNewGameMenu(); else if (inModes) DrawModesMenu(); else DrawMainMenu(); }
         else if (State == GState.Paused) DrawPauseMenu();
     }
 
@@ -378,10 +383,10 @@ public class GameRoot : MonoBehaviour
         if (HasSave)
         {
             int w = PlayerPrefs.GetInt("save_wave", 0) + 1;
-            if (GUI.Button(new Rect(x, y, bw, bh), $"Продолжить  (волна {w})", btn)) { CurrentMode = Mode.Offline; Hardcore = false; StartGame(true); }
+            if (GUI.Button(new Rect(x, y, bw, bh), $"Продолжить  (волна {w})", btn)) { CurrentMode = Mode.Offline; Hardcore = false; Infinite = PlayerPrefs.GetInt("save_infinite", 0) == 1; StartGame(true); }
         }
         y += 58f;
-        if (GUI.Button(new Rect(x, y, bw, bh), "Новая игра", btn)) { CurrentMode = Mode.Offline; Hardcore = false; PlayerPrefs.DeleteKey("save_exists"); PlayerPrefs.DeleteKey("save_builds"); StartGame(false); }
+        if (GUI.Button(new Rect(x, y, bw, bh), "Новая игра", btn)) inNewGame = true;
         y += 58f;
         bool tutDone = PlayerPrefs.GetInt("tutorial_done", 0) == 1;
         if (!tutDone) GUI.backgroundColor = new Color(0.3f, 0.72f, 0.36f); // highlight until completed
@@ -417,9 +422,52 @@ public class GameRoot : MonoBehaviour
         GUI.color = Color.white;
     }
 
+    // ---- New Game screen: pick the game type (normal / hardcore / endless) ----
+    void DrawNewGameMenu()
+    {
+        float cx = UI.W * 0.5f, cy = UI.H * 0.5f;
+        var title = new GUIStyle(GUI.skin.label) { fontSize = 44, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+        GUI.color = new Color(0.6f, 0.9f, 0.5f);
+        GUI.Label(new Rect(cx - 360f, cy - 230f, 720f, 64f), "НОВАЯ ИГРА", title);
+        GUI.color = Color.white;
+
+        var btn = new GUIStyle(GUI.skin.button) { fontSize = 22, fontStyle = FontStyle.Bold };
+        var lab = new GUIStyle(GUI.skin.label) { fontSize = 15, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = true };
+        float bw = 360f, bh = 56f, x = cx - bw * 0.5f, y = cy - 130f;
+
+        void StartType(bool hardcore, bool infinite)
+        {
+            CurrentMode = Mode.Offline; Hardcore = hardcore; Infinite = infinite;
+            PlayerPrefs.DeleteKey("save_exists"); PlayerPrefs.DeleteKey("save_builds");
+            inNewGame = false; StartGame(false);
+        }
+
+        if (GUI.Button(new Rect(x, y, bw, bh), "Обычный", btn)) StartType(false, false);
+        GUI.color = new Color(0.8f, 0.85f, 0.8f);
+        GUI.Label(new Rect(x, y + bh, bw, 22f), "стандартная оборона до эвакуации (волна 55)", lab);
+        GUI.color = Color.white;
+        y += bh + 36f;
+
+        if (GUI.Button(new Rect(x, y, bw, bh), "Хардкор", btn)) StartType(true, false);
+        GUI.color = new Color(0.8f, 0.85f, 0.8f);
+        GUI.Label(new Rect(x, y + bh, bw, 22f), "смерть = заново с 1-й волны, дороже постройки, патроны турелям", lab);
+        GUI.color = Color.white;
+        y += bh + 36f;
+
+        if (GUI.Button(new Rect(x, y, bw, bh), "Бесконечный", btn)) StartType(false, true);
+        GUI.color = new Color(0.8f, 0.85f, 0.8f);
+        GUI.Label(new Rect(x, y + bh, bw, 22f), "всё как в обычном, но финала нет — волны идут бесконечно", lab);
+        GUI.color = Color.white;
+        y += bh + 44f;
+
+        var small = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold };
+        if (GUI.Button(new Rect(x, y, bw, 40f), "Назад", small)) inNewGame = false;
+    }
+
     // ---- Modes screen: pick offline / online co-op / PvP, choose a map, host or join ----
     void DrawModesMenu()
     {
+        Infinite = false; // modes here (co-op/PvP/offline) are never the endless variant
         float cx = UI.W * 0.5f, cy = UI.H * 0.5f;
         var title = new GUIStyle(GUI.skin.label) { fontSize = 44, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         GUI.color = new Color(0.6f, 0.9f, 0.5f);

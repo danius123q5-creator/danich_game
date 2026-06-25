@@ -112,7 +112,7 @@ public class GameManager : MonoBehaviour
     void StartWave()
     {
         WaveNumber++;
-        if (WaveNumber >= EvacWave) { EndgameCinematic.Begin(); return; } // evacuation instead of a normal wave
+        if (WaveNumber >= EvacWave && !GameRoot.Infinite) { EndgameCinematic.Begin(); return; } // evac finale (skipped in endless mode)
         zombiesToSpawn = BaseZombies + WaveNumber * PerWave;
         IsPrep = false;
         nextBird = Time.time + BirdEvery();
