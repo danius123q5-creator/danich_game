@@ -74,24 +74,54 @@ public class OreMine : MonoBehaviour, IMetalSource
 
     void Build()
     {
-        Color rock = new Color(0.32f, 0.30f, 0.28f);
-        Color dark = new Color(0.20f, 0.19f, 0.18f);
-        Color ore = new Color(0.55f, 0.45f, 0.30f);
+        Color rock = new Color(0.30f, 0.29f, 0.27f);
+        Color dark = new Color(0.17f, 0.16f, 0.15f);
+        Color timber = new Color(0.40f, 0.28f, 0.16f);
+        Color steel = new Color(0.34f, 0.35f, 0.38f);
+        Color ore = new Color(0.58f, 0.47f, 0.30f);
 
-        Prim(PrimitiveType.Cylinder, transform, new Vector3(0f, 0.1f, 0f), new Vector3(7f, 0.1f, 7f), new Color(0.30f, 0.29f, 0.27f), false); // pad
-        Prim(PrimitiveType.Cube, transform, new Vector3(0f, 1.4f, -1.5f), new Vector3(4.5f, 2.8f, 2.5f), rock, false);   // mound
-        Prim(PrimitiveType.Cube, transform, new Vector3(0f, 0.9f, -0.3f), new Vector3(1.6f, 1.8f, 0.6f), dark, false);   // tunnel mouth
-        for (int i = 0; i < 4; i++) // headframe legs
-        {
-            float sx = (i & 1) == 0 ? 1f : -1f, sz = (i & 2) == 0 ? 1f : -1f;
-            var leg = Prim(PrimitiveType.Cube, transform, new Vector3(sx * 0.8f, 2.4f, 1.6f + sz * 0.5f), new Vector3(0.2f, 5f, 0.2f), dark, false);
-            leg.transform.localRotation = Quaternion.Euler(0f, 0f, -sx * 7f);
-        }
-        Prim(PrimitiveType.Cube, transform, new Vector3(0f, 4.7f, 1.6f), new Vector3(2.0f, 0.4f, 2.0f), dark, false);
-        drill = Prim(PrimitiveType.Cylinder, transform, new Vector3(0f, 4.7f, 1.6f), new Vector3(1.2f, 0.15f, 1.2f), new Color(0.5f, 0.5f, 0.55f), false, new Vector3(90f, 0f, 0f)).transform; // hoist wheel
-        var cart = Prim(PrimitiveType.Cube, transform, new Vector3(2.6f, 0.55f, 0f), new Vector3(1.8f, 1.0f, 1.4f), dark, true); // collectable cart (collider)
-        orePile = Prim(PrimitiveType.Cube, cart.transform, new Vector3(0f, 0.5f, 0f), new Vector3(0.85f, 0.1f, 0.85f), ore, false).transform;
-        statusOrb = Prim(PrimitiveType.Sphere, transform, new Vector3(0f, 5.4f, 1.6f), new Vector3(0.7f, 0.7f, 0.7f), Color.grey, false).transform;
+        Prim(PrimitiveType.Cylinder, transform, new Vector3(0f, 0.1f, 0f), new Vector3(8f, 0.1f, 8f), new Color(0.30f, 0.29f, 0.27f), false); // pad
+
+        // ── Rock face with a timber-framed tunnel entrance (at the back, -Z) ──
+        Prim(PrimitiveType.Cube, transform, new Vector3(0f, 1.8f, -2.2f), new Vector3(6.5f, 3.6f, 2.4f), rock, false);          // cliff
+        Prim(PrimitiveType.Cube, transform, new Vector3(-2.4f, 2.6f, -1.6f), new Vector3(1.6f, 1.4f, 1.4f), rock, false);       // boulder
+        Prim(PrimitiveType.Cube, transform, new Vector3(0f, 1.1f, -1.0f), new Vector3(2.0f, 2.2f, 0.8f), dark, false);          // tunnel mouth (dark)
+        Prim(PrimitiveType.Cube, transform, new Vector3(-1.2f, 1.2f, -0.9f), new Vector3(0.3f, 2.4f, 0.5f), timber, false);     // frame left
+        Prim(PrimitiveType.Cube, transform, new Vector3(1.2f, 1.2f, -0.9f), new Vector3(0.3f, 2.4f, 0.5f), timber, false);      // frame right
+        Prim(PrimitiveType.Cube, transform, new Vector3(0f, 2.4f, -0.9f), new Vector3(2.7f, 0.3f, 0.5f), timber, false);        // lintel
+
+        // ── A-frame HEADFRAME (mine shaft tower) over the pit, leaning to a peak with a hoist wheel ──
+        Vector3 peak = new Vector3(0f, 6.6f, 0.4f);
+        Beam(new Vector3(-1.3f, 0f, 1.6f), peak, 0.22f, steel);   // front-left leg
+        Beam(new Vector3(1.3f, 0f, 1.6f), peak, 0.22f, steel);    // front-right leg
+        Beam(new Vector3(-1.1f, 0f, -1.0f), peak, 0.22f, steel);  // back-left leg
+        Beam(new Vector3(1.1f, 0f, -1.0f), peak, 0.22f, steel);   // back-right leg
+        Beam(new Vector3(-1.3f, 3.2f, 1.6f), new Vector3(1.3f, 3.2f, 1.6f), 0.12f, dark); // front cross-brace
+        Beam(new Vector3(-1.2f, 2.0f, 0.3f), new Vector3(1.2f, 2.0f, 0.3f), 0.12f, dark); // mid cross-brace
+
+        // Big hoist wheel at the peak (kept as 'drill' — it spins).
+        drill = Prim(PrimitiveType.Cylinder, transform, peak + new Vector3(0f, 0.2f, 0f), new Vector3(1.9f, 0.18f, 1.9f), new Color(0.5f, 0.5f, 0.55f), false, new Vector3(90f, 0f, 0f)).transform;
+        Prim(PrimitiveType.Cylinder, transform, peak + new Vector3(0f, 0.2f, 0f), new Vector3(0.5f, 0.22f, 0.5f), dark, false, new Vector3(90f, 0f, 0f)); // hub
+        Prim(PrimitiveType.Cube, transform, new Vector3(0f, 1.2f, 0.4f), new Vector3(0.1f, 2.4f, 0.1f), dark, false);            // hoist cable down the shaft
+
+        // ── Ore chute → cart on rails ──
+        var chute = Prim(PrimitiveType.Cube, transform, new Vector3(1.6f, 1.4f, 1.4f), new Vector3(0.7f, 0.25f, 2.2f), timber, false);
+        chute.transform.localRotation = Quaternion.Euler(28f, -50f, 0f);
+        Prim(PrimitiveType.Cube, transform, new Vector3(2.9f, 0.18f, 0.0f), new Vector3(0.1f, 0.12f, 3.0f), steel, false);       // rail
+        Prim(PrimitiveType.Cube, transform, new Vector3(2.3f, 0.18f, 0.0f), new Vector3(0.1f, 0.12f, 3.0f), steel, false);       // rail
+        var cart = Prim(PrimitiveType.Cube, transform, new Vector3(2.6f, 0.55f, 0.8f), new Vector3(1.7f, 0.9f, 1.3f), dark, true); // collectable cart (collider)
+        orePile = Prim(PrimitiveType.Cube, cart.transform, new Vector3(0f, 0.55f, 0f), new Vector3(0.85f, 0.1f, 0.85f), ore, false).transform;
+
+        statusOrb = Prim(PrimitiveType.Sphere, transform, peak + new Vector3(0f, 0.9f, 0f), new Vector3(0.8f, 0.8f, 0.8f), Color.grey, false).transform; // beacon on the peak
+    }
+
+    // A beam (thin box) spanning two local points — for the headframe lattice.
+    void Beam(Vector3 a, Vector3 b, float thick, Color c)
+    {
+        Vector3 mid = (a + b) * 0.5f, d = b - a;
+        float len = d.magnitude;
+        var g = Prim(PrimitiveType.Cube, transform, mid, new Vector3(thick, len, thick), c, false);
+        if (len > 0.001f) g.transform.localRotation = Quaternion.FromToRotation(Vector3.up, d.normalized);
     }
 
     void Update()

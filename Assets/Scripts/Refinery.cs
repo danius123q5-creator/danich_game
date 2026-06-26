@@ -83,42 +83,69 @@ public class Refinery : MonoBehaviour, IOilSource
 
     void Build()
     {
-        Color steel = new Color(0.30f, 0.31f, 0.34f);
-        Color dark = new Color(0.18f, 0.19f, 0.21f);
+        Color steel = new Color(0.32f, 0.33f, 0.36f);
+        Color dark = new Color(0.17f, 0.18f, 0.20f);
+        Color rust = new Color(0.45f, 0.32f, 0.18f);
         Color oilCol = new Color(0.08f, 0.07f, 0.06f);
+        Color tankC = new Color(0.20f, 0.24f, 0.22f);
 
-        // Concrete pad
-        Prim(PrimitiveType.Cylinder, transform, new Vector3(0f, 0.1f, 0f), new Vector3(7f, 0.1f, 7f), new Color(0.34f, 0.34f, 0.33f), false);
+        Prim(PrimitiveType.Cylinder, transform, new Vector3(0f, 0.1f, 0f), new Vector3(8f, 0.1f, 8f), new Color(0.33f, 0.33f, 0.31f), false); // pad
 
-        // Derrick: 4 legs leaning to a point + a top block (a stylised oil rig).
-        for (int i = 0; i < 4; i++)
+        // ── Tall lattice DRILLING DERRICK (4 legs + X-braces, narrows to a crown) ──
+        float H = 13f, baseHalf = 1.5f, topHalf = 0.5f;
+        Vector3[] foot = {
+            new Vector3(-baseHalf, 0f, -baseHalf), new Vector3(baseHalf, 0f, -baseHalf),
+            new Vector3(baseHalf, 0f, baseHalf),   new Vector3(-baseHalf, 0f, baseHalf) };
+        Vector3[] top = {
+            new Vector3(-topHalf, H, -topHalf), new Vector3(topHalf, H, -topHalf),
+            new Vector3(topHalf, H, topHalf),   new Vector3(-topHalf, H, topHalf) };
+        for (int i = 0; i < 4; i++) Beam(foot[i], top[i], 0.18f, steel);                 // 4 legs
+        int rungs = 6;
+        for (int r = 1; r <= rungs; r++) // horizontal rings + X cross-braces on each face
         {
-            float sx = (i & 1) == 0 ? 1f : -1f;
-            float sz = (i & 2) == 0 ? 1f : -1f;
-            var leg = Prim(PrimitiveType.Cube, transform, new Vector3(sx * 0.9f, 2.6f, sz * 0.9f), new Vector3(0.22f, 5.6f, 0.22f), steel, false);
-            leg.transform.localRotation = Quaternion.Euler(sz * 9f, 0f, -sx * 9f);
+            float t0 = (r - 1) / (float)rungs, t1 = r / (float)rungs;
+            Vector3[] a = new Vector3[4], b = new Vector3[4];
+            for (int i = 0; i < 4; i++) { a[i] = Vector3.Lerp(foot[i], top[i], t0); b[i] = Vector3.Lerp(foot[i], top[i], t1); }
+            for (int i = 0; i < 4; i++)
+            {
+                int j = (i + 1) % 4;
+                Beam(b[i], b[j], 0.1f, dark);          // ring at this level
+                Beam(a[i], b[j], 0.08f, dark);          // diagonal /
+                Beam(a[j], b[i], 0.08f, dark);          // diagonal \  → X-brace
+            }
         }
-        Prim(PrimitiveType.Cube, transform, new Vector3(0f, 5.4f, 0f), new Vector3(0.9f, 0.5f, 0.9f), dark, false); // crown
+        Prim(PrimitiveType.Cube, transform, new Vector3(0f, H + 0.25f, 0f), new Vector3(1.3f, 0.5f, 1.3f), dark, false);       // crown block
+        Prim(PrimitiveType.Cube, transform, new Vector3(0f, 1.3f, 0f), new Vector3(2.6f, 0.3f, 2.6f), rust, false);            // drill floor
+        Prim(PrimitiveType.Cube, transform, new Vector3(2.1f, 1.0f, 1.6f), new Vector3(1.6f, 1.8f, 1.4f), rust, false);        // doghouse shed
 
-        // Nodding pumpjack arm on a pivot beside the derrick.
-        var pivot = new GameObject("Nodder");
-        pivot.transform.SetParent(transform, false);
-        pivot.transform.localPosition = new Vector3(2.4f, 1.6f, 0f);
-        nodder = pivot.transform;
-        Prim(PrimitiveType.Cube, nodder, new Vector3(0f, 0f, 0f), new Vector3(3.4f, 0.3f, 0.3f), steel, false);     // walking beam
-        Prim(PrimitiveType.Cube, nodder, new Vector3(1.7f, -0.1f, 0f), new Vector3(0.5f, 0.6f, 0.5f), dark, false); // horse head
-        Prim(PrimitiveType.Cube, transform, new Vector3(2.4f, 0.8f, 0f), new Vector3(0.7f, 1.6f, 0.7f), dark, false); // pump base
+        // ── Nodding pumpjack beside the derrick (kept as 'nodder') ──
+        Prim(PrimitiveType.Cube, transform, new Vector3(3.6f, 0.9f, 0f), new Vector3(0.8f, 1.8f, 0.8f), dark, false);          // sampson post
+        var pivot = new GameObject("Nodder"); pivot.transform.SetParent(transform, false);
+        pivot.transform.localPosition = new Vector3(3.6f, 1.9f, 0f); nodder = pivot.transform;
+        Prim(PrimitiveType.Cube, nodder, new Vector3(0f, 0f, 0f), new Vector3(3.6f, 0.3f, 0.3f), steel, false);                // walking beam
+        Prim(PrimitiveType.Cube, nodder, new Vector3(1.8f, -0.25f, 0f), new Vector3(0.55f, 0.8f, 0.6f), rust, false);          // horse head
+        Prim(PrimitiveType.Cylinder, nodder, new Vector3(-1.7f, -0.05f, 0f), new Vector3(0.9f, 0.3f, 0.9f), dark, false, new Vector3(90f, 0f, 0f)); // counterweight
 
-        // Pipe running out to the barrel, then a barrel that fills with oil.
-        Prim(PrimitiveType.Cube, transform, new Vector3(-1.4f, 0.5f, 0f), new Vector3(0.25f, 0.25f, 4f), steel, false);
-        Prim(PrimitiveType.Cube, transform, new Vector3(-3.2f, 0.9f, 1.9f), new Vector3(0.25f, 1.0f, 0.25f), steel, false); // down-spout
+        // ── Storage tanks ──
+        Prim(PrimitiveType.Cylinder, transform, new Vector3(-3.4f, 1.0f, -1.6f), new Vector3(2.0f, 1.0f, 2.0f), tankC, false);
+        Prim(PrimitiveType.Cylinder, transform, new Vector3(-3.4f, 1.0f, 1.4f), new Vector3(1.6f, 1.0f, 1.6f), tankC, false);
 
-        var bar = Prim(PrimitiveType.Cylinder, transform, new Vector3(-3.2f, 0.7f, 2.6f), new Vector3(1.5f, 0.7f, 1.5f), new Color(0.5f, 0.4f, 0.15f), true); // collectable barrel (has collider)
+        // ── Pipe → collectable barrel (E to draw oil) + fill indicator ──
+        Prim(PrimitiveType.Cube, transform, new Vector3(-1.6f, 0.5f, 3.0f), new Vector3(0.25f, 0.25f, 3.2f), steel, false);
+        var bar = Prim(PrimitiveType.Cylinder, transform, new Vector3(-3.3f, 0.7f, 3.0f), new Vector3(1.5f, 0.7f, 1.5f), rust, true); // collider
         barrel = bar.transform;
-        oilFill = Prim(PrimitiveType.Cylinder, barrel, new Vector3(0f, 0f, 0f), new Vector3(0.8f, 0.01f, 0.8f), oilCol, false).transform; // inner oil level
+        oilFill = Prim(PrimitiveType.Cylinder, barrel, new Vector3(0f, 0f, 0f), new Vector3(0.8f, 0.01f, 0.8f), oilCol, false).transform;
 
-        // Status orb on top of the derrick (neutral grey → green held → orange contested).
-        statusOrb = Prim(PrimitiveType.Sphere, transform, new Vector3(0f, 6.0f, 0f), new Vector3(0.7f, 0.7f, 0.7f), Color.grey, false).transform;
+        statusOrb = Prim(PrimitiveType.Sphere, transform, new Vector3(0f, H + 0.7f, 0f), new Vector3(0.8f, 0.8f, 0.8f), Color.grey, false).transform; // beacon on the crown
+    }
+
+    // A beam (thin box) spanning two local points — used to build the lattice derrick.
+    void Beam(Vector3 a, Vector3 b, float thick, Color c)
+    {
+        Vector3 mid = (a + b) * 0.5f, d = b - a;
+        float len = d.magnitude;
+        var g = Prim(PrimitiveType.Cube, transform, mid, new Vector3(thick, len, thick), c, false);
+        if (len > 0.001f) g.transform.localRotation = Quaternion.FromToRotation(Vector3.up, d.normalized);
     }
 
     void Update()
