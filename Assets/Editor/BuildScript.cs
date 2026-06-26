@@ -67,5 +67,24 @@ public static class BuildScript
 
         if (summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
             EditorApplication.Exit(1);
+
+        // Post-build: make the canvas fill the page (Yandex/itch embed it full-window). The
+        // default template centres a small fixed canvas — this stretches it and hides the footer.
+        string idx = "Build/WebGL/index.html";
+        if (System.IO.File.Exists(idx))
+        {
+            string html = System.IO.File.ReadAllText(idx);
+            const string css =
+                "<style>html,body{margin:0;padding:0;height:100%;background:#0d1320;overflow:hidden}" +
+                "#unity-container{position:absolute;left:0;top:0;width:100%;height:100%}" +
+                "#unity-canvas{width:100%!important;height:100%!important;display:block}" +
+                "#unity-footer{display:none!important}</style>";
+            if (html.Contains("</head>") && !html.Contains("unity-canvas{width:100%"))
+            {
+                html = html.Replace("</head>", css + "\n</head>");
+                System.IO.File.WriteAllText(idx, html);
+                Debug.Log("WebGL: injected responsive canvas CSS into index.html");
+            }
+        }
     }
 }
