@@ -442,12 +442,12 @@ public class GameRoot : MonoBehaviour
         float cx = UI.W * 0.5f, cy = UI.H * 0.5f;
         var title = new GUIStyle(GUI.skin.label) { fontSize = 44, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         GUI.color = new Color(0.6f, 0.9f, 0.5f);
-        GUI.Label(new Rect(cx - 360f, cy - 300f, 720f, 64f), "НОВАЯ ИГРА", title);
+        GUI.Label(new Rect(cx - 360f, cy - 360f, 720f, 64f), "НОВАЯ ИГРА", title);
         GUI.color = Color.white;
 
         var btn = new GUIStyle(GUI.skin.button) { fontSize = 22, fontStyle = FontStyle.Bold };
         var lab = new GUIStyle(GUI.skin.label) { fontSize = 13, fontStyle = FontStyle.Bold, alignment = TextAnchor.UpperCenter, wordWrap = true };
-        float bw = 440f, bh = 50f, capH = 34f, gap = 14f, x = cx - bw * 0.5f, y = cy - 185f;
+        float bw = 440f, bh = 50f, capH = 40f, gap = 14f, x = cx - bw * 0.5f, y = cy - 250f;
 
         void StartType(bool hardcore, bool infinite)
         {

@@ -18,7 +18,7 @@ public class PlayerController : MonoBehaviour
     // each wave (+30/wave) so late-game super-weapons stay affordable.
     // 2.2 economy: you keep a big metal stockpile (base 2000, +2500 per captured point),
     // so the cap is high enough to hold it. Hardcore is a bit tighter.
-    public static int MetalMax => 1400;
+    public static int MetalMax => 600;
     public const int CaptureMetalBonus = 677; // metal granted when you capture a refinery/mine
     const int ReserveLoadChunk = 100; // metal loaded into a special weapon's reserve per E press
     const int OilFundChunk = 50;      // oil poured into a super-weapon's funding per E press
@@ -308,10 +308,16 @@ public class PlayerController : MonoBehaviour
     }
 
 
+    // WebGL pointer-lock reports much larger mouse deltas than standalone, so the camera spins
+    // wildly. Scale it down in the browser to match the Unity/desktop feel.
+    static readonly bool IsWebGL = Application.platform == RuntimePlatform.WebGLPlayer;
+    const float WebMouseScale = 0.18f;
+
     void Look()
     {
-        float mx = Input.GetAxis("Mouse X") * MouseSensitivity;
-        float my = Input.GetAxis("Mouse Y") * MouseSensitivity;
+        float sens = MouseSensitivity * (IsWebGL ? WebMouseScale : 1f);
+        float mx = Input.GetAxis("Mouse X") * sens;
+        float my = Input.GetAxis("Mouse Y") * sens;
         transform.Rotate(0f, mx, 0f);
         pitch = Mathf.Clamp(pitch - my, -85f, 85f);
         cam.transform.localEulerAngles = new Vector3(pitch, 0f, 0f);
