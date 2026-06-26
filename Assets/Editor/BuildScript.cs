@@ -44,8 +44,11 @@ public static class BuildScript
         if (scenes.Length == 0)
             scenes = new[] { "Assets/Scenes/SampleScene.unity" };
 
-        // Browser-friendly settings: gzip compression + smaller heap, no exceptions overhead.
+        // Browser-friendly settings. CRITICAL for Yandex Games / itch.io: decompressionFallback
+        // = true, so the gzip build self-decompresses in JS even when the host doesn't send the
+        // Content-Encoding header. Without it the loader can't unpack the wasm → "не запускается".
         PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
+        PlayerSettings.WebGL.decompressionFallback = true;
         PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.None;
         PlayerSettings.WebGL.dataCaching = true;
         PlayerSettings.runInBackground = true;
