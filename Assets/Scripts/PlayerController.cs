@@ -125,7 +125,7 @@ public class PlayerController : MonoBehaviour
         "Орбитальная станция: блок управления, работает на НЕФТИ — залей нефть с НПЗ (E), металл не нужен. Когда готов — в небе появляется станция и циклит 3 атаки: точные лазеры со взрывом, выжигающий луч (ползёт от зомби к зомби) и тройная призма (3 луча крутятся вокруг базы). Тратит металл из своего бака — заряжай E.",
         "Смотровая башня (20 м): залезь по лестнице через люк на площадку наверху — отличная точка для стрельбы, зомби туда не достанут.",
         "Лезвия: крутящийся ротор рубит всех зомби рядом несколько раз в секунду. Работает как турель — сама, без зарядки и расхода металла. Дорогая в постройке.",
-        "Ракетная шахта: мощная «супер»-турель — работает САМА, без нефти и металла. Бьёт по толпам (3+ зомби) в радиусе ~50-70 м: ракета взлетает, переворачивается и падает на цель, а ЖИРНЫЙ сплеш сносит всех вокруг (10-16) и оставляет кратер. Ракеты не бьют в одного зомби дважды. Дорогая в постройке.",
+        "Ракетная шахта: мощная «супер»-турель — работает САМА, без нефти и металла. Бьёт по толпам (3+ зомби) в радиусе ~50-70 м: ракета взлетает, переворачивается и падает на цель, а ЖИРНЫЙ сплеш сносит всех вокруг (10-16). Ракеты не бьют в одного зомби дважды. Дорогая в постройке.",
         "Платформа: огромная площадка на 4 толстых столбах. Залезь по лестнице наверх — целый этаж под турели и линию обороны, зомби туда не достанут.",
         "Труба нефти: зажми ЛКМ у захваченного НПЗ и веди к базе — отпустишь, и труба ляжет цепочкой (15 мет./звено). Тянет нефть к дозатору. Зомби её ломают — защищай.",
         "Дозатор нефти: качает нефть из подключённого НПЗ (через трубы) и сам выдаёт её тебе, когда стоишь рядом. Поставь у базы — нефть течёт без беготни.",
@@ -294,6 +294,7 @@ public class PlayerController : MonoBehaviour
                 }
                 else if (Input.GetMouseButtonDown(0)) BuildPrimary();
                 if (Input.GetMouseButtonDown(1)) SellBuild();
+                if (Input.GetKeyDown(KeyCode.X)) DeleteByClass(); // снести весь класс постройки, на которую смотришь
                 break;
             case Tool.Wrench:
                 if (Input.GetMouseButton(0)) Swing();
@@ -534,7 +535,11 @@ public class PlayerController : MonoBehaviour
     Vector3 dragStart;
     public const float DragSegment = 3f; // pipe/conveyor segment length (metres)
 
-    static bool IsDragBuild(int type) => type == 27 || type == 30; // oil pipe / conveyor — laid as a line
+    // Drag-built (hold LMB, drag a line, release): oil pipe / conveyor, and now WALLS too.
+    static bool IsDragBuild(int type) => type == 27 || type == 30 || IsWallDrag(type);
+    static bool IsWallDrag(int type) => type == 3 || type == 16 || type == 17; // СТЕНА / ДЛ.СТЕНА / ВЫС.СТЕНА
+    // Spacing between laid segments: walls abut edge-to-edge (their width); pipes use the pipe length.
+    static float DragStep(int type) => type == 16 ? 4.4f : IsWallDrag(type) ? 2.2f : DragSegment;
 
     void BeginDragBuild()
     {
@@ -558,7 +563,8 @@ public class PlayerController : MonoBehaviour
         if (len < 1f) { Vector3 p0 = new Vector3(a.x, GameBootstrap.Hill(a.x, a.z), a.z); PlaceOne(type, p0, 0f, cost); return; }
         Vector3 dir = d / len;
         float yaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg; // pipe axis is +Z
-        int count = Mathf.Max(1, Mathf.RoundToInt(len / DragSegment));
+        if (IsWallDrag(type)) yaw += 90f;                       // walls: their width runs along the path
+        int count = Mathf.Max(1, Mathf.RoundToInt(len / DragStep(type)));
         float step = len / count;
         for (int i = 0; i <= count; i++)
         {
@@ -586,11 +592,51 @@ public class PlayerController : MonoBehaviour
             var b = hit.collider.GetComponentInParent<Buildable>();
             if (b != null)
             {
+                // Never let the base's critical dispenser be sold — that would instantly lose the run.
+                if (b is Dispenser d && d.Critical)
+                {
+                    Toast("Раздатчик — это ваша БАЗА, снести нельзя!");
+                    Effects.Burst(b.transform.position + Vector3.up * 1.5f, new Color(1f, 0.3f, 0.2f), 6);
+                    return;
+                }
                 AddMetal(b.BuildCost);
                 if (NetClient) LanManager.Instance.SendBuildAction(b.NetId, 4, 0);
                 else Destroy(b.gameObject);
             }
         }
+    }
+
+    // ---- transient on-screen toast (feedback for sell/delete actions) ----
+    string toast = ""; float toastUntil;
+    void Toast(string s) { toast = s; toastUntil = Time.time + 2.5f; }
+
+    /// <summary>Delete ALL placed buildings of the same type as the one you're aiming at (a bulk
+    /// "clear this class" tool). Refunds each like a sell. The critical dispenser is never touched.</summary>
+    void DeleteByClass()
+    {
+        if (!RaycastNoSelf(8f, out RaycastHit hit)) { Toast("наведись на постройку, чтобы снести весь её класс"); return; }
+        var aim = hit.collider.GetComponentInParent<Buildable>();
+        if (aim == null) return;
+        int type = aim.Type;
+        string name = (type >= 0 && type < BuildNames.Length) ? BuildNames[type] : "?";
+
+        int removed = 0, refund = 0;
+        var doomed = new System.Collections.Generic.List<Buildable>();
+        foreach (var b in Buildable.All)
+        {
+            if (b == null || b.Type != type) continue;
+            if (b is Dispenser d && d.Critical) continue; // never the base lifeline
+            doomed.Add(b);
+        }
+        foreach (var b in doomed)
+        {
+            refund += b.BuildCost;
+            if (NetClient) LanManager.Instance.SendBuildAction(b.NetId, 4, 0);
+            else Destroy(b.gameObject);
+            removed++;
+        }
+        if (removed > 0) { AddMetal(refund); Toast($"Снесено «{name}»: {removed} шт. (возврат {refund} мет.)"); }
+        else Toast($"«{name}» — нечего сносить");
     }
 
     void Interact()
@@ -769,7 +815,8 @@ public class PlayerController : MonoBehaviour
         float len = d.magnitude;
         Vector3 dir = len > 0.01f ? d / len : Vector3.forward;
         float yaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
-        int count = len < 1f ? 0 : Mathf.Max(1, Mathf.RoundToInt(len / DragSegment));
+        if (IsWallDrag(SelectedBuild)) yaw += 90f;
+        int count = len < 1f ? 0 : Mathf.Max(1, Mathf.RoundToInt(len / DragStep(SelectedBuild)));
         float step = count > 0 ? len / count : 0f;
         int need = count + 1;
 
@@ -1133,8 +1180,10 @@ public class PlayerController : MonoBehaviour
         // Bottom-center tool line (smaller font + centred so the longer RU text fits)
         string toolLine;
         if (tool == Tool.Gun) toolLine = $"[1] ПУШКА {Guns[gunTier].name}   патроны {ammo}/{Guns[gunTier].mag}";
-        else if (tool == Tool.Build && IsDragBuild(SelectedBuild)) toolLine = $"[2] {BuildNames[SelectedBuild]} ({BCost(SelectedBuild)}/звено)   зажми ЛКМ у источника, веди к базе, отпусти   ПКМ=продать  Q=меню";
-        else if (tool == Tool.Build) toolLine = $"[2] СТРОЙКА {BuildNames[SelectedBuild]} ({BCost(SelectedBuild)})   ЛКМ=ставить/чинить  E=улучшить  ПКМ=продать  Q=меню";
+        else if (tool == Tool.Build && IsDragBuild(SelectedBuild)) toolLine = IsWallDrag(SelectedBuild)
+            ? $"[2] {BuildNames[SelectedBuild]} ({BCost(SelectedBuild)}/звено)   зажми ЛКМ и веди линию, отпусти — стена цепочкой   ПКМ=продать  X=снести класс  Q=меню"
+            : $"[2] {BuildNames[SelectedBuild]} ({BCost(SelectedBuild)}/звено)   зажми ЛКМ у источника, веди к базе, отпусти   ПКМ=продать  Q=меню";
+        else if (tool == Tool.Build) toolLine = $"[2] СТРОЙКА {BuildNames[SelectedBuild]} ({BCost(SelectedBuild)})   ЛКМ=ставить  E=улучшить  ПКМ=продать  X=снести класс  Q=меню";
         else if (tool == Tool.Wrench) toolLine = "[3] КЛЮЧ — ближний бой + починка";
         else toolLine = "[4] ЛОПАТА — зажми ЛКМ чтобы копать";
         float bonusRem = nextBonus - Time.time;
@@ -1205,6 +1254,15 @@ public class PlayerController : MonoBehaviour
             Panel(new Rect(cx - 320f, UI.H - 96f, 640f, 40f));
             GUI.color = new Color(0.7f, 0.95f, 1f);
             GUI.Label(new Rect(cx - 320f, UI.H - 92f, 640f, 32f), "WASD — ехать       F — выйти", Line24);
+            GUI.color = Color.white;
+        }
+
+        // Transient toast (sell/delete feedback)
+        if (Time.time < toastUntil && !string.IsNullOrEmpty(toast))
+        {
+            Panel(new Rect(cx - 340f, UI.H - 150f, 680f, 38f));
+            GUI.color = new Color(1f, 0.92f, 0.7f);
+            GUI.Label(new Rect(cx - 340f, UI.H - 146f, 680f, 30f), toast, Line24);
             GUI.color = Color.white;
         }
 

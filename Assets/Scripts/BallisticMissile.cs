@@ -102,36 +102,10 @@ public class BallisticMissile : MonoBehaviour
             if (z != null && (z.transform.position - transform.position).sqrMagnitude < rSq)
                 z.TakeDamage(99999f); // everything in the blast dies
 
-        // Leave a scorched crater in the ground at the impact point.
-        float gy = GameBootstrap.Hill(transform.position.x, transform.position.z);
-        SpawnCrater(new Vector3(transform.position.x, gy, transform.position.z), blastR);
-
         Release();
         Destroy(gameObject);
     }
 
     void OnDestroy() { Release(); }
     void Release() { if (targetZombie != null) { Reserved.Remove(targetZombie); targetZombie = null; } }
-
-    /// <summary>A dark, sunken scorch disc left where a missile hit. Marks the landscape as changed
-    /// (the save format records whether the terrain was altered).</summary>
-    static void SpawnCrater(Vector3 at, float blastR)
-    {
-        float r = Mathf.Clamp(blastR * 0.85f, 3f, 14f);
-        var pit = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        Object.Destroy(pit.GetComponent<Collider>());
-        if (GameBootstrap.World != null) pit.transform.SetParent(GameBootstrap.World);
-        pit.transform.position = at + Vector3.up * 0.06f;             // sit just on the ground
-        pit.transform.localScale = new Vector3(r, 0.2f, r);          // flat disc
-        GameBootstrap.SetColor(pit, new Color(0.11f, 0.09f, 0.08f)); // burnt earth
-
-        var rim = GameObject.CreatePrimitive(PrimitiveType.Cylinder); // charred rim
-        Object.Destroy(rim.GetComponent<Collider>());
-        if (GameBootstrap.World != null) rim.transform.SetParent(GameBootstrap.World);
-        rim.transform.position = at + Vector3.up * 0.04f;
-        rim.transform.localScale = new Vector3(r * 1.35f, 0.12f, r * 1.35f);
-        GameBootstrap.SetColor(rim, new Color(0.18f, 0.15f, 0.12f));
-
-        GameManager.LandscapeChanged = true; // terrain no longer pristine (for the save file)
-    }
 }
