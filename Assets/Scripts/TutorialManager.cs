@@ -167,18 +167,18 @@ public class TutorialManager : MonoBehaviour
     // ---- hints ----
     static readonly string[] Hints =
     {
-        "Добро пожаловать! Быстрое обучение: основы управления, базы и экономики.",
-        "WASD — идти, мышь — крутить камеру. Пройди немного вперёд.",
-        "Зажми Q, выбери РАЗДАТЧИК (подсвечен) и поставь его ЛКМ. Это сердце базы — если его уничтожат, игра окончена. Защищай его!",
-        "Встань вплотную к раздатчику: он лечит, даёт металл и пополняет патроны.",
-        "Впереди стоит НПЗ. Подойди и постой рядом с ним, чтобы ЗАХВАТИТЬ (зомби рядом мешают захвату).",
-        "Захвачено! НПЗ даёт НЕФТЬ — на ней работают супер-пушки (Тесла, Орбиталка). ШАХТЫ дают металл. Точки захватывай и ОБОРОНЯЙ — или построй свои НЕФТ. ВЫШКУ / БУРОВУЮ (захват не нужен). Труба/конвейер тянутся линией (зажми ЛКМ у источника, веди к базе), дозатор/чан у базы сами выдают ресурс. Чем больше источников на сети — тем больше потока.",
-        "Построй СТЕНУ (подсвечена) — она задержит зомби.",
-        "Построй ТУРЕЛЬ (подсвечена) — она стреляет по зомби сама.",
-        "Построй ВЕРТ. ЛЕСТНИЦУ (подсвечена) и заберись наверх: встань вплотную и держи W.",
-        "Между волнами идёт ПОДГОТОВКА. Нажми J, чтобы начать волну раньше за бонус металла.",
-        "Защити базу! Уничтожь всех зомби — турель и твоя пушка помогут.",
-        "Готово! Ты освоил основы и экономику. Обучение завершено — удачи в обороне!",
+        Lang.T("Добро пожаловать! Быстрое обучение: основы управления, базы и экономики.", "Welcome! A quick tutorial: the basics of controls, your base and the economy."),
+        Lang.T("WASD — идти, мышь — крутить камеру. Пройди немного вперёд.", "WASD to move, mouse to look around. Walk forward a little."),
+        Lang.T("Зажми Q, выбери РАЗДАТЧИК (подсвечен) и поставь его ЛКМ. Это сердце базы — если его уничтожат, игра окончена. Защищай его!", "Hold Q, pick the DISPENSER (highlighted) and place it with LMB. It's the heart of your base — if it's destroyed, the game is over. Defend it!"),
+        Lang.T("Встань вплотную к раздатчику: он лечит, даёт металл и пополняет патроны.", "Stand right next to the dispenser: it heals you, gives metal and refills ammo."),
+        Lang.T("Впереди стоит НПЗ. Подойди и постой рядом с ним, чтобы ЗАХВАТИТЬ (зомби рядом мешают захвату).", "There's an OIL REFINERY ahead. Walk up and stand next to it to CAPTURE it (nearby zombies block the capture)."),
+        Lang.T("Захвачено! НПЗ даёт НЕФТЬ — на ней работают супер-пушки (Тесла, Орбиталка). ШАХТЫ дают металл. Точки захватывай и ОБОРОНЯЙ — или построй свои НЕФТ. ВЫШКУ / БУРОВУЮ (захват не нужен). Труба/конвейер тянутся линией (зажми ЛКМ у источника, веди к базе), дозатор/чан у базы сами выдают ресурс. Чем больше источников на сети — тем больше потока.", "Captured! A refinery yields OIL — it powers super-weapons (Tesla, Orbital Strike). MINES yield metal. Capture points and DEFEND them — or build your own OIL DERRICK / DRILL RIG (no capture needed). Pipes/conveyors run in a line (hold LMB at the source, drag to the base); the dispenser/vat at the base output the resource. The more sources on the network — the more flow."),
+        Lang.T("Построй СТЕНУ (подсвечена) — она задержит зомби.", "Build a WALL (highlighted) — it holds the zombies back."),
+        Lang.T("Построй ТУРЕЛЬ (подсвечена) — она стреляет по зомби сама.", "Build a TURRET (highlighted) — it fires at zombies on its own."),
+        Lang.T("Построй ВЕРТ. ЛЕСТНИЦУ (подсвечена) и заберись наверх: встань вплотную и держи W.", "Build a VERT. LADDER (highlighted) and climb up: stand right against it and hold W."),
+        Lang.T("Между волнами идёт ПОДГОТОВКА. Нажми J, чтобы начать волну раньше за бонус металла.", "Between waves there's a PREP phase. Press J to start the wave early for a metal bonus."),
+        Lang.T("Защити базу! Уничтожь всех зомби — турель и твоя пушка помогут.", "Defend the base! Destroy every zombie — your turret and your gun will help."),
+        Lang.T("Готово! Ты освоил основы и экономику. Обучение завершено — удачи в обороне!", "Done! You've learned the basics and the economy. Tutorial complete — good luck defending!"),
     };
 
     static GUIStyle _head, _body, _btn;
@@ -199,19 +199,19 @@ public class TutorialManager : MonoBehaviour
 
         int s = Mathf.Clamp(step, 0, Hints.Length - 1);
         GUI.color = new Color(0.6f, 0.95f, 0.6f);
-        GUI.Label(new Rect(cx - 510f, 66f, 1020f, 26f), done ? "ОБУЧЕНИЕ ЗАВЕРШЕНО" : $"ОБУЧЕНИЕ — шаг {Mathf.Min(step + 1, TotalSteps)}/{TotalSteps}", _head);
+        GUI.Label(new Rect(cx - 510f, 66f, 1020f, 26f), done ? Lang.T("ОБУЧЕНИЕ ЗАВЕРШЕНО", "TUTORIAL COMPLETE") : Lang.T($"ОБУЧЕНИЕ — шаг {Mathf.Min(step + 1, TotalSteps)}/{TotalSteps}", $"TUTORIAL — step {Mathf.Min(step + 1, TotalSteps)}/{TotalSteps}"), _head);
         GUI.color = new Color(1f, 0.97f, 0.8f);
         GUI.Label(new Rect(cx - 500f, 94f, 1000f, 92f), Hints[s], _body);
         GUI.color = Color.white;
 
         if (done)
         {
-            if (GUI.Button(new Rect(cx - 110f, 200f, 220f, 38f), "В меню", _btn))
+            if (GUI.Button(new Rect(cx - 110f, 200f, 220f, 38f), Lang.T("В меню", "Menu"), _btn))
                 { if (GameRoot.Instance != null) GameRoot.Instance.ExitToMenu(); }
         }
         else
         {
-            if (GUI.Button(new Rect(cx + 380f, 200f, 140f, 32f), "Пропустить ▶", _btn)) Advance();
+            if (GUI.Button(new Rect(cx + 380f, 200f, 140f, 32f), Lang.T("Пропустить ▶", "Skip ▶"), _btn)) Advance();
         }
     }
 }

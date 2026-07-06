@@ -305,7 +305,7 @@ public class Buildable : MonoBehaviour
                 int paid = FundingPaid + OilPaid, need = Mathf.Max(1, FundingRequired + OilRequired);
                 int pct = Mathf.RoundToInt(100f * paid / need);
                 bool oilStage = FundingPaid >= FundingRequired && OilPaid < OilRequired;
-                label.text = oilStage ? $"НЕФТЬ {pct}%" : $"FUNDING {pct}%";
+                label.text = oilStage ? Lang.T($"НЕФТЬ {pct}%", $"OIL {pct}%") : $"FUNDING {pct}%";
                 label.color = oilStage ? new Color(1f, 0.8f, 0.3f) : new Color(0.4f, 0.8f, 1f);
             }
             else

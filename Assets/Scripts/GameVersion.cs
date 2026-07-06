@@ -13,10 +13,10 @@
 /// against the latest release on GitHub.</summary>
 public static class GameVersion
 {
-    public const string Current = "2.4";
+    public const string Current = "2.5";
 
     /// <summary>Codename for this release (shown in credits/notes).</summary>
-    public const string Codename = "Обновление Дружественного Огня и Воздушных Катастроф";
+    public static string Codename => Lang.T("Английское Обновление", "English Update");
 
     /// <summary>Copyright line shown in menus/credits.</summary>
     public const string Copyright = "Copyright (C) 2026 Danich. All Rights Reserved";

@@ -168,15 +168,16 @@ public class ZvZManager : MonoBehaviour
         UI.Begin();
         float cx = UI.W * 0.5f;
 
-        DrawCoreBar(20f, "ТВОЁ ЯДРО", cores[myTeam], new Color(0.35f, 0.65f, 1f));
-        DrawCoreBar(UI.W - 360f, "ВРАЖЕСКОЕ ЯДРО", cores[1 - myTeam], new Color(1f, 0.45f, 0.35f));
+        DrawCoreBar(20f, Lang.T("ТВОЁ ЯДРО", "YOUR CORE"), cores[myTeam], new Color(0.35f, 0.65f, 1f));
+        DrawCoreBar(UI.W - 360f, Lang.T("ВРАЖЕСКОЕ ЯДРО", "ENEMY CORE"), cores[1 - myTeam], new Color(1f, 0.45f, 0.35f));
 
         var s = new GUIStyle(GUI.skin.label) { fontSize = 16, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = true };
         var box = new Rect(cx - 470f, UI.H - 150f, 940f, 50f);
         GUI.color = new Color(0f, 0f, 0f, 0.55f);
         GUI.DrawTexture(box, Texture2D.whiteTexture);
         GUI.color = new Color(0.75f, 1f, 0.75f);
-        GUI.Label(box, $"G — выпустить зомби ({SpawnCost} мет.)    •    снеси вражеское ядро    •    Q — стройка/защита", s);
+        GUI.Label(box, Lang.T($"G — выпустить зомби ({SpawnCost} мет.)    •    снеси вражеское ядро    •    Q — стройка/защита",
+                              $"G — release a zombie ({SpawnCost} metal)    •    destroy the enemy core    •    Q — build/defend"), s);
         GUI.color = Color.white;
 
         if (over)
@@ -187,10 +188,10 @@ public class ZvZManager : MonoBehaviour
             GUI.color = Color.white;
             var big = new GUIStyle(GUI.skin.label) { fontSize = 64, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             GUI.color = iWon ? new Color(0.5f, 1f, 0.5f) : new Color(1f, 0.5f, 0.5f);
-            GUI.Label(new Rect(0, UI.H * 0.38f, UI.W, 90f), iWon ? "ПОБЕДА!" : "ПОРАЖЕНИЕ", big);
+            GUI.Label(new Rect(0, UI.H * 0.38f, UI.W, 90f), iWon ? Lang.T("ПОБЕДА!", "VICTORY!") : Lang.T("ПОРАЖЕНИЕ", "DEFEAT"), big);
             GUI.color = Color.white;
             var btn = new GUIStyle(GUI.skin.button) { fontSize = 20, fontStyle = FontStyle.Bold };
-            if (GUI.Button(new Rect(cx - 110f, UI.H * 0.38f + 110f, 220f, 44f), "В меню", btn))
+            if (GUI.Button(new Rect(cx - 110f, UI.H * 0.38f + 110f, 220f, 44f), Lang.T("В меню", "To menu"), btn))
                 { if (GameRoot.Instance != null) GameRoot.Instance.ExitToMenu(); }
         }
     }

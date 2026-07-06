@@ -94,6 +94,7 @@ public class PlayerController : MonoBehaviour
     GameObject gunMuzzle;  // barrel tip — glows red-hot when firing
 
     static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ", "СМОТР. БАШНЯ", "ЛЕЗВИЯ", "РАКЕТ. ШАХТА", "ПЛАТФОРМА", "ТРУБА НЕФТИ", "ДОЗАТОР НЕФТИ", "НЕФТ. ВЫШКА", "КОНВЕЙЕР", "ЧАН РУДЫ", "БУРОВАЯ", "НЕФТ. КАРМАН", "ОГНЕМЁТ", "НЕФТ. ХАБ", "РЗК" };
+    static readonly string[] BuildNamesEN = { "TURRET", "DISPENSER", "TRIPWIRE", "WALL", "DOOR", "BRIDGE", "STAIRS", "LANDMINE", "BARBED WIRE", "AIR STRIKE", "TESLA", "ARTILLERY", "BRIDGE-CORNER", "BRIDGE-T", "BRIDGE-CROSS", "AA GUN", "LONG WALL", "TALL WALL", "CAR", "RPG", "VERT. LADDER", "FREEZE GUN", "ORB. STATION", "WATCHTOWER", "BLADES", "MISSILE SILO", "PLATFORM", "OIL PIPE", "OIL DOSER", "OIL DERRICK", "CONVEYOR", "ORE VAT", "DRILL", "OIL POCKET", "FLAMETHROWER", "OIL HUB", "SAM" };
     static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 8, 10, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200, 90, 450, 550, 220, 15, 150, 870, 15, 200, 820, 200, 220, 180, 250 };
 
     // Short "what it is / how it works" blurb per build type — shown in the Q menu on hover.
@@ -138,8 +139,58 @@ public class PlayerController : MonoBehaviour
         "РЗК: дальнобойная зенитно-ракетная установка на 4 тубуса. Даёт ЗАЛП 4 самонаводящихся ракет по птицам-десантникам — каждая гарантированно сбивает (ЗЕНИТКА бьёт лишь с шансом и вблизи). С 24 волны сбивает вражеские бомбардировщики. ОСТОРОЖНО: с шансом 2% может по ошибке сбить ТВОЙ же самолёт-авиаудар — а его падение сносит ВСЁ в огромном радиусе. Улучшай (E) — дальность и скорострельность.",
     };
 
+    // English translations of BuildDescriptions, in the SAME order (used when Lang.EN).
+    static readonly string[] BuildDescriptionsEN =
+    {
+        "Auto-turret: fires at zombies within range on its own. From lvl 2 it launches area rockets. Upgrade (E) — more range/damage.",
+        "Dispenser: heals and gives metal to those standing nearby. Higher level — bigger radius and output.",
+        "Tripwire: triggers on the wire, area explosion. 2 charges. Zombies don't attack it.",
+        "Wall: blocks zombies. Repair with the wrench or builder. Upgrade for durability.",
+        "Door: closed it's a wall, press E to open/close the passage. Tougher with each level.",
+        "Bridge: a walkway to cross. Span rivers and pits.",
+        "Stairs/ramp: drive or climb up.",
+        "Landmine: lies on the ground, a zombie steps on it — explosion. Zombies don't attack it.",
+        "Barbed wire: heavily slows zombies walking through it.",
+        "Air strike (super-weapon): runs on OIL — pour in oil from a refinery (E), then it calls strikes on the crowd across the whole map. TARGETING COMPUTER: look at the ground and press G — the air strike will hit the marked sector. No metal needed.",
+        "Tesla coil (super-weapon): runs on OIL — pour in oil from a refinery (E). Zaps nearby zombies with lightning, spends oil from its reserve.",
+        "Artillery (super-weapon): runs on OIL — pour in oil from a refinery (E). Area shells across the whole map, aims at a target.",
+        "Corner bridge (L-shape): a turn in the walkway.",
+        "T-bridge: a walkway junction.",
+        "Cross bridge: a walkway crossroads.",
+        "AA gun (air defense): shoots down grenades and paratrooper birds, 50% per AA gun. More AA — higher chance.",
+        "Long wall: wider than a normal one, covers more at once.",
+        "Tall wall: taller — zombies can't climb over or reach across the top.",
+        "Car: walk up and press E to get in, steer with WASD, F to get out. Zombies leave it alone.",
+        "RPG: a cheap rocket turret. Fires area rockets on its own — good against crowds, but fragile and slow to reload.",
+        "Vertical ladder: stand up close and climb up/down with W/S. Get onto walls and bridges. Space to hop off.",
+        "Freeze gun: every ~16s it emits a wave that freezes ALL zombies on the map for 10 seconds. Cheap, spends no metal.",
+        "Orbital station: a control block, runs on OIL — pour in oil from a refinery (E), no metal needed. When ready a station appears in the sky and cycles 3 attacks: precise lasers with a blast, a burning beam (creeps from zombie to zombie) and a triple prism (3 beams spin around the base). Spends metal from its tank — recharge with E.",
+        "Watchtower (20 m): climb the ladder through the hatch to the platform up top — a great spot to shoot from, zombies can't reach it.",
+        "Blades: a spinning rotor slices every zombie nearby several times a second. Works like a turret — on its own, no charging or metal cost. Expensive to build.",
+        "Missile silo: a powerful 'super' turret — works ON ITS OWN, no oil or metal. Hits crowds (3+ zombies) within ~50-70 m: the missile launches, flips over and drops onto the target, and a FAT splash wipes out everyone around (10-16). Missiles never hit the same zombie twice. Expensive to build.",
+        "Platform: a huge deck on 4 thick pillars. Climb the ladder up top — a whole floor for turrets and a defensive line, zombies can't reach it.",
+        "Oil pipe: hold LMB at a captured refinery and lead it to the base — release and the pipe lays as a chain (15 metal/link). Carries oil to the doser. Zombies break it — protect it.",
+        "Oil doser: pumps oil from a connected refinery (through pipes) and hands it to you when you stand nearby. Place it by the base — oil flows without the running around.",
+        "Oil derrick: your own oil well (870 metal) — no need to capture a refinery. Pumps oil into its tank; connect a pipe to it and lead it to the doser.",
+        "Conveyor: hold LMB at a captured MINE and lead it to the base — lays as a chain (15 metal/link). Hauls ore to the vat. Zombies break it — protect it.",
+        "Ore vat: pulls ore from ALL connected mines/drills (through conveyors) and hands metal to you nearby. More sources on the network — more metal per second.",
+        "Drill: your own metal-mining rig (820 metal) — no need to capture a mine. Drills ore into its tank; connect a conveyor to it and lead it to the vat.",
+        "Oil pocket: an extra storage tank — while it stands it raises your MAX oil reserve by +365. Place several to stockpile more oil for super-weapons. If it's destroyed/sold, the bonus is gone.",
+        "Flamethrower: stationary, sprays a short cone of fire. HUGE damage, but very short range — roasts everyone close, useless at a distance. Works on its own, no cost. Upgrade (E) — damage and radius.",
+        "Oil hub: a combiner node AND dispenser. Run pipes to it from SEVERAL refineries/derricks — it pumps oil from ALL of them at once and hands it to you nearby. The more pipes connected — the FASTER it fills (the oil equivalent of the ore vat).",
+        "SAM: a long-range surface-to-air missile launcher with 4 tubes. Fires a SALVO of 4 homing missiles at paratrooper birds — each one is a guaranteed kill (the AA gun only hits by chance and up close). From wave 24 it downs enemy bombers. CAUTION: with a 2% chance it may mistakenly shoot down YOUR OWN air-strike plane — and its crash wipes out EVERYTHING in a huge radius. Upgrade (E) — range and fire rate.",
+    };
+
     // Build-menu sections: each holds the build-type indices shown under that header.
     static readonly string[] BuildCategories = { "СТРОИТЕЛЬНОЕ", "ОБОРОНА", "ЭКОНОМИКА", "ОСТАЛЬНОЕ" };
+    static readonly string[] BuildCategoriesEN = { "CONSTRUCTION", "DEFENSE", "ECONOMY", "OTHER" };
+
+    // Language accessors for the static build arrays — chosen at USE time so switching
+    // languages at runtime works (wrapping the array elements with Lang.T would freeze
+    // the language at static-init time).
+    static string BName(int i) => Lang.EN ? BuildNamesEN[i] : BuildNames[i];
+    static string BDesc(int i) => Lang.EN ? BuildDescriptionsEN[i] : BuildDescriptions[i];
+    static string BCat(int i) => Lang.EN ? BuildCategoriesEN[i] : BuildCategories[i];
     static readonly int[][] BuildCategoryItems =
     {
         new[] { 3, 16, 17, 4, 6, 20, 23, 26, 29, 32, 5 }, // WALL, LONG/TALL WALL, DOOR, STAIRS, LADDER, WATCHTOWER, BIG PLATFORM, OIL DERRICK, DRILL, BRIDGE
@@ -653,7 +704,7 @@ public class PlayerController : MonoBehaviour
                 // Never let the base's critical dispenser be sold — that would instantly lose the run.
                 if (b is Dispenser d && d.Critical)
                 {
-                    Toast("Раздатчик — это ваша БАЗА, снести нельзя!");
+                    Toast(Lang.T("Раздатчик — это ваша БАЗА, снести нельзя!", "The Dispenser is your BASE, you can't tear it down!"));
                     Effects.Burst(b.transform.position + Vector3.up * 1.5f, new Color(1f, 0.3f, 0.2f), 6);
                     return;
                 }
@@ -676,11 +727,11 @@ public class PlayerController : MonoBehaviour
             if (!RaycastNoSelf(30f, out RaycastHit hit)) return;
             var b = hit.collider.GetComponentInParent<Buildable>();
             if (b == null) return;
-            if (b is Dispenser d && d.Critical) { Toast("Раздатчик-базу переносить нельзя"); return; }
-            if (b.Building) { Toast("Постройка ещё строится"); return; }
+            if (b is Dispenser d && d.Critical) { Toast(Lang.T("Раздатчик-базу переносить нельзя", "Can't move the base Dispenser")); return; }
+            if (b.Building) { Toast(Lang.T("Постройка ещё строится", "Building is still under construction")); return; }
             heldBuild = b;
             foreach (var c in b.GetComponentsInChildren<Collider>()) if (c != null) c.enabled = false; // let the ground ray pass through
-            Toast("Перенос: наведись и нажми СКМ, чтобы поставить");
+            Toast(Lang.T("Перенос: наведись и нажми СКМ, чтобы поставить", "Move: aim and press MMB to place it"));
         }
         else
         {
@@ -712,11 +763,11 @@ public class PlayerController : MonoBehaviour
     /// "clear this class" tool). Refunds each like a sell. The critical dispenser is never touched.</summary>
     void DeleteByClass()
     {
-        if (!RaycastNoSelf(8f, out RaycastHit hit)) { Toast("наведись на постройку, чтобы снести весь её класс"); return; }
+        if (!RaycastNoSelf(8f, out RaycastHit hit)) { Toast(Lang.T("наведись на постройку, чтобы снести весь её класс", "aim at a building to delete its whole class")); return; }
         var aim = hit.collider.GetComponentInParent<Buildable>();
         if (aim == null) return;
         int type = aim.Type;
-        string name = (type >= 0 && type < BuildNames.Length) ? BuildNames[type] : "?";
+        string name = (type >= 0 && type < BuildNames.Length) ? BName(type) : "?";
 
         int removed = 0, refund = 0;
         var doomed = new System.Collections.Generic.List<Buildable>();
@@ -733,8 +784,8 @@ public class PlayerController : MonoBehaviour
             else Destroy(b.gameObject);
             removed++;
         }
-        if (removed > 0) { AddMetal(refund); Toast($"Снесено «{name}»: {removed} шт. (возврат {refund} мет.)"); }
-        else Toast($"«{name}» — нечего сносить");
+        if (removed > 0) { AddMetal(refund); Toast(Lang.T($"Снесено «{name}»: {removed} шт. (возврат {refund} мет.)", $"Deleted \"{name}\": {removed} pcs. (refund {refund} metal)")); }
+        else Toast(Lang.T($"«{name}» — нечего сносить", $"\"{name}\" — nothing to delete"));
     }
 
     void Interact()
@@ -1144,7 +1195,7 @@ public class PlayerController : MonoBehaviour
             GUI.color = ammo <= 0 ? new Color(1f, 0.3f, 0.3f)
                       : frac < 0.25f ? new Color(1f, 0.75f, 0.2f)
                       : new Color(0.55f, 1f, 0.55f);
-            GUI.Label(new Rect(gx - 80f, gy - 10f, 160f, 20f), ammo <= 0 ? "НЕТ ПАТРОНОВ" : "патроны " + ammo, _ammoStyle);
+            GUI.Label(new Rect(gx - 80f, gy - 10f, 160f, 20f), ammo <= 0 ? Lang.T("НЕТ ПАТРОНОВ", "NO AMMO") : Lang.T("патроны ", "ammo ") + ammo, _ammoStyle);
         }
         GUI.color = Color.white;
     }
@@ -1168,11 +1219,11 @@ public class PlayerController : MonoBehaviour
             GUI.color = new Color(0f, 0f, 0f, 0.5f); GUI.DrawTexture(box, Texture2D.whiteTexture);
 
             string state; Color sc;
-            if (!rf.Captured) { state = rf.Capture > 0f ? $"ЗАХВАТ {Mathf.RoundToInt(rf.Capture / Refinery.CaptureTime * 100f)}%" : "НЕЙТРАЛЕН"; sc = new Color(0.8f, 0.8f, 0.8f); }
-            else if (rf.NearZombies > 0) { state = "ПОД АТАКОЙ!"; sc = new Color(1f, 0.5f, 0.2f); }
-            else { state = "ЗАХВАЧЕН"; sc = new Color(0.4f, 1f, 0.5f); }
+            if (!rf.Captured) { state = rf.Capture > 0f ? Lang.T($"ЗАХВАТ {Mathf.RoundToInt(rf.Capture / Refinery.CaptureTime * 100f)}%", $"CAPTURE {Mathf.RoundToInt(rf.Capture / Refinery.CaptureTime * 100f)}%") : Lang.T("НЕЙТРАЛЕН", "NEUTRAL"); sc = new Color(0.8f, 0.8f, 0.8f); }
+            else if (rf.NearZombies > 0) { state = Lang.T("ПОД АТАКОЙ!", "UNDER ATTACK!"); sc = new Color(1f, 0.5f, 0.2f); }
+            else { state = Lang.T("ЗАХВАЧЕН", "CAPTURED"); sc = new Color(0.4f, 1f, 0.5f); }
 
-            GUI.color = sc; GUI.Label(new Rect(box.x, box.y + 1f, w, 18f), $"НПЗ — {state}", _refStyle);
+            GUI.color = sc; GUI.Label(new Rect(box.x, box.y + 1f, w, 18f), Lang.T($"НПЗ — {state}", $"REFINERY — {state}"), _refStyle);
 
             // bar: capture progress (neutral) or control (held)
             float frac = rf.Captured ? rf.Control / Refinery.ControlMax : rf.Capture / Refinery.CaptureTime;
@@ -1182,7 +1233,7 @@ public class PlayerController : MonoBehaviour
             GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(frac), bar.height), Texture2D.whiteTexture);
 
             GUI.color = new Color(1f, 0.85f, 0.35f);
-            GUI.Label(new Rect(box.x, box.y + 30f, w, 18f), $"бочка: {Mathf.FloorToInt(rf.Oil)}/{Mathf.RoundToInt(Refinery.OilCap)}   E — набрать", _refStyle);
+            GUI.Label(new Rect(box.x, box.y + 30f, w, 18f), Lang.T($"бочка: {Mathf.FloorToInt(rf.Oil)}/{Mathf.RoundToInt(Refinery.OilCap)}   E — набрать", $"barrel: {Mathf.FloorToInt(rf.Oil)}/{Mathf.RoundToInt(Refinery.OilCap)}   E — collect"), _refStyle);
         }
         GUI.color = Color.white;
     }
@@ -1203,11 +1254,11 @@ public class PlayerController : MonoBehaviour
             GUI.color = new Color(0f, 0f, 0f, 0.5f); GUI.DrawTexture(box, Texture2D.whiteTexture);
 
             string state; Color sc;
-            if (!mn.Captured) { state = mn.Capture > 0f ? $"ЗАХВАТ {Mathf.RoundToInt(mn.Capture / OreMine.CaptureTime * 100f)}%" : "НЕЙТРАЛЬНА"; sc = new Color(0.8f, 0.8f, 0.8f); }
-            else if (mn.NearZombies > 0) { state = "ПОД АТАКОЙ!"; sc = new Color(1f, 0.5f, 0.2f); }
-            else { state = "ЗАХВАЧЕНА"; sc = new Color(0.4f, 1f, 0.5f); }
+            if (!mn.Captured) { state = mn.Capture > 0f ? Lang.T($"ЗАХВАТ {Mathf.RoundToInt(mn.Capture / OreMine.CaptureTime * 100f)}%", $"CAPTURE {Mathf.RoundToInt(mn.Capture / OreMine.CaptureTime * 100f)}%") : Lang.T("НЕЙТРАЛЬНА", "NEUTRAL"); sc = new Color(0.8f, 0.8f, 0.8f); }
+            else if (mn.NearZombies > 0) { state = Lang.T("ПОД АТАКОЙ!", "UNDER ATTACK!"); sc = new Color(1f, 0.5f, 0.2f); }
+            else { state = Lang.T("ЗАХВАЧЕНА", "CAPTURED"); sc = new Color(0.4f, 1f, 0.5f); }
 
-            GUI.color = sc; GUI.Label(new Rect(box.x, box.y + 1f, w, 18f), $"ШАХТА — {state}", _refStyle);
+            GUI.color = sc; GUI.Label(new Rect(box.x, box.y + 1f, w, 18f), Lang.T($"ШАХТА — {state}", $"MINE — {state}"), _refStyle);
 
             float frac = mn.Captured ? mn.Control / OreMine.ControlMax : mn.Capture / OreMine.CaptureTime;
             Rect bar = new Rect(box.x + 8f, box.y + 21f, w - 16f, 7f);
@@ -1216,7 +1267,7 @@ public class PlayerController : MonoBehaviour
             GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(frac), bar.height), Texture2D.whiteTexture);
 
             GUI.color = new Color(0.8f, 0.85f, 1f);
-            GUI.Label(new Rect(box.x, box.y + 30f, w, 18f), $"руда: {Mathf.FloorToInt(mn.Ore)}/{Mathf.RoundToInt(OreMine.OreCap)}   конвейер→чан", _refStyle);
+            GUI.Label(new Rect(box.x, box.y + 30f, w, 18f), Lang.T($"руда: {Mathf.FloorToInt(mn.Ore)}/{Mathf.RoundToInt(OreMine.OreCap)}   конвейер→чан", $"ore: {Mathf.FloorToInt(mn.Ore)}/{Mathf.RoundToInt(OreMine.OreCap)}   conveyor→vat"), _refStyle);
         }
         GUI.color = Color.white;
     }
@@ -1242,7 +1293,7 @@ public class PlayerController : MonoBehaviour
             bool afford = Metal >= dragTotalCost;
             var st = new GUIStyle(GUI.skin.label) { fontSize = 22, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             GUI.color = afford ? new Color(0.5f, 1f, 0.5f) : new Color(1f, 0.5f, 0.4f);
-            GUI.Label(new Rect(cx - 220f, cy + 44f, 440f, 30f), $"{dragSegs} шт.  —  {dragTotalCost} мет.", st);
+            GUI.Label(new Rect(cx - 220f, cy + 44f, 440f, 30f), Lang.T($"{dragSegs} шт.  —  {dragTotalCost} мет.", $"{dragSegs} pcs.  —  {dragTotalCost} metal"), st);
             GUI.color = Color.white;
         }
 
@@ -1258,23 +1309,23 @@ public class PlayerController : MonoBehaviour
         // Kills counter — top-right corner (movable).
         Rect kills = Place(2, new Rect(UI.W - 392f, 10f, 380f, 46f));
         Panel(kills);
-        GUI.color = Color.yellow; GUI.Label(new Rect(kills.x + 12f, kills.y + 7f, 360f, 34f), $"УБИТО: {Score}", LblRight);
+        GUI.color = Color.yellow; GUI.Label(new Rect(kills.x + 12f, kills.y + 7f, 360f, 34f), Lang.T($"УБИТО: {Score}", $"KILLS: {Score}"), LblRight);
 
         // Player death counter — under the kills panel (movable).
         Rect deaths = Place(4, new Rect(UI.W - 392f, 60f, 380f, 38f));
         Panel(deaths);
-        GUI.color = new Color(1f, 0.45f, 0.45f); GUI.Label(new Rect(deaths.x + 12f, deaths.y + 5f, 360f, 28f), $"СМЕРТЕЙ: {Deaths}", LblRight);
+        GUI.color = new Color(1f, 0.45f, 0.45f); GUI.Label(new Rect(deaths.x + 12f, deaths.y + 5f, 360f, 28f), Lang.T($"СМЕРТЕЙ: {Deaths}", $"DEATHS: {Deaths}"), LblRight);
         GUI.color = Color.white;
 
         // Bottom-left player HP bar (raised + enlarged; movable)
         Rect hp = Place(0, new Rect(20f, UI.H - 110f, 520f, 48f));
-        Bar(hp.x, hp.y, hp.width, hp.height, Health / MaxHealth, new Color(0.2f, 0.8f, 0.25f), $"ХП {Mathf.RoundToInt(Health)}");
+        Bar(hp.x, hp.y, hp.width, hp.height, Health / MaxHealth, new Color(0.2f, 0.8f, 0.25f), Lang.T($"ХП {Mathf.RoundToInt(Health)}", $"HP {Mathf.RoundToInt(Health)}"));
 
         // Bottom-centre metal readout (above the tool line)
         Rect metal = Place(1, new Rect(cx - 170f, UI.H - 92f, 340f, 40f));
         Panel(metal);
         GUI.color = UISettings.Accent;
-        GUI.Label(new Rect(metal.x, metal.y + 2f, 340f, 36f), $"МЕТАЛЛ: {Metal}", Ctr);
+        GUI.Label(new Rect(metal.x, metal.y + 2f, 340f, 36f), Lang.T($"МЕТАЛЛ: {Metal}", $"METAL: {Metal}"), Ctr);
         GUI.color = Color.white;
 
         // Oil readout (only once refineries exist on the map — default mode).
@@ -1283,20 +1334,20 @@ public class PlayerController : MonoBehaviour
             Rect oil = Place(5, new Rect(cx - 170f, UI.H - 134f, 340f, 36f));
             Panel(oil);
             GUI.color = Oil > 0 ? new Color(1f, 0.85f, 0.35f) : new Color(0.7f, 0.7f, 0.7f);
-            GUI.Label(new Rect(oil.x, oil.y + 2f, 340f, 32f), $"НЕФТЬ: {Oil}/{OilMax}", Ctr);
+            GUI.Label(new Rect(oil.x, oil.y + 2f, 340f, 32f), Lang.T($"НЕФТЬ: {Oil}/{OilMax}", $"OIL: {Oil}/{OilMax}"), Ctr);
             GUI.color = Color.white;
         }
 
         // Bottom-center tool line (smaller font + centred so the longer RU text fits)
         string toolLine;
-        if (tool == Tool.Gun) toolLine = $"[1] ПУШКА {Guns[gunTier].name}   патроны {ammo}/{Guns[gunTier].mag}";
+        if (tool == Tool.Gun) toolLine = Lang.T($"[1] ПУШКА {Guns[gunTier].name}   патроны {ammo}/{Guns[gunTier].mag}", $"[1] GUN {Guns[gunTier].name}   ammo {ammo}/{Guns[gunTier].mag}");
         else if (tool == Tool.Build && IsDragBuild(SelectedBuild)) toolLine = IsWallDrag(SelectedBuild)
-            ? $"[2] {BuildNames[SelectedBuild]} ({BCost(SelectedBuild)}/звено)   зажми ЛКМ и веди линию, отпусти — стена цепочкой   ПКМ=продать  X=снести класс  Q=меню"
-            : $"[2] {BuildNames[SelectedBuild]} ({BCost(SelectedBuild)}/звено)   зажми ЛКМ у источника, веди к базе, отпусти   ПКМ=продать  Q=меню";
-        else if (tool == Tool.Build) toolLine = $"[2] СТРОЙКА {BuildNames[SelectedBuild]} ({BCost(SelectedBuild)})   ЛКМ=ставить  E=улучшить  ПКМ=продать  X=снести класс  Q=меню";
-        else if (tool == Tool.Wrench) toolLine = "[3] КЛЮЧ — ближний бой + починка";
-        else toolLine = "[4] ЛОПАТА — зажми ЛКМ чтобы копать";
-        toolLine += "     колесо=оружие   СКМ=перенести постройку";
+            ? Lang.T($"[2] {BName(SelectedBuild)} ({BCost(SelectedBuild)}/звено)   зажми ЛКМ и веди линию, отпусти — стена цепочкой   ПКМ=продать  X=снести класс  Q=меню", $"[2] {BName(SelectedBuild)} ({BCost(SelectedBuild)}/link)   hold LMB and drag a line, release — wall as a chain   RMB=sell  X=delete class  Q=menu")
+            : Lang.T($"[2] {BName(SelectedBuild)} ({BCost(SelectedBuild)}/звено)   зажми ЛКМ у источника, веди к базе, отпусти   ПКМ=продать  Q=меню", $"[2] {BName(SelectedBuild)} ({BCost(SelectedBuild)}/link)   hold LMB at the source, lead to base, release   RMB=sell  Q=menu");
+        else if (tool == Tool.Build) toolLine = Lang.T($"[2] СТРОЙКА {BName(SelectedBuild)} ({BCost(SelectedBuild)})   ЛКМ=ставить  E=улучшить  ПКМ=продать  X=снести класс  Q=меню", $"[2] BUILD {BName(SelectedBuild)} ({BCost(SelectedBuild)})   LMB=place  E=upgrade  RMB=sell  X=delete class  Q=menu");
+        else if (tool == Tool.Wrench) toolLine = Lang.T("[3] КЛЮЧ — ближний бой + починка", "[3] WRENCH — melee + repair");
+        else toolLine = Lang.T("[4] ЛОПАТА — зажми ЛКМ чтобы копать", "[4] SHOVEL — hold LMB to dig");
+        toolLine += Lang.T("     колесо=оружие   СКМ=перенести постройку", "     wheel=weapon   MMB=move building");
         Rect toolR = Place(3, new Rect(8f, UI.H - 44f, UI.W - 16f, 34f));
         Panel(toolR);
         GUI.color = Color.white; GUI.Label(new Rect(toolR.x, toolR.y + 1f, toolR.width, 30f), toolLine, Tool16);
@@ -1309,28 +1360,28 @@ public class PlayerController : MonoBehaviour
             {
                 Panel(new Rect(cx - 400f, 8f, 800f, 64f));
                 GUI.color = Color.cyan;
-                GUI.Label(new Rect(cx - 400f, 12f, 800f, 28f), "ПОДГОТОВКА — стройте базу!", Line24);
-                GUI.Label(new Rect(cx - 400f, 42f, 800f, 24f), GameRoot.Infinite ? $"след. волна: {gm.WaveNumber + 1}  (бесконечный режим)" : $"след. волна: {gm.WaveNumber + 1}/{gm.EvacWave} волн", Sm);
-                GUI.Label(new Rect(cx - 300f, 78f, 600f, 64f), $"{Mathf.CeilToInt(gm.PhaseTimeLeft)}с", Big52);
+                GUI.Label(new Rect(cx - 400f, 12f, 800f, 28f), Lang.T("ПОДГОТОВКА — стройте базу!", "PREP — build your base!"), Line24);
+                GUI.Label(new Rect(cx - 400f, 42f, 800f, 24f), GameRoot.Infinite ? Lang.T($"след. волна: {gm.WaveNumber + 1}  (бесконечный режим)", $"next wave: {gm.WaveNumber + 1}  (endless mode)") : Lang.T($"след. волна: {gm.WaveNumber + 1}/{gm.EvacWave} волн", $"next wave: {gm.WaveNumber + 1}/{gm.EvacWave} waves"), Sm);
+                GUI.Label(new Rect(cx - 300f, 78f, 600f, 64f), Lang.T($"{Mathf.CeilToInt(gm.PhaseTimeLeft)}с", $"{Mathf.CeilToInt(gm.PhaseTimeLeft)}s"), Big52);
 
                 // Pulsing prompts during prep (cached styles — no per-frame GUIStyle alloc).
                 float pulse = 0.6f + 0.4f * Mathf.PingPong(Time.unscaledTime * 1.5f, 1f);
                 if (!builtSomething) // the Q hint goes away once you've built your first thing
                 {
                     GUI.color = new Color(1f, 0.9f, 0.3f, pulse);
-                    GUI.Label(new Rect(cx - 350f, 146f, 700f, 32f), "нажмите Q для стройки", Line24);
+                    GUI.Label(new Rect(cx - 350f, 146f, 700f, 32f), Lang.T("нажмите Q для стройки", "press Q to build"), Line24);
                 }
 
                 // "Press J when ready" — skips the prep. Hidden for co-op clients (the host owns the waves).
                 if (!NetClient)
                 {
                     GUI.color = new Color(1f, 0.3f, 0.3f, pulse);
-                    GUI.Label(new Rect(cx - 380f, 180f, 760f, 28f), "если вы готовы — нажмите J, чтобы начать волну", Sm);
+                    GUI.Label(new Rect(cx - 380f, 180f, 760f, 28f), Lang.T("если вы готовы — нажмите J, чтобы начать волну", "if you're ready — press J to start the wave"), Sm);
                 }
                 if (GameRoot.Hardcore)
                 {
                     GUI.color = new Color(1f, 0.7f, 0.3f, pulse);
-                    GUI.Label(new Rect(cx - 400f, 208f, 800f, 26f), "хардкор: постройки дороже, раздатчик отдаёт лишь накопленный металл", Sm);
+                    GUI.Label(new Rect(cx - 400f, 208f, 800f, 26f), Lang.T("хардкор: постройки дороже, раздатчик отдаёт лишь накопленный металл", "hardcore: buildings cost more, the dispenser only gives out accumulated metal"), Sm);
                 }
                 GUI.color = Color.white;
             }
@@ -1338,9 +1389,9 @@ public class PlayerController : MonoBehaviour
             {
                 Panel(new Rect(cx - 360f, 8f, 720f, 62f));
                 GUI.color = new Color(1f, 0.55f, 0.35f);
-                GUI.Label(new Rect(cx - 360f, 11f, 720f, 30f), $"ВОЛНА {gm.WaveNumber}   зомби: {gm.ZombiesLeft}", Line24);
+                GUI.Label(new Rect(cx - 360f, 11f, 720f, 30f), Lang.T($"ВОЛНА {gm.WaveNumber}   зомби: {gm.ZombiesLeft}", $"WAVE {gm.WaveNumber}   zombies: {gm.ZombiesLeft}"), Line24);
                 GUI.color = new Color(0.85f, 0.85f, 0.85f);
-                GUI.Label(new Rect(cx - 360f, 40f, 720f, 24f), "чтобы сдаться нажмите K (заберёт всю нефть и металл)", Sm);
+                GUI.Label(new Rect(cx - 360f, 40f, 720f, 24f), Lang.T("чтобы сдаться нажмите K (заберёт всю нефть и металл)", "press K to surrender (takes all oil & metal)"), Sm);
                 GUI.color = Color.white;
             }
         }
@@ -1352,7 +1403,7 @@ public class PlayerController : MonoBehaviour
         {
             Panel(new Rect(cx - 320f, 74f, 640f, 32f));
             GUI.color = new Color(1f, 0.3f, 0.22f, 0.55f + 0.45f * Mathf.PingPong(Time.unscaledTime * 3f, 1f));
-            GUI.Label(new Rect(cx - 320f, 77f, 640f, 26f), "ВОЗДУШНЫЙ НАЛЁТ — сбивайте самолёты РЗК!", Line24);
+            GUI.Label(new Rect(cx - 320f, 77f, 640f, 26f), Lang.T("ВОЗДУШНЫЙ НАЛЁТ — сбивайте самолёты РЗК!", "AIR RAID — shoot down the planes with SAM!"), Line24);
             GUI.color = Color.white;
         }
 
@@ -1366,7 +1417,7 @@ public class PlayerController : MonoBehaviour
             GUI.color = AirStrike.HasDesignation ? new Color(1f, 0.55f, 0.35f) : new Color(0.9f, 0.85f, 0.8f);
             var las = new GUIStyle(GUI.skin.label) { fontSize = 15, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft };
             GUI.Label(new Rect(20f, 103f, 456f, 22f),
-                AirStrike.HasDesignation ? "АВИАУДАР наведён на сектор" : "G — навести авиаудар на сектор", las);
+                AirStrike.HasDesignation ? Lang.T("АВИАУДАР наведён на сектор", "AIR STRIKE aimed at the sector") : Lang.T("G — навести авиаудар на сектор", "G — aim the air strike at a sector"), las);
             GUI.color = Color.white;
         }
 
@@ -1375,7 +1426,7 @@ public class PlayerController : MonoBehaviour
         {
             Panel(new Rect(cx - 320f, UI.H - 96f, 640f, 40f));
             GUI.color = new Color(0.7f, 0.95f, 1f);
-            GUI.Label(new Rect(cx - 320f, UI.H - 92f, 640f, 32f), "WASD — ехать       F — выйти", Line24);
+            GUI.Label(new Rect(cx - 320f, UI.H - 92f, 640f, 32f), Lang.T("WASD — ехать       F — выйти", "WASD — drive       F — exit"), Line24);
             GUI.color = Color.white;
         }
 
@@ -1410,19 +1461,19 @@ public class PlayerController : MonoBehaviour
                 GUI.color = new Color(1f, 0.9f, 0.55f);
                 var dt2 = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft };
                 var db2 = new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true, alignment = TextAnchor.UpperLeft };
-                GUI.Label(new Rect(px, dy2 + 5f, pw, 22f), BuildNames[aimed.Type], dt2);
+                GUI.Label(new Rect(px, dy2 + 5f, pw, 22f), BName(aimed.Type), dt2);
                 GUI.color = Color.white;
-                GUI.Label(new Rect(px, dy2 + 28f, pw, dh2 - 32f), BuildDescriptions[aimed.Type], db2);
+                GUI.Label(new Rect(px, dy2 + 28f, pw, dh2 - 32f), BDesc(aimed.Type), db2);
             }
 
             Panel(new Rect(px - 8f, py - 8f, pw + 16f, panelH));
             GUI.color = Color.white;
-            GUI.Label(new Rect(px, py, pw, 22f), $"{BuildNames[aimed.Type]}  -  УР {aimed.Level}  -  ваше", Sm);
-            Bar(px, py + 24f, pw, 20f, aimed.Health / aimed.MaxHealth, new Color(0.2f, 0.8f, 0.25f), $"{Mathf.Max(0, Mathf.RoundToInt(aimed.Health))} / {Mathf.RoundToInt(aimed.MaxHealth)} ХП");
+            GUI.Label(new Rect(px, py, pw, 22f), Lang.T($"{BName(aimed.Type)}  -  УР {aimed.Level}  -  ваше", $"{BName(aimed.Type)}  -  LVL {aimed.Level}  -  yours"), Sm);
+            Bar(px, py + 24f, pw, 20f, aimed.Health / aimed.MaxHealth, new Color(0.2f, 0.8f, 0.25f), Lang.T($"{Mathf.Max(0, Mathf.RoundToInt(aimed.Health))} / {Mathf.RoundToInt(aimed.MaxHealth)} ХП", $"{Mathf.Max(0, Mathf.RoundToInt(aimed.Health))} / {Mathf.RoundToInt(aimed.MaxHealth)} HP"));
 
             if (aimed.Building)
             {
-                Bar(px, py + 48f, pw, 20f, 1f, new Color(0.9f, 0.7f, 0.2f), "строится...");
+                Bar(px, py + 48f, pw, 20f, 1f, new Color(0.9f, 0.7f, 0.2f), Lang.T("строится...", "building..."));
             }
             else if (aimed.IsFunding)
             {
@@ -1435,9 +1486,9 @@ public class PlayerController : MonoBehaviour
                 {
                     float f = (float)aimed.FundingPaid / Mathf.Max(1, aimed.FundingRequired);
                     int chunk = Mathf.Min(Metal, Mathf.Min(aimed.FundChunk, aimed.FundingRemaining));
-                    string mtxt = metalDone ? $"металл готов ({aimed.FundingRequired})"
-                        : Metal > 0 ? $"E: вложить +{chunk}   ({aimed.FundingPaid}/{aimed.FundingRequired})"
-                        : $"нужен металл   ({aimed.FundingPaid}/{aimed.FundingRequired})";
+                    string mtxt = metalDone ? Lang.T($"металл готов ({aimed.FundingRequired})", $"metal ready ({aimed.FundingRequired})")
+                        : Metal > 0 ? Lang.T($"E: вложить +{chunk}   ({aimed.FundingPaid}/{aimed.FundingRequired})", $"E: invest +{chunk}   ({aimed.FundingPaid}/{aimed.FundingRequired})")
+                        : Lang.T($"нужен металл   ({aimed.FundingPaid}/{aimed.FundingRequired})", $"need metal   ({aimed.FundingPaid}/{aimed.FundingRequired})");
                     Bar(px, row, pw, 20f, f, metalDone ? new Color(0.3f, 0.6f, 0.45f) : new Color(0.4f, 0.8f, 1f), mtxt);
                     row += 24f;
                 }
@@ -1445,17 +1496,17 @@ public class PlayerController : MonoBehaviour
                 {
                     float of = (float)aimed.OilPaid / Mathf.Max(1, aimed.OilRequired);
                     int ochunk = Mathf.Min(Oil, Mathf.Min(OilFundChunk, aimed.OilRemaining));
-                    string otxt = aimed.OilPaid >= aimed.OilRequired ? $"нефть готова ({aimed.OilRequired})"
-                        : (hasMetal && !metalDone) ? $"потом нефть   ({aimed.OilPaid}/{aimed.OilRequired})"
-                        : Oil > 0 ? $"E: нефть +{ochunk}   ({aimed.OilPaid}/{aimed.OilRequired})"
-                        : $"нужна нефть с НПЗ   ({aimed.OilPaid}/{aimed.OilRequired})";
+                    string otxt = aimed.OilPaid >= aimed.OilRequired ? Lang.T($"нефть готова ({aimed.OilRequired})", $"oil ready ({aimed.OilRequired})")
+                        : (hasMetal && !metalDone) ? Lang.T($"потом нефть   ({aimed.OilPaid}/{aimed.OilRequired})", $"oil next   ({aimed.OilPaid}/{aimed.OilRequired})")
+                        : Oil > 0 ? Lang.T($"E: нефть +{ochunk}   ({aimed.OilPaid}/{aimed.OilRequired})", $"E: oil +{ochunk}   ({aimed.OilPaid}/{aimed.OilRequired})")
+                        : Lang.T($"нужна нефть с НПЗ   ({aimed.OilPaid}/{aimed.OilRequired})", $"need oil from a refinery   ({aimed.OilPaid}/{aimed.OilRequired})");
                     Bar(px, row, pw, 20f, of, new Color(1f, 0.8f, 0.3f), otxt);
                     row += 24f;
                 }
                 if (aimed.UpgradeReadyIn > 0f)
-                    Bar(px, row, pw, 20f, 1f - aimed.UpgradeReadyIn / aimed.UpgradeCooldown, new Color(0.9f, 0.6f, 0.2f), $"перезаряд {aimed.UpgradeReadyIn:0.0}с");
+                    Bar(px, row, pw, 20f, 1f - aimed.UpgradeReadyIn / aimed.UpgradeCooldown, new Color(0.9f, 0.6f, 0.2f), Lang.T($"перезаряд {aimed.UpgradeReadyIn:0.0}с", $"reload {aimed.UpgradeReadyIn:0.0}s"));
                 else
-                    Bar(px, row, pw, 20f, 1f, new Color(0.25f, 0.6f, 0.3f), "готово (E)");
+                    Bar(px, row, pw, 20f, 1f, new Color(0.25f, 0.6f, 0.3f), Lang.T("готово (E)", "ready (E)"));
             }
             else if (aimed.UsesReserve)
             {
@@ -1463,33 +1514,33 @@ public class PlayerController : MonoBehaviour
                 // Super-weapons charge from OIL (ReserveIsOil); hardcore turrets from metal.
                 bool oilFuel = aimed.ReserveIsOil;
                 int wallet = oilFuel ? Oil : Metal;
-                string needRes = oilFuel ? "нужна нефть" : "нужен металл";
+                string needRes = oilFuel ? Lang.T("нужна нефть", "need oil") : Lang.T("нужен металл", "need metal");
                 float rf = (float)aimed.Reserve / Mathf.Max(1, aimed.ReserveMax);
                 if (aimed.Reserve < aimed.ReserveMax)
                 {
                     int load = Mathf.Min(wallet, Mathf.Min(ReserveLoadChunk, aimed.ReserveMax - aimed.Reserve));
                     string txt = wallet > 0
-                        ? $"E: зарядить +{load}   (заряд {aimed.Reserve}/{aimed.ReserveMax})"
-                        : $"{needRes}   (заряд {aimed.Reserve}/{aimed.ReserveMax})";
+                        ? Lang.T($"E: зарядить +{load}   (заряд {aimed.Reserve}/{aimed.ReserveMax})", $"E: load +{load}   (charge {aimed.Reserve}/{aimed.ReserveMax})")
+                        : $"{needRes}   " + Lang.T($"(заряд {aimed.Reserve}/{aimed.ReserveMax})", $"(charge {aimed.Reserve}/{aimed.ReserveMax})");
                     Bar(px, py + 48f, pw, 20f, rf, oilFuel ? new Color(1f, 0.8f, 0.3f) : new Color(0.4f, 0.8f, 1f), txt);
                 }
                 else if (aimed.CanUpgrade)
                 {
                     float invFrac2 = (float)aimed.Invested / aimed.UpgradeCost;
                     string txt = wallet > 0
-                        ? $"E: апгрейд +{Mathf.Min(wallet, aimed.InvestAmount)}   ({aimed.Invested}/{aimed.UpgradeCost})"
-                        : $"ПОЛНО — {needRes} на апгрейд";
+                        ? Lang.T($"E: апгрейд +{Mathf.Min(wallet, aimed.InvestAmount)}   ({aimed.Invested}/{aimed.UpgradeCost})", $"E: upgrade +{Mathf.Min(wallet, aimed.InvestAmount)}   ({aimed.Invested}/{aimed.UpgradeCost})")
+                        : Lang.T($"ПОЛНО — {needRes} на апгрейд", $"FULL — {needRes} to upgrade");
                     Bar(px, py + 48f, pw, 20f, invFrac2, new Color(0.2f, 0.7f, 0.9f), txt);
 
                     // Bar 3: cooldown before the next investment (same gate as normal upgrades).
                     if (aimed.UpgradeReadyIn > 0f)
-                        Bar(px, py + 72f, pw, 20f, 1f - aimed.UpgradeReadyIn / aimed.UpgradeCooldown, new Color(0.9f, 0.6f, 0.2f), $"перезаряд {aimed.UpgradeReadyIn:0.0}с");
+                        Bar(px, py + 72f, pw, 20f, 1f - aimed.UpgradeReadyIn / aimed.UpgradeCooldown, new Color(0.9f, 0.6f, 0.2f), Lang.T($"перезаряд {aimed.UpgradeReadyIn:0.0}с", $"reload {aimed.UpgradeReadyIn:0.0}s"));
                     else
-                        Bar(px, py + 72f, pw, 20f, 1f, new Color(0.25f, 0.6f, 0.3f), "готово (E)");
+                        Bar(px, py + 72f, pw, 20f, 1f, new Color(0.25f, 0.6f, 0.3f), Lang.T("готово (E)", "ready (E)"));
                 }
                 else
                 {
-                    Bar(px, py + 48f, pw, 20f, 1f, new Color(0.3f, 0.6f, 0.4f), $"заряд {aimed.Reserve}/{aimed.ReserveMax}  (МАКС)");
+                    Bar(px, py + 48f, pw, 20f, 1f, new Color(0.3f, 0.6f, 0.4f), Lang.T($"заряд {aimed.Reserve}/{aimed.ReserveMax}  (МАКС)", $"charge {aimed.Reserve}/{aimed.ReserveMax}  (MAX)"));
                 }
             }
             else if (aimed.CanUpgrade)
@@ -1497,23 +1548,23 @@ public class PlayerController : MonoBehaviour
                 // Bar 2: investment progress toward the next level.
                 float invFrac = (float)aimed.Invested / aimed.UpgradeCost;
                 string invTxt = Metal > 0
-                    ? $"E: вложить +{Mathf.Min(Metal, aimed.InvestAmount)}   ({aimed.Invested}/{aimed.UpgradeCost})"
-                    : $"нужен металл   ({aimed.Invested}/{aimed.UpgradeCost})";
+                    ? Lang.T($"E: вложить +{Mathf.Min(Metal, aimed.InvestAmount)}   ({aimed.Invested}/{aimed.UpgradeCost})", $"E: invest +{Mathf.Min(Metal, aimed.InvestAmount)}   ({aimed.Invested}/{aimed.UpgradeCost})")
+                    : Lang.T($"нужен металл   ({aimed.Invested}/{aimed.UpgradeCost})", $"need metal   ({aimed.Invested}/{aimed.UpgradeCost})");
                 Bar(px, py + 48f, pw, 20f, invFrac, new Color(0.2f, 0.7f, 0.9f), invTxt);
 
                 // Bar 3: cooldown before the next investment.
                 if (aimed.UpgradeReadyIn > 0f)
-                    Bar(px, py + 72f, pw, 20f, 1f - aimed.UpgradeReadyIn / aimed.UpgradeCooldown, new Color(0.9f, 0.6f, 0.2f), $"перезаряд {aimed.UpgradeReadyIn:0.0}с");
+                    Bar(px, py + 72f, pw, 20f, 1f - aimed.UpgradeReadyIn / aimed.UpgradeCooldown, new Color(0.9f, 0.6f, 0.2f), Lang.T($"перезаряд {aimed.UpgradeReadyIn:0.0}с", $"reload {aimed.UpgradeReadyIn:0.0}s"));
                 else
-                    Bar(px, py + 72f, pw, 20f, 1f, new Color(0.25f, 0.6f, 0.3f), "готово (E)");
+                    Bar(px, py + 72f, pw, 20f, 1f, new Color(0.25f, 0.6f, 0.3f), Lang.T("готово (E)", "ready (E)"));
             }
             else if (aimed.NeedsRepair)
             {
-                Bar(px, py + 48f, pw, 20f, aimed.Health / aimed.MaxHealth, new Color(0.2f, 0.8f, 0.4f), "E: чинить");
+                Bar(px, py + 48f, pw, 20f, aimed.Health / aimed.MaxHealth, new Color(0.2f, 0.8f, 0.4f), Lang.T("E: чинить", "E: repair"));
             }
             else
             {
-                Bar(px, py + 48f, pw, 20f, 1f, new Color(0.4f, 0.4f, 0.45f), "МАКС УРОВЕНЬ");
+                Bar(px, py + 48f, pw, 20f, 1f, new Color(0.4f, 0.4f, 0.45f), Lang.T("МАКС УРОВЕНЬ", "MAX LEVEL"));
             }
         }
 
@@ -1526,15 +1577,15 @@ public class PlayerController : MonoBehaviour
 
             var big = new GUIStyle(GUI.skin.label) { fontSize = 70, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             GUI.color = new Color(0.9f, 0.25f, 0.2f);
-            GUI.Label(new Rect(0f, cy - 200f, UI.W, 100f), "БАЗА ПАЛА", big);
+            GUI.Label(new Rect(0f, cy - 200f, UI.W, 100f), Lang.T("БАЗА ПАЛА", "BASE HAS FALLEN"), big);
             var sub = new GUIStyle(GUI.skin.label) { fontSize = 28, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             GUI.color = new Color(0.9f, 0.55f, 0.3f);
-            GUI.Label(new Rect(0f, cy - 110f, UI.W, 40f), "раздатчик уничтожен — игра окончена", sub);
+            GUI.Label(new Rect(0f, cy - 110f, UI.W, 40f), Lang.T("раздатчик уничтожен — игра окончена", "dispenser destroyed — game over"), sub);
             GUI.color = Color.white;
 
             var mbtn = new GUIStyle(GUI.skin.button) { fontSize = 30, fontStyle = FontStyle.Bold };
             GUI.backgroundColor = new Color(0.75f, 0.35f, 0.32f);
-            if (GUI.Button(new Rect(cx - 180f, cy + 10f, 360f, 84f), "В МЕНЮ", mbtn))
+            if (GUI.Button(new Rect(cx - 180f, cy + 10f, 360f, 84f), Lang.T("В МЕНЮ", "TO MENU"), mbtn))
                 { if (GameRoot.Instance != null) GameRoot.Instance.ExitToMenu(); }
             GUI.backgroundColor = Color.white;
             return; // defeat screen owns the view
@@ -1549,12 +1600,12 @@ public class PlayerController : MonoBehaviour
 
             var dead = new GUIStyle(GUI.skin.label) { fontSize = 72, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             GUI.color = new Color(0.85f, 0.2f, 0.18f);
-            GUI.Label(new Rect(0f, cy - 200f, UI.W, 100f), "ВЫ ПОГИБЛИ", dead);
+            GUI.Label(new Rect(0f, cy - 200f, UI.W, 100f), Lang.T("ВЫ ПОГИБЛИ", "YOU DIED"), dead);
             if (GameRoot.Hardcore)
             {
                 var hc = new GUIStyle(GUI.skin.label) { fontSize = 26, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
                 GUI.color = new Color(0.9f, 0.55f, 0.2f);
-                GUI.Label(new Rect(0f, cy - 110f, UI.W, 36f), "ХАРДКОР — прогресс сброшен", hc);
+                GUI.Label(new Rect(0f, cy - 110f, UI.W, 36f), Lang.T("ХАРДКОР — прогресс сброшен", "HARDCORE — progress reset"), hc);
             }
             GUI.color = Color.white;
 
@@ -1563,7 +1614,7 @@ public class PlayerController : MonoBehaviour
             float bx = cx - bw - gap * 0.5f;
 
             GUI.backgroundColor = new Color(0.3f, 0.7f, 0.35f);
-            string firstBtn = GameRoot.Hardcore ? "ЗАНОВО (волна 1)" : "РЕСПАВН";
+            string firstBtn = GameRoot.Hardcore ? Lang.T("ЗАНОВО (волна 1)", "RESTART (wave 1)") : Lang.T("РЕСПАВН", "RESPAWN");
             if (GUI.Button(new Rect(bx, cy - 10f, bw, bh), firstBtn, big))
             {
                 if (GameRoot.Hardcore) { if (GameRoot.Instance != null) GameRoot.Instance.RestartRun(); }
@@ -1572,7 +1623,7 @@ public class PlayerController : MonoBehaviour
                 Cursor.visible = false;
             }
             GUI.backgroundColor = new Color(0.75f, 0.35f, 0.32f);
-            if (GUI.Button(new Rect(cx + gap * 0.5f, cy - 10f, bw, bh), "ВЫЙТИ", big))
+            if (GUI.Button(new Rect(cx + gap * 0.5f, cy - 10f, bw, bh), Lang.T("ВЫЙТИ", "EXIT"), big))
             {
                 if (GameRoot.Instance != null) GameRoot.Instance.ExitToMenu();
             }
@@ -1604,7 +1655,7 @@ public class PlayerController : MonoBehaviour
             float startY = cy - blockH * 0.5f;
 
             var title = new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false };
-            GUI.Label(new Rect(cx - 460f, startY - 44f, 920f, 30f), "МЕНЮ ПОСТРОЙКИ   —   клик для выбора   (отпусти Q чтобы закрыть)", title);
+            GUI.Label(new Rect(cx - 460f, startY - 44f, 920f, 30f), Lang.T("МЕНЮ ПОСТРОЙКИ   —   клик для выбора   (отпусти Q чтобы закрыть)", "BUILD MENU   —   click to select   (release Q to close)"), title);
 
             var head = new GUIStyle(GUI.skin.label) { fontSize = 16, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft, wordWrap = false };
             var btn = new GUIStyle(GUI.skin.button) { fontSize = 14, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = true };
@@ -1616,7 +1667,7 @@ public class PlayerController : MonoBehaviour
             for (int ci = 0; ci < BuildCategories.Length; ci++)
             {
                 GUI.color = new Color(1f, 0.88f, 0.5f);
-                GUI.Label(new Rect(leftX + 4f, y, gridW, headH), BuildCategories[ci], head);
+                GUI.Label(new Rect(leftX + 4f, y, gridW, headH), BCat(ci), head);
                 GUI.color = Color.white;
 
                 var items = BuildCategoryItems[ci];
@@ -1637,7 +1688,7 @@ public class PlayerController : MonoBehaviour
                     }
                     bool afford = Metal >= BCost(i);
                     GUI.backgroundColor = (i == SelectedBuild) ? Color.yellow : (afford ? new Color(0.4f, 0.6f, 0.85f) : new Color(0.5f, 0.35f, 0.35f));
-                    if (GUI.Button(rect, $"{BuildNames[i]}\n{BCost(i)} мет.", btn))
+                    if (GUI.Button(rect, Lang.T($"{BName(i)}\n{BCost(i)} мет.", $"{BName(i)}\n{BCost(i)} metal"), btn))
                     {
                         SelectedBuild = i;
                         SetTool(Tool.Build);
@@ -1659,9 +1710,9 @@ public class PlayerController : MonoBehaviour
                 var dTitle = new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft };
                 var dBody = new GUIStyle(GUI.skin.label) { fontSize = 16, wordWrap = true, alignment = TextAnchor.UpperLeft };
                 GUI.color = new Color(1f, 0.9f, 0.55f);
-                GUI.Label(new Rect(dx + 14f, dy + 6f, dw - 28f, 26f), $"{BuildNames[hoverItem]}   —   {BCost(hoverItem)} металла", dTitle);
+                GUI.Label(new Rect(dx + 14f, dy + 6f, dw - 28f, 26f), Lang.T($"{BName(hoverItem)}   —   {BCost(hoverItem)} металла", $"{BName(hoverItem)}   —   {BCost(hoverItem)} metal"), dTitle);
                 GUI.color = Color.white;
-                GUI.Label(new Rect(dx + 14f, dy + 34f, dw - 28f, dh - 40f), BuildDescriptions[hoverItem], dBody);
+                GUI.Label(new Rect(dx + 14f, dy + 34f, dw - 28f, dh - 40f), BDesc(hoverItem), dBody);
             }
         }
     }

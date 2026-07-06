@@ -29,7 +29,7 @@ public class GameRoot : MonoBehaviour
     public static bool IsZvZ = false;      // zombie-vs-zombie match: ZvZManager drives the world (no defense waves)
     public static bool BaseLost = false;   // the one critical dispenser was destroyed → game over (default mode)
 
-    static readonly string[] TeamNames = { "Команда A", "Команда Б" };
+    static string[] TeamNames => new[] { Lang.T("Команда A", "Team A"), Lang.T("Команда Б", "Team B") };
 
     Camera menuCam;
     LanManager lan;
@@ -451,7 +451,7 @@ public class GameRoot : MonoBehaviour
         float cx = UI.W * 0.5f;
         var title = new GUIStyle(GUI.skin.label) { fontSize = 40, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         GUI.color = new Color(0.6f, 0.9f, 0.5f);
-        GUI.Label(new Rect(cx - 320f, 40f, 640f, 56f), "СОХРАНЕНИЯ (.gdf)", title);
+        GUI.Label(new Rect(cx - 320f, 40f, 640f, 56f), Lang.T("СОХРАНЕНИЯ (.gdf)", "SAVES (.gdf)"), title);
         GUI.color = Color.white;
 
         var row = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.Bold };
@@ -474,23 +474,23 @@ public class GameRoot : MonoBehaviour
 
             if (s.exists)
             {
-                GUI.Label(new Rect(x + 178f, y + 12f, 360f, 26f), $"Слот {s.slot + 1}   —   волна {s.wave}{(s.infinite ? "  (беск.)" : "")}{(s.night ? "  (ночь)" : "")}", row);
+                GUI.Label(new Rect(x + 178f, y + 12f, 360f, 26f), Lang.T($"Слот {s.slot + 1}   —   волна {s.wave}{(s.infinite ? "  (беск.)" : "")}{(s.night ? "  (ночь)" : "")}", $"Slot {s.slot + 1}   —   wave {s.wave}{(s.infinite ? "  (endless)" : "")}{(s.night ? "  (night)" : "")}"), row);
                 GUI.color = new Color(0.75f, 0.8f, 0.75f);
                 GUI.Label(new Rect(x + 178f, y + 42f, 360f, 24f), s.time, row);
                 GUI.color = Color.white;
-                if (GUI.Button(new Rect(x + w - 210f, y + 14f, 120f, 40f), "Загрузить", btn)) { LoadSlot(s.slot); return; }
-                if (GUI.Button(new Rect(x + w - 82f, y + 14f, 72f, 40f), "Удалить", small)) { SaveSystem.DeleteSlot(s.slot); DropThumb(s.slot); }
+                if (GUI.Button(new Rect(x + w - 210f, y + 14f, 120f, 40f), Lang.T("Загрузить", "Load"), btn)) { LoadSlot(s.slot); return; }
+                if (GUI.Button(new Rect(x + w - 82f, y + 14f, 72f, 40f), Lang.T("Удалить", "Delete"), small)) { SaveSystem.DeleteSlot(s.slot); DropThumb(s.slot); }
             }
             else
             {
                 GUI.color = new Color(0.6f, 0.62f, 0.6f);
-                GUI.Label(new Rect(x + 178f, y + 34f, 360f, 26f), $"Слот {s.slot + 1}   —   пусто", row);
+                GUI.Label(new Rect(x + 178f, y + 34f, 360f, 26f), Lang.T($"Слот {s.slot + 1}   —   пусто", $"Slot {s.slot + 1}   —   empty"), row);
                 GUI.color = Color.white;
             }
             y += rowH;
         }
 
-        if (GUI.Button(new Rect(cx - 120f, y + 12f, 240f, 46f), "Назад", btn)) inSaves = false;
+        if (GUI.Button(new Rect(cx - 120f, y + 12f, 240f, 46f), Lang.T("Назад", "Back"), btn)) inSaves = false;
     }
 
     Texture2D GetThumb(int slot, bool exists)
@@ -513,7 +513,7 @@ public class GameRoot : MonoBehaviour
         float cx = UI.W * 0.5f, cy = UI.H * 0.5f;
         var title = new GUIStyle(GUI.skin.label) { fontSize = 48, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         GUI.color = new Color(0.6f, 0.9f, 0.5f);
-        GUI.Label(new Rect(cx - 320f, cy - 190f, 640f, 64f), "ОБОРОНА ОТ ЗОМБИ", title);
+        GUI.Label(new Rect(cx - 320f, cy - 190f, 640f, 64f), Lang.T("ОБОРОНА ОТ ЗОМБИ", "ZOMBIE DEFENSE"), title);
         GUI.color = Color.white;
 
         var btn = new GUIStyle(GUI.skin.button) { fontSize = 22, fontStyle = FontStyle.Bold };
@@ -522,31 +522,31 @@ public class GameRoot : MonoBehaviour
         if (HasSave)
         {
             int w = PlayerPrefs.GetInt("save_wave", 0) + 1;
-            if (GUI.Button(new Rect(x, y, bw, bh), $"Продолжить  (волна {w})", btn)) { CurrentMode = Mode.Offline; Hardcore = false; Infinite = PlayerPrefs.GetInt("save_infinite", 0) == 1; StartGame(true); }
+            if (GUI.Button(new Rect(x, y, bw, bh), Lang.T($"Продолжить  (волна {w})", $"Continue  (wave {w})"), btn)) { CurrentMode = Mode.Offline; Hardcore = false; Infinite = PlayerPrefs.GetInt("save_infinite", 0) == 1; StartGame(true); }
         }
         y += 58f;
-        if (GUI.Button(new Rect(x, y, bw, bh), "Новая игра", btn)) inNewGame = true;
+        if (GUI.Button(new Rect(x, y, bw, bh), Lang.T("Новая игра", "New Game"), btn)) inNewGame = true;
         y += 58f;
-        if (GUI.Button(new Rect(x, y, bw, bh), "Сохранения", btn)) inSaves = true;
+        if (GUI.Button(new Rect(x, y, bw, bh), Lang.T("Сохранения", "Saves"), btn)) inSaves = true;
         y += 58f;
         bool tutDone = PlayerPrefs.GetInt("tutorial_done", 0) == 1;
         if (!tutDone) GUI.backgroundColor = new Color(0.3f, 0.72f, 0.36f); // highlight until completed
-        if (GUI.Button(new Rect(x, y, bw, bh), tutDone ? "Обучение" : "ОБУЧЕНИЕ (рекомендуется)", btn)) StartTutorial();
+        if (GUI.Button(new Rect(x, y, bw, bh), tutDone ? Lang.T("Обучение", "Tutorial") : Lang.T("ОБУЧЕНИЕ (рекомендуется)", "TUTORIAL (recommended)"), btn)) StartTutorial();
         GUI.backgroundColor = Color.white;
         y += 58f;
-        if (GUI.Button(new Rect(x, y, bw, bh), "Режимы", btn)) inModes = true;
+        if (GUI.Button(new Rect(x, y, bw, bh), Lang.T("Режимы", "Modes"), btn)) inModes = true;
         y += 58f;
-        if (GUI.Button(new Rect(x, y, bw, bh), "Настройки", btn)) { settingsFromPause = false; inSettings = true; }
+        if (GUI.Button(new Rect(x, y, bw, bh), Lang.T("Настройки", "Settings"), btn)) { settingsFromPause = false; inSettings = true; }
         y += 58f;
         // Desktop: quit. WebGL ("еблан эдишн"): no quit in a browser — link to the full PC build on GitHub.
         if (NetSupported)
         {
-            if (GUI.Button(new Rect(x, y, bw, bh), "Выход", btn)) QuitApp();
+            if (GUI.Button(new Rect(x, y, bw, bh), Lang.T("Выход", "Quit"), btn)) QuitApp();
         }
         else
         {
             GUI.backgroundColor = new Color(0.3f, 0.55f, 0.8f);
-            if (GUI.Button(new Rect(x, y, bw, bh), "Полная версия на ПК (GitHub)", btn))
+            if (GUI.Button(new Rect(x, y, bw, bh), Lang.T("Полная версия на ПК (GitHub)", "Full PC version (GitHub)"), btn))
                 Application.OpenURL(UpdateChecker.ReleasesUrl);
             GUI.backgroundColor = Color.white;
         }
@@ -554,8 +554,8 @@ public class GameRoot : MonoBehaviour
         // Update / download banner — ALWAYS shown. GREEN when a newer release exists,
         // RED when you're already on the latest. Wide box so the text never clips.
         bool avail = UpdateChecker.UpdateAvailable;
-        string utxt = avail ? $"Доступно обновление {UpdateChecker.Latest} — скачать"
-                            : "Обновлений нет — вы на последней версии";
+        string utxt = avail ? Lang.T($"Доступно обновление {UpdateChecker.Latest} — скачать", $"Update available {UpdateChecker.Latest} — download")
+                            : Lang.T("Обновлений нет — вы на последней версии", "No updates — you're on the latest version");
         var up = new GUIStyle(GUI.skin.button) { fontSize = 18, fontStyle = FontStyle.Bold };
         GUI.backgroundColor = avail ? new Color(0.3f, 0.75f, 0.32f) : new Color(0.8f, 0.3f, 0.28f);
         if (GUI.Button(new Rect(cx - 300f, y + 62f, 600f, 42f), utxt, up))
@@ -565,7 +565,7 @@ public class GameRoot : MonoBehaviour
         // Game version — right under the update button.
         var ver = new GUIStyle(GUI.skin.label) { fontSize = 17, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         GUI.color = new Color(0.8f, 0.85f, 0.8f);
-        GUI.Label(new Rect(cx - 300f, y + 108f, 600f, 22f), $"версия {GameVersion.Current}", ver);
+        GUI.Label(new Rect(cx - 300f, y + 108f, 600f, 22f), Lang.T($"версия {GameVersion.Current}", $"version {GameVersion.Current}"), ver);
         GUI.color = Color.white;
 
         var credit = new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
@@ -583,7 +583,7 @@ public class GameRoot : MonoBehaviour
         float cx = UI.W * 0.5f, cy = UI.H * 0.5f;
         var title = new GUIStyle(GUI.skin.label) { fontSize = 44, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         GUI.color = new Color(0.6f, 0.9f, 0.5f);
-        GUI.Label(new Rect(cx - 360f, cy - 360f, 720f, 64f), "НОВАЯ ИГРА", title);
+        GUI.Label(new Rect(cx - 360f, cy - 360f, 720f, 64f), Lang.T("НОВАЯ ИГРА", "NEW GAME"), title);
         GUI.color = Color.white;
 
         var btn = new GUIStyle(GUI.skin.button) { fontSize = 22, fontStyle = FontStyle.Bold };
@@ -606,12 +606,12 @@ public class GameRoot : MonoBehaviour
             y += bh + capH + gap;
         }
 
-        Row("Обычный", "стандартная оборона до эвакуации (волна 55)", false, false);
-        Row("Хардкор", "смерть = заново с 1-й волны, постройки дороже, раздатчик отдаёт лишь накопленное", true, false);
-        Row("Бесконечный", "всё как в обычном, но финала нет — волны идут бесконечно", false, true);
+        Row(Lang.T("Обычный", "Normal"), Lang.T("стандартная оборона до эвакуации (волна 55)", "standard defense until evacuation (wave 55)"), false, false);
+        Row(Lang.T("Хардкор", "Hardcore"), Lang.T("смерть = заново с 1-й волны, постройки дороже, раздатчик отдаёт лишь накопленное", "death = restart from wave 1, pricier builds, the dispenser only gives what's been accumulated"), true, false);
+        Row(Lang.T("Бесконечный", "Endless"), Lang.T("всё как в обычном, но финала нет — волны идут бесконечно", "same as normal, but there's no finale — waves go on endlessly"), false, true);
 
         var small = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold };
-        if (GUI.Button(new Rect(x, y + 6f, bw, 40f), "Назад", small)) inNewGame = false;
+        if (GUI.Button(new Rect(x, y + 6f, bw, 40f), Lang.T("Назад", "Back"), small)) inNewGame = false;
     }
 
     // ---- Modes screen: pick offline / online co-op / PvP, choose a map, host or join ----
@@ -621,7 +621,7 @@ public class GameRoot : MonoBehaviour
         float cx = UI.W * 0.5f, cy = UI.H * 0.5f;
         var title = new GUIStyle(GUI.skin.label) { fontSize = 44, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         GUI.color = new Color(0.6f, 0.9f, 0.5f);
-        GUI.Label(new Rect(cx - 320f, cy - 250f, 640f, 64f), "РЕЖИМЫ", title);
+        GUI.Label(new Rect(cx - 320f, cy - 250f, 640f, 64f), Lang.T("РЕЖИМЫ", "MODES"), title);
         GUI.color = Color.white;
 
         var btn = new GUIStyle(GUI.skin.button) { fontSize = 20, fontStyle = FontStyle.Bold };
@@ -632,7 +632,7 @@ public class GameRoot : MonoBehaviour
 
         // ---- Map selector (host's choice; joiners auto-adopt the host's map) ----
         // Wraps to a grid so all maps fit (originally a single row of three).
-        GUI.Label(new Rect(x, cy - 206f, bw, 20f), "Карта (хост)", lab);
+        GUI.Label(new Rect(x, cy - 206f, bw, 20f), Lang.T("Карта (хост)", "Map (host)"), lab);
         int mapCount = GameBootstrap.MapCount;
         const int mapCols = 4;
         float mw = bw / mapCols, mh = 24f;
@@ -648,7 +648,7 @@ public class GameRoot : MonoBehaviour
         GUI.color = Color.white;
 
         // ---- Team selector (PvP friendly-fire / colours) ----
-        GUI.Label(new Rect(x, cy - 130f, bw, 22f), "Команда (PvP)", lab);
+        GUI.Label(new Rect(x, cy - 130f, bw, 22f), Lang.T("Команда (PvP)", "Team (PvP)"), lab);
         float tw = bw / 2f;
         for (int i = 0; i < TeamNames.Length; i++)
         {
@@ -659,12 +659,12 @@ public class GameRoot : MonoBehaviour
 
         // ---- 1) Offline: normal + hardcore (single-player) ----
         float hw = bw / 2f;
-        if (GUI.Button(new Rect(x, cy - 58f, hw - 4f, 46f), "Оффлайн", btn))
+        if (GUI.Button(new Rect(x, cy - 58f, hw - 4f, 46f), Lang.T("Оффлайн", "Offline"), btn))
         {
             CurrentMode = Mode.Offline; Hardcore = false; StartGame(false);
         }
         GUI.backgroundColor = new Color(0.85f, 0.4f, 0.3f);
-        if (GUI.Button(new Rect(x + hw, cy - 58f, hw - 4f, 46f), "ХАРДКОР", btn))
+        if (GUI.Button(new Rect(x + hw, cy - 58f, hw - 4f, 46f), Lang.T("ХАРДКОР", "HARDCORE"), btn))
         {
             CurrentMode = Mode.Offline; Hardcore = true; StartGame(false);
         }
@@ -674,18 +674,18 @@ public class GameRoot : MonoBehaviour
         if (NetSupported)
         {
             // 2) Online co-op — host or join over LAN
-            if (GUI.Button(new Rect(x, cy - 6f, bw, 42f), "Кооп — Хост (LAN)", small))
+            if (GUI.Button(new Rect(x, cy - 6f, bw, 42f), Lang.T("Кооп — Хост (LAN)", "Co-op — Host (LAN)"), small))
             {
                 CurrentMode = Mode.Coop; Hardcore = false; lan.StartHost(); StartGame(false);
             }
             // 3) PvP (players vs players) — host or join
-            if (GUI.Button(new Rect(x, cy + 42f, bw, 42f), "PvP — Хост (LAN)", small))
+            if (GUI.Button(new Rect(x, cy + 42f, bw, 42f), Lang.T("PvP — Хост (LAN)", "PvP — Host (LAN)"), small))
             {
                 CurrentMode = Mode.Pvp; Hardcore = false; lan.StartHost(); StartGame(false);
             }
             // Shared join row (IP) — joins whatever the host is running.
             joinIp = GUI.TextField(new Rect(x, cy + 90f, bw - 150f, 42f), joinIp, fld);
-            if (GUI.Button(new Rect(x + bw - 144f, cy + 90f, 70f, 42f), "Кооп", small))
+            if (GUI.Button(new Rect(x + bw - 144f, cy + 90f, 70f, 42f), Lang.T("Кооп", "Co-op"), small))
             {
                 CurrentMode = Mode.Coop; Hardcore = false; if (lan.StartClient(joinIp)) StartGame(false);
             }
@@ -696,31 +696,36 @@ public class GameRoot : MonoBehaviour
         }
 
         // ---- 4) Zombie-vs-Zombie (2.0): grow a horde and crush the enemy core ----
-        GUI.Label(new Rect(x, cy + 120f, bw, 18f), "ЗОМБИ vs ЗОМБИ (2.0)", lab);
+        GUI.Label(new Rect(x, cy + 120f, bw, 18f), Lang.T("ЗОМБИ vs ЗОМБИ (2.0)", "ZOMBIE vs ZOMBIE (2.0)"), lab);
         GUI.backgroundColor = new Color(0.7f, 0.4f, 0.72f);
         if (NetSupported)
         {
             float zw = bw / 3f;
-            if (GUI.Button(new Rect(x, cy + 140f, zw - 3f, 40f), "vs ИИ", small)) { CurrentMode = Mode.Offline; StartZvZ(0); }
-            if (GUI.Button(new Rect(x + zw, cy + 140f, zw - 3f, 40f), "Хост LAN", small)) StartZvZ(1);
+            if (GUI.Button(new Rect(x, cy + 140f, zw - 3f, 40f), Lang.T("vs ИИ", "vs AI"), small)) { CurrentMode = Mode.Offline; StartZvZ(0); }
+            if (GUI.Button(new Rect(x + zw, cy + 140f, zw - 3f, 40f), Lang.T("Хост LAN", "Host LAN"), small)) StartZvZ(1);
             if (GUI.Button(new Rect(x + 2f * zw, cy + 140f, zw - 3f, 40f), "Join LAN", small)) StartZvZ(2); // joins the IP above
         }
         else // WebGL: only the offline AI match
         {
-            if (GUI.Button(new Rect(x, cy + 140f, bw, 40f), "vs ИИ", small)) { CurrentMode = Mode.Offline; StartZvZ(0); }
+            if (GUI.Button(new Rect(x, cy + 140f, bw, 40f), Lang.T("vs ИИ", "vs AI"), small)) { CurrentMode = Mode.Offline; StartZvZ(0); }
         }
         GUI.backgroundColor = Color.white;
 
         var hint = new GUIStyle(GUI.skin.label) { fontSize = 12, alignment = TextAnchor.MiddleCenter, wordWrap = true };
         GUI.color = new Color(0.8f, 0.85f, 0.9f);
         GUI.Label(new Rect(cx - 320f, cy + 186f, 640f, 70f), NetSupported
-            ? $"LAN: хост сообщает свой IP, остальные вбивают его и жмут Join (UDP порт {LanManager.Port}). " +
-              "Кооп: общие зомби/волны/постройки. PvP: стреляй по чужой команде. " +
-              "ЗвЗ: расти орду (G) и снеси вражеское ядро — vs ИИ или 2 игрока по LAN."
-            : "Веб-версия (инвалид эдишн): только одиночка и ЗвЗ vs ИИ — сетевые режимы недоступны в браузере.", hint);
+            ? Lang.T(
+                $"LAN: хост сообщает свой IP, остальные вбивают его и жмут Join (UDP порт {LanManager.Port}). " +
+                "Кооп: общие зомби/волны/постройки. PvP: стреляй по чужой команде. " +
+                "ЗвЗ: расти орду (G) и снеси вражеское ядро — vs ИИ или 2 игрока по LAN.",
+                $"LAN: the host shares their IP, others type it in and press Join (UDP port {LanManager.Port}). " +
+                "Co-op: shared zombies/waves/buildings. PvP: shoot the enemy team. " +
+                "ZvZ: grow your horde (G) and smash the enemy core — vs AI or 2 players over LAN.")
+            : Lang.T("Веб-версия (инвалид эдишн): только одиночка и ЗвЗ vs ИИ — сетевые режимы недоступны в браузере.",
+                "Web version (invalid edition): only single-player and ZvZ vs AI — network modes are unavailable in the browser."), hint);
         GUI.color = Color.white;
 
-        if (GUI.Button(new Rect(x, cy + 256f, bw, 40f), "Назад", small)) inModes = false;
+        if (GUI.Button(new Rect(x, cy + 256f, bw, 40f), Lang.T("Назад", "Back"), small)) inModes = false;
     }
 
     void DrawPauseMenu()
@@ -731,14 +736,14 @@ public class GameRoot : MonoBehaviour
 
         float cx = UI.W * 0.5f, cy = UI.H * 0.5f;
         var title = new GUIStyle(GUI.skin.label) { fontSize = 40, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-        GUI.Label(new Rect(cx - 200f, cy - 170f, 400f, 60f), "ПАУЗА", title);
+        GUI.Label(new Rect(cx - 200f, cy - 170f, 400f, 60f), Lang.T("ПАУЗА", "PAUSE"), title);
 
         var btn = new GUIStyle(GUI.skin.button) { fontSize = 22, fontStyle = FontStyle.Bold };
         float bw = 280f, bh = 52f, x = cx - bw * 0.5f;
-        if (GUI.Button(new Rect(x, cy - 90f, bw, bh), "Продолжить", btn)) Resume();
-        if (GUI.Button(new Rect(x, cy - 30f, bw, bh), "Настройки", btn)) { settingsFromPause = true; inSettings = true; }
-        if (GUI.Button(new Rect(x, cy + 30f, bw, bh), "В главное меню", btn)) ExitToMenu();
-        if (GUI.Button(new Rect(x, cy + 90f, bw, bh), "Выйти из игры", btn)) QuitApp();
+        if (GUI.Button(new Rect(x, cy - 90f, bw, bh), Lang.T("Продолжить", "Continue"), btn)) Resume();
+        if (GUI.Button(new Rect(x, cy - 30f, bw, bh), Lang.T("Настройки", "Settings"), btn)) { settingsFromPause = true; inSettings = true; }
+        if (GUI.Button(new Rect(x, cy + 30f, bw, bh), Lang.T("В главное меню", "Main menu"), btn)) ExitToMenu();
+        if (GUI.Button(new Rect(x, cy + 90f, bw, bh), Lang.T("Выйти из игры", "Quit game"), btn)) QuitApp();
     }
 
     // ---- Settings: UI customization (live preview; persisted in PlayerPrefs) ----
@@ -755,31 +760,35 @@ public class GameRoot : MonoBehaviour
         float cx = UI.W * 0.5f, cy = UI.H * 0.5f;
         var title = new GUIStyle(GUI.skin.label) { fontSize = 40, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         GUI.color = new Color(0.6f, 0.9f, 0.5f);
-        GUI.Label(new Rect(cx - 320f, cy - 230f, 640f, 56f), "НАСТРОЙКИ ИНТЕРФЕЙСА", title);
+        GUI.Label(new Rect(cx - 320f, cy - 230f, 640f, 56f), Lang.T("НАСТРОЙКИ ИНТЕРФЕЙСА", "INTERFACE SETTINGS"), title);
         GUI.color = Color.white;
 
         var lab = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft };
         var small = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold };
         float bw = 460f, x = cx - bw * 0.5f, y = cy - 150f;
 
+        // Language toggle (shows the CURRENT language; click to switch)
+        if (GUI.Button(new Rect(x, y, bw, 40f), Lang.T("Язык: Русский", "Language: English"), small)) Lang.Toggle();
+        y += 52f;
+
         // UI scale
-        GUI.Label(new Rect(x, y, bw, 22f), $"Размер интерфейса: {Mathf.RoundToInt(UISettings.Scale * 100f)}%", lab);
+        GUI.Label(new Rect(x, y, bw, 22f), Lang.T($"Размер интерфейса: {Mathf.RoundToInt(UISettings.Scale * 100f)}%", $"Interface scale: {Mathf.RoundToInt(UISettings.Scale * 100f)}%"), lab);
         UISettings.Scale = GUI.HorizontalSlider(new Rect(x, y + 26f, bw, 22f), UISettings.Scale, 0.7f, 1.4f);
         y += 64f;
 
         // Crosshair size (0 = hidden)
-        string chTxt = UISettings.Crosshair <= 0.01f ? "выкл" : $"{Mathf.RoundToInt(UISettings.Crosshair * 100f)}%";
-        GUI.Label(new Rect(x, y, bw, 22f), $"Прицел: {chTxt}", lab);
+        string chTxt = UISettings.Crosshair <= 0.01f ? Lang.T("выкл", "off") : $"{Mathf.RoundToInt(UISettings.Crosshair * 100f)}%";
+        GUI.Label(new Rect(x, y, bw, 22f), Lang.T($"Прицел: {chTxt}", $"Crosshair: {chTxt}"), lab);
         UISettings.Crosshair = GUI.HorizontalSlider(new Rect(x, y + 26f, bw, 22f), UISettings.Crosshair, 0f, 2f);
         y += 64f;
 
         // HUD panel opacity
-        GUI.Label(new Rect(x, y, bw, 22f), $"Прозрачность панелей: {Mathf.RoundToInt(UISettings.PanelAlpha * 100f)}%", lab);
+        GUI.Label(new Rect(x, y, bw, 22f), Lang.T($"Прозрачность панелей: {Mathf.RoundToInt(UISettings.PanelAlpha * 100f)}%", $"Panel opacity: {Mathf.RoundToInt(UISettings.PanelAlpha * 100f)}%"), lab);
         UISettings.PanelAlpha = GUI.HorizontalSlider(new Rect(x, y + 26f, bw, 22f), UISettings.PanelAlpha, 0f, 0.9f);
         y += 64f;
 
         // Accent colour (cycle through presets) + swatch
-        GUI.Label(new Rect(x, y, bw - 120f, 28f), $"Цвет акцента: {UISettings.AccentNames[UISettings.AccentIndex]}", lab);
+        GUI.Label(new Rect(x, y, bw - 120f, 28f), Lang.T($"Цвет акцента: {UISettings.AccentNames[UISettings.AccentIndex]}", $"Accent color: {UISettings.AccentNames[UISettings.AccentIndex]}"), lab);
         int n = UISettings.Accents.Length;
         if (GUI.Button(new Rect(x + bw - 116f, y, 34f, 28f), "<", small)) UISettings.AccentIndex = (UISettings.AccentIndex - 1 + n) % n;
         if (GUI.Button(new Rect(x + bw - 38f, y, 34f, 28f), ">", small)) UISettings.AccentIndex = (UISettings.AccentIndex + 1) % n;
@@ -791,7 +800,7 @@ public class GameRoot : MonoBehaviour
         // Move HUD elements — only meaningful in-game (the HUD must be on screen to drag it).
         if (settingsFromPause)
         {
-            if (GUI.Button(new Rect(x, y, bw, 40f), "Перемещать элементы HUD…", small))
+            if (GUI.Button(new Rect(x, y, bw, 40f), Lang.T("Перемещать элементы HUD…", "Move HUD elements…"), small))
             {
                 UISettings.EditLayout = true; // OnGUI now shows the HUD with draggable elements
                 inSettings = false;
@@ -801,8 +810,8 @@ public class GameRoot : MonoBehaviour
 
         // Reset + Back (Back saves)
         float hw = bw / 2f;
-        if (GUI.Button(new Rect(x, y, hw - 6f, 44f), "Сбросить", small)) UISettings.Reset();
-        if (GUI.Button(new Rect(x + hw + 6f, y, hw - 6f, 44f), "Назад", small))
+        if (GUI.Button(new Rect(x, y, hw - 6f, 44f), Lang.T("Сбросить", "Reset"), small)) UISettings.Reset();
+        if (GUI.Button(new Rect(x + hw + 6f, y, hw - 6f, 44f), Lang.T("Назад", "Back"), small))
         {
             UISettings.Save();
             inSettings = false;
@@ -819,11 +828,11 @@ public class GameRoot : MonoBehaviour
         GUI.color = Color.white;
 
         var lab = new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-        GUI.Label(new Rect(cx - 460f, 10f, 920f, 24f), "ПЕРЕМЕЩЕНИЕ HUD — тащите зелёные рамки мышью", lab);
+        GUI.Label(new Rect(cx - 460f, 10f, 920f, 24f), Lang.T("ПЕРЕМЕЩЕНИЕ HUD — тащите зелёные рамки мышью", "MOVING HUD — drag the green frames with the mouse"), lab);
 
         var small = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold };
-        if (GUI.Button(new Rect(cx - 220f, 36f, 210f, 26f), "Сбросить позиции", small)) UISettings.ResetLayout();
-        if (GUI.Button(new Rect(cx + 10f, 36f, 210f, 26f), "Готово", small))
+        if (GUI.Button(new Rect(cx - 220f, 36f, 210f, 26f), Lang.T("Сбросить позиции", "Reset positions"), small)) UISettings.ResetLayout();
+        if (GUI.Button(new Rect(cx + 10f, 36f, 210f, 26f), Lang.T("Готово", "Done"), small))
         {
             UISettings.Save();
             UISettings.EditLayout = false;

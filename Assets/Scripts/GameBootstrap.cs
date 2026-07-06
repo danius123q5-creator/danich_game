@@ -176,35 +176,35 @@ public static class GameBootstrap
     // 0..2 are the original Forest / Hills / Arena; 3..7 are the new maps.
     public static readonly MapDef[] Maps =
     {
-        new MapDef { name="Лес", amp=3.5f, freq=0.025f, ridge=0f, channel=true, channelBed=-2f, waterPlane=1, water=-0.8f,
+        new MapDef { name=Lang.T("Лес","Forest"), amp=3.5f, freq=0.025f, ridge=0f, channel=true, channelBed=-2f, waterPlane=1, water=-0.8f,
             floor=new Color(0.22f,0.38f,0.18f), waterTint=new Color(0.2f,0.45f,0.85f,0.6f), trees=220, treeStyle=0,
             ambient=new Color(0.35f,0.37f,0.4f), sun=new Color(1f,0.96f,0.86f), sunInt=1.1f, fog=new Color(0.6f,0.7f,0.6f), fogDensity=0f },
 
-        new MapDef { name="Холмы", amp=9f, freq=0.02f, ridge=0f, channel=true, channelBed=-2f, waterPlane=1, water=-0.8f,
+        new MapDef { name=Lang.T("Холмы","Hills"), amp=9f, freq=0.02f, ridge=0f, channel=true, channelBed=-2f, waterPlane=1, water=-0.8f,
             floor=new Color(0.25f,0.42f,0.20f), waterTint=new Color(0.2f,0.45f,0.85f,0.6f), trees=220, treeStyle=0,
             ambient=new Color(0.35f,0.37f,0.4f), sun=new Color(1f,0.96f,0.86f), sunInt=1.1f, fog=new Color(0.6f,0.7f,0.6f), fogDensity=0f },
 
-        new MapDef { name="Арена", amp=0.5f, freq=0.03f, ridge=0f, channel=false, channelBed=0f, waterPlane=0, water=-0.8f,
+        new MapDef { name=Lang.T("Арена","Arena"), amp=0.5f, freq=0.03f, ridge=0f, channel=false, channelBed=0f, waterPlane=0, water=-0.8f,
             floor=new Color(0.55f,0.50f,0.32f), waterTint=new Color(0.2f,0.45f,0.85f,0.6f), trees=60, treeStyle=0,
             ambient=new Color(0.4f,0.4f,0.42f), sun=new Color(1f,0.97f,0.9f), sunInt=1.15f, fog=new Color(0.7f,0.7f,0.65f), fogDensity=0f },
 
-        new MapDef { name="Пустыня", amp=4f, freq=0.014f, ridge=1.4f, channel=false, channelBed=0f, waterPlane=0, water=-0.8f,
+        new MapDef { name=Lang.T("Пустыня","Desert"), amp=4f, freq=0.014f, ridge=1.4f, channel=false, channelBed=0f, waterPlane=0, water=-0.8f,
             floor=new Color(0.80f,0.69f,0.42f), waterTint=new Color(0.2f,0.45f,0.85f,0.6f), trees=40, treeStyle=2,
             ambient=new Color(0.52f,0.46f,0.34f), sun=new Color(1f,0.92f,0.72f), sunInt=1.3f, fog=new Color(0.86f,0.78f,0.58f), fogDensity=0.006f },
 
-        new MapDef { name="Снег", amp=4f, freq=0.022f, ridge=0.6f, channel=true, channelBed=-1.5f, waterPlane=1, water=-0.8f,
+        new MapDef { name=Lang.T("Снег","Snow"), amp=4f, freq=0.022f, ridge=0.6f, channel=true, channelBed=-1.5f, waterPlane=1, water=-0.8f,
             floor=new Color(0.86f,0.89f,0.93f), waterTint=new Color(0.6f,0.78f,0.85f,0.6f), trees=110, treeStyle=1,
             ambient=new Color(0.55f,0.58f,0.62f), sun=new Color(0.85f,0.9f,1f), sunInt=1.0f, fog=new Color(0.82f,0.86f,0.92f), fogDensity=0.008f },
 
-        new MapDef { name="Каньон", amp=6f, freq=0.02f, ridge=2.5f, channel=true, channelBed=-6f, waterPlane=0, water=-5f,
+        new MapDef { name=Lang.T("Каньон","Canyon"), amp=6f, freq=0.02f, ridge=2.5f, channel=true, channelBed=-6f, waterPlane=0, water=-5f,
             floor=new Color(0.56f,0.34f,0.22f), waterTint=new Color(0.2f,0.45f,0.85f,0.6f), trees=28, treeStyle=3,
             ambient=new Color(0.45f,0.38f,0.32f), sun=new Color(1f,0.88f,0.7f), sunInt=1.2f, fog=new Color(0.7f,0.55f,0.42f), fogDensity=0.004f },
 
-        new MapDef { name="Острова", amp=3f, freq=0.03f, ridge=0.4f, channel=false, channelBed=0f, waterPlane=2, water=0.9f,
+        new MapDef { name=Lang.T("Острова","Islands"), amp=3f, freq=0.03f, ridge=0.4f, channel=false, channelBed=0f, waterPlane=2, water=0.9f,
             floor=new Color(0.2f,0.46f,0.24f), waterTint=new Color(0.15f,0.5f,0.7f,0.55f), trees=130, treeStyle=4,
             ambient=new Color(0.42f,0.48f,0.5f), sun=new Color(1f,0.97f,0.85f), sunInt=1.2f, fog=new Color(0.55f,0.72f,0.78f), fogDensity=0.004f },
 
-        new MapDef { name="Горы", amp=12f, freq=0.015f, ridge=3f, channel=true, channelBed=-2f, waterPlane=1, water=-0.8f,
+        new MapDef { name=Lang.T("Горы","Mountains"), amp=12f, freq=0.015f, ridge=3f, channel=true, channelBed=-2f, waterPlane=1, water=-0.8f,
             floor=new Color(0.5f,0.5f,0.53f), waterTint=new Color(0.3f,0.5f,0.75f,0.6f), trees=80, treeStyle=1,
             ambient=new Color(0.45f,0.47f,0.52f), sun=new Color(0.95f,0.96f,1f), sunInt=1.05f, fog=new Color(0.7f,0.74f,0.8f), fogDensity=0.005f },
     };

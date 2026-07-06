@@ -450,7 +450,7 @@ public class EndgameCinematic : MonoBehaviour
         {
             var w = new GUIStyle(GUI.skin.label) { fontSize = 34, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             GUI.color = new Color(1f, 0.3f, 0.2f);
-            GUI.Label(new Rect(0, 40, UI.W, 56), "ЯДЕРНЫЙ УДАР", w);
+            GUI.Label(new Rect(0, 40, UI.W, 56), Lang.T("ЯДЕРНЫЙ УДАР", "NUCLEAR STRIKE"), w);
             GUI.color = Color.white;
         }
 
@@ -458,7 +458,7 @@ public class EndgameCinematic : MonoBehaviour
         {
             var b = new GUIStyle(GUI.skin.label) { fontSize = 30, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             GUI.color = new Color(1f, 0.4f, 0.3f);
-            GUI.Label(new Rect(0, 40, UI.W, 50), "ЭВАКУАЦИЯ — добегите до вертолёта!", b);
+            GUI.Label(new Rect(0, 40, UI.W, 50), Lang.T("ЭВАКУАЦИЯ — добегите до вертолёта!", "EVACUATION — reach the chopper!"), b);
             GUI.color = Color.white;
         }
 
@@ -469,7 +469,7 @@ public class EndgameCinematic : MonoBehaviour
             float y = cy + 120f - creditScroll * 40f;
             GUI.Label(new Rect(0, y, UI.W, 70), "ZOMBIE DEFENSE", title);
             GUI.Label(new Rect(0, y + 75, UI.W, 40), "made by danich", sub);
-            GUI.Label(new Rect(0, y + 145, UI.W, 40), "спасибо за игру!", sub);
+            GUI.Label(new Rect(0, y + 145, UI.W, 40), Lang.T("спасибо за игру!", "thanks for playing!"), sub);
         }
 
         if (phase == Phase.Done && fade > 0.8f)

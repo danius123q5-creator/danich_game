@@ -24,7 +24,9 @@ public static class UISettings
         new Color(0.85f, 0.55f, 1f),   // violet
         new Color(0.95f, 0.95f, 0.95f),// white
     };
-    public static readonly string[] AccentNames = { "Синий", "Зелёный", "Янтарь", "Красный", "Фиолет", "Белый" };
+    public static readonly string[] AccentNames = {
+        Lang.T("Синий", "Blue"), Lang.T("Зелёный", "Green"), Lang.T("Янтарь", "Amber"),
+        Lang.T("Красный", "Red"), Lang.T("Фиолет", "Violet"), Lang.T("Белый", "White") };
     public static Color Accent => Accents[Mathf.Clamp(AccentIndex, 0, Accents.Length - 1)];
 
     static bool loaded;
