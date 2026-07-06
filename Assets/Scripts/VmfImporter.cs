@@ -93,7 +93,7 @@ public static class VmfImporter
     // ─────────────────────────────────────────────────────────────────────────
     //  Import — walk the tree, build every solid, return the player spawn point
     // ─────────────────────────────────────────────────────────────────────────
-    public struct Result { public Vector3 spawn; public bool hasSpawn; public int brushes; public int tris; }
+    public struct Result { public Vector3 spawn; public bool hasSpawn; public int brushes; public int tris; public int entities; }
 
     public static Result Import(string vmfText, Transform parent)
     {
@@ -106,20 +106,34 @@ public static class VmfImporter
             foreach (var solid in world.Where("solid"))
                 res.brushes += BuildSolid(solid, combined, ref res);
 
-        // Entity brushes (func_detail, func_wall, brush entities) + point entities (spawn/lights).
+        // EVERY entity — brush geometry (func_detail/func_wall/…) plus a VmfEntity carrier so the
+        // game knows the entity, its key/values and its I/O outputs (foundation for map scripting).
         foreach (var ent in root.Where("entity"))
         {
             string cls = ent.Get("classname");
             foreach (var solid in ent.Where("solid"))
                 res.brushes += BuildSolid(solid, combined, ref res);
 
+            Vector3 epos = TryVec(ent.Get("origin"), out var eo) ? ToUnity(eo) : ToUnity(EntityCentroid(ent));
+
+            var ego = new GameObject("ent:" + cls);
+            if (parent != null) ego.transform.SetParent(parent, false);
+            ego.transform.position = epos;
+            var ve = ego.AddComponent<VmfEntity>();
+            ve.classname = cls;
+            foreach (var kvp in ent.kv) ve.kv[kvp.Key] = kvp.Value;
+            foreach (var conn in ent.Where("connections"))
+                foreach (var kvp in conn.kv) AddConnection(ve, kvp.Key, kvp.Value);
+            res.entities++;
+
+            // Well-known entities also get a real in-game effect on top of the carrier.
             if (cls == "info_player_start" || cls == "info_player_deathmatch")
             {
-                if (TryVec(ent.Get("origin"), out var o)) { res.spawn = ToUnity(o) + Vector3.up * 0.1f; res.hasSpawn = true; }
+                res.spawn = epos + Vector3.up * 0.1f; res.hasSpawn = true;
             }
-            else if (cls == "light" || cls == "light_spot")
+            else if (cls == "light" || cls == "light_spot" || cls == "light_environment")
             {
-                if (TryVec(ent.Get("origin"), out var o)) SpawnLight(ToUnity(o), ent.Get("_light"), parent);
+                SpawnLight(epos, ent.Get("_light"), ego.transform);
             }
         }
 
@@ -278,6 +292,32 @@ public static class VmfImporter
         var f = new float[parts.Length];
         for (int i = 0; i < parts.Length; i++) float.TryParse(parts[i], NumberStyles.Float, CI, out f[i]);
         return f;
+    }
+
+    // Centre of a brush entity (average of its side plane sample points) — a marker position for
+    // entities that have geometry instead of an 'origin'.
+    static Vector3 EntityCentroid(Node ent)
+    {
+        Vector3 sum = Vector3.zero; int n = 0;
+        foreach (var solid in ent.Where("solid"))
+            foreach (var side in solid.Where("side"))
+                if (TryPlane(side.Get("plane"), out var a, out var b, out var c)) { sum += a + b + c; n += 3; }
+        return n > 0 ? sum / n : Vector3.zero;
+    }
+
+    // A Source I/O connection value: "target,input,param,delay,times". The field delimiter is a
+    // comma in old maps, or the ESC char (0x1B) in newer Hammer — handle both.
+    static void AddConnection(VmfEntity ve, string outputName, string value)
+    {
+        if (string.IsNullOrEmpty(value)) return;
+        var parts = value.Split(',', '\u001b');
+        var c = new VmfEntity.Connection { outputName = outputName, times = -1 };
+        c.target = parts.Length > 0 ? parts[0] : "";
+        c.input = parts.Length > 1 ? parts[1] : "";
+        c.param = parts.Length > 2 ? parts[2] : "";
+        if (parts.Length > 3) float.TryParse(parts[3], NumberStyles.Float, CI, out c.delay);
+        if (parts.Length > 4) int.TryParse(parts[4], NumberStyles.Integer, CI, out c.times);
+        ve.outputs.Add(c);
     }
 
     static bool InsideAll(Vector3 p, List<Pl> planes)

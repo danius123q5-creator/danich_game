@@ -38,7 +38,7 @@ public class DebugOverlay : MonoBehaviour
             var res = VmfImporter.Import(System.IO.File.ReadAllText(path), GameBootstrap.World);
             var p = P();
             if (p != null && res.hasSpawn) p.transform.position = res.spawn;
-            _bunkerMsg = $"бункер: {res.brushes} брашей, {res.tris} треуг.";
+            _bunkerMsg = $"бункер: {res.brushes} брашей, {res.entities} энтити, {res.tris} треуг.";
         }
         catch (System.Exception e) { _bunkerMsg = "ошибка VMF: " + e.Message; }
     }
