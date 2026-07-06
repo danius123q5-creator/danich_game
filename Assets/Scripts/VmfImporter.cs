@@ -146,19 +146,21 @@ public static class VmfImporter
     // ─────────────────────────────────────────────────────────────────────────
     //  Brush → convex polyhedron mesh (from its side planes)
     // ─────────────────────────────────────────────────────────────────────────
-    struct Pl { public Vector3 n; public float d; public Color32 col; } // n·x = d, outward normal
+    struct Pl { public Vector3 n; public float d; public Color32 col; public Node side; } // n·x = d, outward normal
 
     static int BuildSolid(Node solid, Dictionary<Color32, MeshBuild> batches, ref Result res)
     {
         var planes = new List<Pl>();
         Vector3 inside = Vector3.zero; int samples = 0;
+        bool anyDisp = false;
         foreach (var side in solid.Where("side"))
         {
             if (!TryPlane(side.Get("plane"), out var a, out var b, out var c)) continue;
             Vector3 nrm = Vector3.Cross(c - a, b - a);
             if (nrm.sqrMagnitude < 1e-9f) continue;
             nrm.Normalize();
-            planes.Add(new Pl { n = nrm, d = Vector3.Dot(nrm, a), col = MatColor(side.Get("material")) });
+            if (Disp(side) != null) anyDisp = true;
+            planes.Add(new Pl { n = nrm, d = Vector3.Dot(nrm, a), col = MatColor(side.Get("material")), side = side });
             inside += a + b + c; samples += 3;
         }
         if (planes.Count < 4) return 0;
@@ -182,7 +184,7 @@ public static class VmfImporter
                         verts.Add(pt);
         if (verts.Count < 4) return 0;
 
-        // Per face: gather the verts on that plane, order them, fan-triangulate into its colour batch.
+        // Per face: gather the verts on that plane, order them.
         foreach (var pl in planes)
         {
             var onFace = new List<Vector3>();
@@ -192,12 +194,90 @@ public static class VmfImporter
             if (onFace.Count < 3) continue;
             SortFace(onFace, pl.n);
 
+            // A brush with ANY displacement renders ONLY its displaced faces (the flat brush is
+            // "hollowed") — so skip flat faces when anyDisp, and build a disp surface where present.
+            if (anyDisp)
+            {
+                var disp = Disp(pl.side);
+                if (disp != null && onFace.Count == 4) BuildDisplacement(disp, pl, onFace, batches);
+                continue;
+            }
+
             if (!batches.TryGetValue(pl.col, out var mb)) { mb = new MeshBuild(); batches[pl.col] = mb; }
             Vector3 u0 = ToUnity(onFace[0]);
             for (int t = 1; t < onFace.Count - 1; t++)
                 mb.AddTri(u0, ToUnity(onFace[t]), ToUnity(onFace[t + 1]), pl.n);
         }
         return 1;
+    }
+
+    static Node Disp(Node side)
+    {
+        if (side == null) return null;
+        foreach (var ch in side.children) if (ch.name == "dispinfo") return ch;
+        return null;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  Displacement surface: subdivide a quad face into a (2^power+1) grid and push each
+    //  grid vertex out along its stored normal by its stored distance (+ offset). This is how
+    //  Hammer builds terrain / uneven floors.
+    // ─────────────────────────────────────────────────────────────────────────
+    static void BuildDisplacement(Node disp, Pl pl, List<Vector3> face4, Dictionary<Color32, MeshBuild> batches)
+    {
+        if (!int.TryParse(disp.Get("power"), out int power)) return;
+        power = Mathf.Clamp(power, 1, 4);
+        int size = (1 << power) + 1;              // 3, 5, 9 or 17 verts per edge
+
+        if (!TryVec(disp.Get("startposition"), out Vector3 start)) start = face4[0];
+
+        // Order the 4 corners so c0 = the one nearest 'startposition', keeping winding.
+        int s = 0; float bestSq = float.MaxValue;
+        for (int i = 0; i < 4; i++) { float dd = (face4[i] - start).sqrMagnitude; if (dd < bestSq) { bestSq = dd; s = i; } }
+        Vector3 c0 = face4[s], c1 = face4[(s + 1) % 4], c2 = face4[(s + 2) % 4], c3 = face4[(s + 3) % 4];
+
+        var normals = disp.Where("normals").GetEnumerator();  normals.MoveNext();
+        var distances = disp.Where("distances").GetEnumerator(); distances.MoveNext();
+        var offsets = disp.Where("offsets").GetEnumerator();  bool hasOff = offsets.MoveNext();
+        Node nNode = normals.Current, dNode = distances.Current, oNode = hasOff ? offsets.Current : null;
+        if (nNode == null || dNode == null) return;
+
+        var grid = new Vector3[size, size];
+        for (int r = 0; r < size; r++)
+        {
+            float[] nrow = ParseFloats(nNode.Get("row" + r));
+            float[] drow = ParseFloats(dNode.Get("row" + r));
+            float[] orow = oNode != null ? ParseFloats(oNode.Get("row" + r)) : null;
+            float fv = r / (float)(size - 1);
+            Vector3 eL = Vector3.Lerp(c0, c3, fv), eR = Vector3.Lerp(c1, c2, fv);
+            for (int c = 0; c < size; c++)
+            {
+                float fu = c / (float)(size - 1);
+                Vector3 basePt = Vector3.Lerp(eL, eR, fu);
+                Vector3 nrm = (nrow != null && c * 3 + 2 < nrow.Length) ? new Vector3(nrow[c * 3], nrow[c * 3 + 1], nrow[c * 3 + 2]) : Vector3.zero;
+                float dist = (drow != null && c < drow.Length) ? drow[c] : 0f;
+                Vector3 off = (orow != null && c * 3 + 2 < orow.Length) ? new Vector3(orow[c * 3], orow[c * 3 + 1], orow[c * 3 + 2]) : Vector3.zero;
+                grid[r, c] = basePt + nrm * dist + off;
+            }
+        }
+
+        if (!batches.TryGetValue(pl.col, out var mb)) { mb = new MeshBuild(); batches[pl.col] = mb; }
+        for (int r = 0; r < size - 1; r++)
+            for (int c = 0; c < size - 1; c++)
+            {
+                Vector3 a = ToUnity(grid[r, c]), b = ToUnity(grid[r + 1, c]), cc = ToUnity(grid[r + 1, c + 1]), dd = ToUnity(grid[r, c + 1]);
+                mb.AddTri(a, b, cc, pl.n);
+                mb.AddTri(a, cc, dd, pl.n);
+            }
+    }
+
+    static float[] ParseFloats(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return null;
+        var parts = s.Split(new[] { ' ', '\t', '\r', '\n' }, System.StringSplitOptions.RemoveEmptyEntries);
+        var f = new float[parts.Length];
+        for (int i = 0; i < parts.Length; i++) float.TryParse(parts[i], NumberStyles.Float, CI, out f[i]);
+        return f;
     }
 
     static bool InsideAll(Vector3 p, List<Pl> planes)
@@ -241,7 +321,8 @@ public static class VmfImporter
     {
         v = default;
         if (string.IsNullOrEmpty(s)) return false;
-        var p = s.Split(' ');
+        // handles "x y z" and Hammer's bracketed "[x y z]" (startposition).
+        var p = s.Replace("[", " ").Replace("]", " ").Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
         if (p.Length < 3) return false;
         return float.TryParse(p[0], NumberStyles.Float, CI, out v.x)
             && float.TryParse(p[1], NumberStyles.Float, CI, out v.y)
