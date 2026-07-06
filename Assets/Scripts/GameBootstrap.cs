@@ -41,8 +41,8 @@ public static class GameBootstrap
 
         var m = Cur;
 
-        // Decide day/night for this game (debug can force either way; else ~40% night).
-        Night = ForceNight || (!ForceDay && Random.value < 0.4f);
+        // Maps are DAY only (night variants removed by request — they read too dark).
+        Night = false;
 
         var sun = new GameObject("Sun");
         sun.transform.SetParent(World);

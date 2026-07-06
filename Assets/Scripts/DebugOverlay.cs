@@ -19,19 +19,12 @@ public class DebugOverlay : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.F6)) { var gm = GameManager.Instance; if (gm != null) gm.DebugAddWaves(5); }
         if (Input.GetKeyDown(KeyCode.F7)) PlayerController.GodMode = !PlayerController.GodMode;
         if (Input.GetKeyDown(KeyCode.F8)) HealPlayer();
-        if (Input.GetKeyDown(KeyCode.F9)) ToggleNight();
     }
 
     static PlayerController P() => Object.FindFirstObjectByType<PlayerController>();
     static void GiveMetal() { var p = P(); if (p != null) p.AddMetal(1000); }
     static void GiveOil()   { var p = P(); if (p != null) p.AddOil(500); }
     static void HealPlayer(){ var p = P(); if (p != null) p.Heal(9999f); }
-    static void ToggleNight()
-    {
-        // Force the OTHER of what's current for the NEXT game (applies on restart / continue).
-        if (GameBootstrap.Night) { GameBootstrap.ForceDay = true; GameBootstrap.ForceNight = false; }
-        else { GameBootstrap.ForceNight = true; GameBootstrap.ForceDay = false; }
-    }
 
     void OnGUI()
     {
@@ -54,7 +47,6 @@ public class DebugOverlay : MonoBehaviour
         if (GUI.Button(new Rect(bx, by, bw, bh), "[F5] скип подготовки", btn)) { var gm = GameManager.Instance; if (gm != null) gm.DebugSkipPrep(); } by += bh + 2f;
         if (GUI.Button(new Rect(bx, by, bw, bh), "[F6] +5 волн", btn)) { var gm = GameManager.Instance; if (gm != null) gm.DebugAddWaves(5); } by += bh + 2f;
         if (GUI.Button(new Rect(bx, by, bw, bh), $"[F7] бессмертие: {(PlayerController.GodMode ? "ВКЛ" : "выкл")}", btn)) PlayerController.GodMode = !PlayerController.GodMode; by += bh + 2f;
-        if (GUI.Button(new Rect(bx, by, bw, bh), "[F8] полное лечение", btn)) HealPlayer(); by += bh + 2f;
-        if (GUI.Button(new Rect(bx, by, bw, bh), $"[F9] карта: сейчас {(GameBootstrap.Night ? "НОЧЬ" : "день")} (сменить со след. игры)", btn)) ToggleNight();
+        if (GUI.Button(new Rect(bx, by, bw, bh), "[F8] полное лечение", btn)) HealPlayer();
     }
 }
