@@ -1188,8 +1188,9 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        // Air-strike targeting computer hint (shown whenever you have one online).
-        if (AirStrike.AnyOnline())
+        // Air-strike targeting computer hint — only during a WAVE (in prep the timer HUD owns the
+        // top-centre, so showing it there overlapped the text).
+        if (AirStrike.AnyOnline() && gm != null && !gm.IsPrep)
         {
             Panel(new Rect(cx - 260f, 74f, 520f, 30f));
             GUI.color = AirStrike.HasDesignation ? new Color(1f, 0.5f, 0.3f) : new Color(0.9f, 0.85f, 0.8f);

@@ -25,9 +25,9 @@ public class Flamethrower : Buildable
     {
         switch (Mathf.Clamp(Level, 1, 3))
         {
-            case 1: MaxHealth = 360f; range = 8f;   dps = 90f;  break;
-            case 2: MaxHealth = 460f; range = 9.5f; dps = 150f; break;
-            default: MaxHealth = 560f; range = 11f; dps = 220f; break;
+            case 1: MaxHealth = 360f; range = 12f; dps = 90f;  break;
+            case 2: MaxHealth = 460f; range = 15f; dps = 150f; break;
+            default: MaxHealth = 560f; range = 18f; dps = 220f; break;
         }
         Health = MaxHealth;
     }
