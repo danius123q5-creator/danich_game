@@ -55,6 +55,7 @@ public static class Models
             case 32: return BuildMetalDrill(level);
             case 33: return BuildOilPocket(level);
             case 34: return BuildFlamethrower(level);
+            case 35: return BuildOilHub(level);
             case 18: return BuildCar(level);
             case 19: return BuildRpg(level);
             default: return BuildProxyMine(level);
@@ -318,6 +319,28 @@ public static class Models
         Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.8f, 0f), new Vector3(1.75f, 0.2f, 1.75f), band);    // orange band
         Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 1.5f, 0f), new Vector3(0.5f, 0.18f, 0.5f), steel);    // fill cap
         Prim(PrimitiveType.Cylinder, t, new Vector3(0.9f, 0.5f, 0.6f), new Vector3(0.18f, 0.4f, 0.18f), steel, new Vector3(30f, 0f, 0f)); // pipe fitting
+        return root;
+    }
+
+    // Oil hub: a central manifold drum with several inlet stubs around it (where pipes plug in) + a gauge.
+    public static GameObject BuildOilHub(int level)
+    {
+        var root = new GameObject("OilHubModel");
+        var t = root.transform;
+        Color body = new Color(0.16f, 0.16f, 0.18f);
+        Color band = new Color(0.9f, 0.55f, 0.12f);
+        Color steel = new Color(0.32f, 0.33f, 0.36f);
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.14f, 0f), new Vector3(2.2f, 0.28f, 2.2f), steel);      // base pad
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 1.0f, 0f), new Vector3(1.5f, 0.8f, 1.5f), body);     // manifold drum
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 1.0f, 0f), new Vector3(1.55f, 0.18f, 1.55f), band);  // orange band
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 1.85f, 0f), new Vector3(0.5f, 0.2f, 0.5f), steel);       // top cap
+        for (int i = 0; i < 4; i++)                                                                          // 4 inlet stubs (pipe plugs)
+        {
+            float a = i * 90f, rad = a * Mathf.Deg2Rad;
+            Prim(PrimitiveType.Cylinder, t, new Vector3(Mathf.Cos(rad) * 1.15f, 0.7f, Mathf.Sin(rad) * 1.15f),
+                 new Vector3(0.28f, 0.45f, 0.28f), steel, new Vector3(90f, a, 0f));
+        }
+        Prim(PrimitiveType.Cube, t, new Vector3(0.85f, 1.2f, 0f), new Vector3(0.1f, 0.4f, 0.2f), band);      // gauge
         return root;
     }
 

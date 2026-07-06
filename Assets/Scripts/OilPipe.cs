@@ -91,4 +91,41 @@ public class OilPipe : Buildable
         }
         return best;
     }
+
+    // ---- collect EVERY oil source wired to a position (the oil hub draws from all of them) ----
+    static readonly HashSet<OilPipe> _visited = new HashSet<OilPipe>();
+    static readonly Queue<OilPipe> _bfs = new Queue<OilPipe>();
+
+    /// <summary>Fill 'into' with every active oil source (НПЗ / derrick — NOT hubs) reachable from
+    /// 'pos', directly within Link or through a connected chain of pipes. Used by the oil hub to
+    /// pool oil from several sources at once.</summary>
+    public static void CollectSources(Vector3 pos, List<IOilSource> into)
+    {
+        into.Clear();
+        _visited.Clear(); _bfs.Clear();
+
+        foreach (var p in All)
+            if (p != null && !p.Building && (p.transform.position - pos).sqrMagnitude <= Link * Link && _visited.Add(p))
+                _bfs.Enqueue(p);
+        while (_bfs.Count > 0)
+        {
+            var p = _bfs.Dequeue();
+            foreach (var o in All)
+                if (o != null && !o.Building && !_visited.Contains(o) &&
+                    (o.transform.position - p.transform.position).sqrMagnitude <= Link * Link)
+                { _visited.Add(o); _bfs.Enqueue(o); }
+        }
+
+        foreach (var s in OilSources.All)
+        {
+            if (s == null || !s.OilActive || s.OilTransform == null) continue;
+            if (s is OilHub) continue; // never pool a hub into another hub (avoids loops/double count)
+            Vector3 sp = s.OilTransform.position;
+            bool reach = (sp - pos).sqrMagnitude <= Link * Link;
+            if (!reach)
+                foreach (var p in _visited)
+                    if ((p.transform.position - sp).sqrMagnitude <= Link * Link) { reach = true; break; }
+            if (reach) into.Add(s);
+        }
+    }
 }
