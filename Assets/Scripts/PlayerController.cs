@@ -135,7 +135,7 @@ public class PlayerController : MonoBehaviour
         "Нефтяной карман: доп. бак-хранилище — пока стоит, поднимает твой МАКС. запас нефти на +365. Ставь несколько, чтобы копить больше нефти под супер-пушки. Сломают/продашь — прибавка пропадёт.",
         "Огнемёт: стационарный, поливает коротким конусом огня. ОГРОМНЫЙ урон, но очень малая дальность — жарит всех вблизи, вдали бесполезен. Работает сам, без расхода. Улучшай (E) — урон и радиус.",
         "Нефтяной хаб: узел-сумматор И раздатчик. Протяни к нему трубы от НЕСКОЛЬКИХ НПЗ/вышек — он качает нефть со ВСЕХ сразу и сам выдаёт её тебе рядом. Чем больше труб подключено — тем БЫСТРЕЕ наливает (нефтяной аналог чана для руды).",
-        "РЗК: дальнобойная зенитно-ракетная установка на 4 тубуса. Даёт ЗАЛП 4 самонаводящихся ракет по птицам-десантникам — каждая гарантированно сбивает (ЗЕНИТКА бьёт лишь с шансом и вблизи). С 24 волны сбивает вражеские бомбардировщики. ОСТОРОЖНО: с шансом 10% может по ошибке сбить ТВОЙ же самолёт-авиаудар — а его падение сносит ВСЁ в огромном радиусе. Улучшай (E) — дальность и скорострельность.",
+        "РЗК: дальнобойная зенитно-ракетная установка на 4 тубуса. Даёт ЗАЛП 4 самонаводящихся ракет по птицам-десантникам — каждая гарантированно сбивает (ЗЕНИТКА бьёт лишь с шансом и вблизи). С 24 волны сбивает вражеские бомбардировщики. ОСТОРОЖНО: с шансом 2% может по ошибке сбить ТВОЙ же самолёт-авиаудар — а его падение сносит ВСЁ в огромном радиусе. Улучшай (E) — дальность и скорострельность.",
     };
 
     // Build-menu sections: each holds the build-type indices shown under that header.
@@ -549,8 +549,9 @@ public class PlayerController : MonoBehaviour
         return s;
     }
     static bool IsDragBuild(int type) => DragTypes.Contains(type);
-    // Walls & doors run their WIDTH along the drag line (perpendicular facing); others face along it.
-    static bool IsWallDrag(int type) => type == 3 || type == 16 || type == 17 || type == 4;
+    // Walls, doors & barbed wire run their WIDTH along the drag line (perpendicular facing) so a
+    // dragged row forms a continuous barrier; other items face along the line.
+    static bool IsWallDrag(int type) => type == 3 || type == 16 || type == 17 || type == 4 || type == 8;
     // Spacing between laid pieces (footprint-based), so a dragged row doesn't overlap.
     static float DragStep(int type)
     {
@@ -558,6 +559,7 @@ public class PlayerController : MonoBehaviour
         {
             case 16: return 4.4f;                 // long wall
             case 3: case 17: case 4: return 2.2f; // wall / tall wall / door
+            case 8: return 2.4f;                  // barbed wire (its width)
             case 27: case 30: return DragSegment; // pipe / conveyor
             case 23: case 26: return 8f;          // watchtower / big platform (huge footprint)
             case 5: case 12: case 13: case 14: return 3.2f; // bridges
@@ -1356,14 +1358,15 @@ public class PlayerController : MonoBehaviour
 
         // Air-strike targeting computer hint — only during a WAVE (in prep the timer HUD owns the
         // top-centre, so showing it there overlapped the text).
-        // Air-strike computer hint — bottom of the screen (well clear of the top wave banner).
+        // Air-strike computer hint — tidy top-LEFT corner (that area is otherwise empty, so it
+        // never collides with the wave banner, oil/metal readouts or the aimed-building panel).
         if (AirStrike.AnyOnline() && gm != null && !gm.IsPrep)
         {
-            float ay = Refinery.All.Count > 0 ? UI.H - 180f : UI.H - 138f; // above the oil/metal readouts
-            Panel(new Rect(cx - 260f, ay, 520f, 30f));
-            GUI.color = AirStrike.HasDesignation ? new Color(1f, 0.5f, 0.3f) : new Color(0.9f, 0.85f, 0.8f);
-            GUI.Label(new Rect(cx - 260f, ay + 3f, 520f, 24f),
-                AirStrike.HasDesignation ? "АВИАУДАР наведён на сектор" : "G — навести авиаудар на сектор (смотри на землю)", Sm);
+            Panel(new Rect(12f, 100f, 470f, 28f));
+            GUI.color = AirStrike.HasDesignation ? new Color(1f, 0.55f, 0.35f) : new Color(0.9f, 0.85f, 0.8f);
+            var las = new GUIStyle(GUI.skin.label) { fontSize = 15, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft };
+            GUI.Label(new Rect(20f, 103f, 456f, 22f),
+                AirStrike.HasDesignation ? "АВИАУДАР наведён на сектор" : "G — навести авиаудар на сектор", las);
             GUI.color = Color.white;
         }
 
@@ -1388,7 +1391,15 @@ public class PlayerController : MonoBehaviour
         // Building info (3 elements) when aiming at one
         if (aimed != null)
         {
-            float pw = 460f, px = cx - pw * 0.5f, py = cy + 28f;
+            float pw = 460f, px = cx - pw * 0.5f;
+
+            // Compute the panel height first so the whole thing can be anchored near the BOTTOM
+            // (just above the oil/metal readouts) instead of covering the centre of the screen.
+            bool reserveUpgrade = aimed.UsesReserve && aimed.Reserve >= aimed.ReserveMax && aimed.CanUpgrade;
+            bool twoBars = !aimed.Building && (aimed.IsFunding || (aimed.CanUpgrade && !aimed.UsesReserve) || reserveUpgrade);
+            bool fundingFour = aimed.IsFunding && aimed.FundingRequired > 0 && aimed.OilRequired > 0;
+            float panelH = fundingFour ? 140f : (twoBars ? 116f : 92f);
+            float py = UI.H - 150f - panelH;
 
             // Description of the building you're LOOKING AT (bound to its type, not the menu cursor).
             if (aimed.Type >= 0 && aimed.Type < BuildDescriptions.Length)
@@ -1404,12 +1415,7 @@ public class PlayerController : MonoBehaviour
                 GUI.Label(new Rect(px, dy2 + 28f, pw, dh2 - 32f), BuildDescriptions[aimed.Type], db2);
             }
 
-            // The 3rd "перезаряд" bar appears whenever a cooldown-gated deposit is possible:
-            // funding, a normal upgrade, OR upgrading a fully-charged reserve weapon.
-            bool reserveUpgrade = aimed.UsesReserve && aimed.Reserve >= aimed.ReserveMax && aimed.CanUpgrade;
-            bool twoBars = !aimed.Building && (aimed.IsFunding || (aimed.CanUpgrade && !aimed.UsesReserve) || reserveUpgrade); // 2-bar layouts
-            bool fundingFour = aimed.IsFunding && aimed.FundingRequired > 0 && aimed.OilRequired > 0; // metal+oil+cooldown = 4 bars
-            Panel(new Rect(px - 8f, py - 8f, pw + 16f, fundingFour ? 140f : (twoBars ? 116f : 92f)));
+            Panel(new Rect(px - 8f, py - 8f, pw + 16f, panelH));
             GUI.color = Color.white;
             GUI.Label(new Rect(px, py, pw, 22f), $"{BuildNames[aimed.Type]}  -  УР {aimed.Level}  -  ваше", Sm);
             Bar(px, py + 24f, pw, 20f, aimed.Health / aimed.MaxHealth, new Color(0.2f, 0.8f, 0.25f), $"{Mathf.Max(0, Mathf.RoundToInt(aimed.Health))} / {Mathf.RoundToInt(aimed.MaxHealth)} ХП");

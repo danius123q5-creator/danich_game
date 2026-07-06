@@ -67,12 +67,12 @@ public class Sam : Buildable
             return;
         }
 
-        // Your OWN airstrike plane: only a 10% slip — but its crash wrecks EVERYTHING in a huge radius.
+        // Your OWN airstrike plane: only a 2% slip — but its crash wrecks EVERYTHING in a huge radius.
         foreach (var bmb in Bomber.All)
         {
             if (bmb == null || bmb.samEngaged || bmb.enemy) continue;
             if ((bmb.transform.position - transform.position).sqrMagnitude > rSq) continue;
-            if (Random.value < 0.10f)
+            if (Random.value < 0.02f)
             {
                 bmb.samEngaged = true;
                 next = Time.time + reload;
