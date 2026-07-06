@@ -163,6 +163,7 @@ public class Buildable : MonoBehaviour
             case 33: AddBox(new Vector3(0f, 0.7f, 0f), new Vector3(2.0f, 1.4f, 2.0f)); break;          // oil pocket tank
             case 34: AddBox(new Vector3(0f, 0.8f, 0f), new Vector3(1.4f, 1.6f, 1.4f)); break;          // flamethrower
             case 35: AddBox(new Vector3(0f, 0.9f, 0f), new Vector3(2.2f, 1.8f, 2.2f)); break;          // oil hub
+            case 36: AddBox(new Vector3(0f, 0.8f, 0f), new Vector3(1.6f, 1.6f, 1.6f)); break;          // SAM launcher
             case 26: // big platform: huge top deck on 4 columns + a climb column up the OUTSIDE front
                 AddBox(new Vector3(0f, BigPlatform.Height - 0.3f, 0f), new Vector3(BigPlatform.Half * 2f, 0.4f, BigPlatform.Half * 2f)); // walkable deck
                 var cz2 = new GameObject("ClimbZone");
@@ -224,6 +225,7 @@ public class Buildable : MonoBehaviour
             case 33: return root.AddComponent<OilPocket>();
             case 34: return root.AddComponent<Flamethrower>();
             case 35: return root.AddComponent<OilHub>();
+            case 36: return root.AddComponent<Sam>();
             case 25: return root.AddComponent<MissileSilo>();
             case 18: return root.AddComponent<Car>();
             case 19: return root.AddComponent<Rpg>();

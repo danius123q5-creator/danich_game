@@ -56,6 +56,7 @@ public static class Models
             case 33: return BuildOilPocket(level);
             case 34: return BuildFlamethrower(level);
             case 35: return BuildOilHub(level);
+            case 36: return BuildSam(level);
             case 18: return BuildCar(level);
             case 19: return BuildRpg(level);
             default: return BuildProxyMine(level);
@@ -319,6 +320,33 @@ public static class Models
         Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.8f, 0f), new Vector3(1.75f, 0.2f, 1.75f), band);    // orange band
         Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 1.5f, 0f), new Vector3(0.5f, 0.18f, 0.5f), steel);    // fill cap
         Prim(PrimitiveType.Cylinder, t, new Vector3(0.9f, 0.5f, 0.6f), new Vector3(0.18f, 0.4f, 0.18f), steel, new Vector3(30f, 0f, 0f)); // pipe fitting
+        return root;
+    }
+
+    // ПЗРК: a rotating base + a raised launch block holding four missile tubes angled at the sky,
+    // each with a red missile nose peeking out. Points +Z (forward) — the Sam rotates the whole rig.
+    public static GameObject BuildSam(int level)
+    {
+        var root = new GameObject("SamModel");
+        var t = root.transform;
+        Color body = new Color(0.30f, 0.33f, 0.30f);   // military green-grey
+        Color dark = new Color(0.16f, 0.17f, 0.16f);
+        Color tube = new Color(0.22f, 0.24f, 0.22f);
+        Color nose = new Color(0.85f, 0.3f, 0.25f);
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.16f, 0f), new Vector3(1.5f, 0.16f, 1.5f), dark);   // turntable base
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.55f, 0f), new Vector3(0.7f, 0.7f, 0.7f), body);         // pivot mast
+        // launch block (tilted up ~35°, pointing +Z), holding 2x2 tubes
+        var block = new GameObject("SamBlock").transform; block.SetParent(t, false);
+        block.localPosition = new Vector3(0f, 1.1f, 0.2f);
+        block.localRotation = Quaternion.Euler(-35f, 0f, 0f);
+        Prim(PrimitiveType.Cube, block, Vector3.zero, new Vector3(1.2f, 0.9f, 1.3f), body);                   // block housing
+        for (int i = 0; i < 4; i++)
+        {
+            float x = (i % 2 == 0) ? -0.32f : 0.32f;
+            float y = (i < 2) ? 0.28f : -0.28f;
+            Prim(PrimitiveType.Cylinder, block, new Vector3(x, y, 0.35f), new Vector3(0.34f, 0.6f, 0.34f), tube, new Vector3(90f, 0f, 0f)); // tube
+            Prim(PrimitiveType.Cylinder, block, new Vector3(x, y, 0.72f), new Vector3(0.22f, 0.12f, 0.22f), nose, new Vector3(90f, 0f, 0f)); // missile nose
+        }
         return root;
     }
 
