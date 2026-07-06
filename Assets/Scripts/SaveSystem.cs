@@ -106,6 +106,15 @@ public static class SaveSystem
             Vector3 pos = p != null ? p.transform.position : Vector3.zero;
             int zpw = gm != null ? gm.ZombiesLeft : 0;
 
+            // Critical base dispenser state (its HP/level + where it stands, so continue can re-mark it).
+            Dispenser disp = null;
+            foreach (var d in Dispenser.All) if (d != null && d.Critical) { disp = d; break; }
+            if (disp == null) foreach (var d in Dispenser.All) if (d != null) { disp = d; break; }
+            int dispHp = disp != null ? Mathf.RoundToInt(disp.Health) : -1;
+            int dispLvl = disp != null ? disp.Level : 0;
+            Vector3 dispPos = disp != null ? disp.transform.position : Vector3.zero;
+            PlayerPrefs.SetString("save_disp_pos", disp != null ? $"{dispPos.x.ToString("0.##", CI)},{dispPos.z.ToString("0.##", CI)}" : "");
+
             var sb = new System.Text.StringBuilder();
             sb.AppendLine($"{Magic} {GameVersion.Current}");
             sb.AppendLine($"slot {slot}");
@@ -121,6 +130,11 @@ public static class SaveSystem
             sb.AppendLine($"p1_deaths {deaths}");
             sb.AppendLine($"p1_kills {kills}");
             sb.AppendLine($"p1_pos {pos.x.ToString("0.##", CI)},{pos.z.ToString("0.##", CI)}");
+            // Base dispenser (lifeline) state.
+            sb.AppendLine($"dispenser_hp {dispHp}");
+            sb.AppendLine($"dispenser_lvl {dispLvl}");
+            sb.AppendLine($"dispenser_alive {(disp != null ? 1 : 0)}");
+            sb.AppendLine($"dispenser_pos {dispPos.x.ToString("0.##", CI)},{dispPos.z.ToString("0.##", CI)}");
             // machine data (own lines so the readable fields above stay clean)
             sb.AppendLine($"builds={builds}");
             sb.AppendLine($"refineries={refs}");
@@ -141,7 +155,7 @@ public static class SaveSystem
             string path = GdfPath(slot);
             if (!File.Exists(path)) return false;
             int wave = 0, metal = 250, oil = 500; bool infinite = false;
-            string builds = "", refs = "", mines = "";
+            string builds = "", refs = "", mines = "", dispPos = "";
             foreach (var line in File.ReadAllLines(path))
             {
                 var kv = Split(line);
@@ -154,6 +168,7 @@ public static class SaveSystem
                     case "builds": builds = kv.Item2; break;
                     case "refineries": refs = kv.Item2; break;
                     case "mines": mines = kv.Item2; break;
+                    case "dispenser_pos": dispPos = kv.Item2; break;
                 }
             }
             PlayerPrefs.SetInt("save_exists", 1);
@@ -164,6 +179,7 @@ public static class SaveSystem
             PlayerPrefs.SetString("save_builds", builds);
             PlayerPrefs.SetString("save_refineries", refs);
             PlayerPrefs.SetString("save_mines", mines);
+            PlayerPrefs.SetString("save_disp_pos", dispPos);
             PlayerPrefs.Save();
             CurrentSlot = slot;
             return true;

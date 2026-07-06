@@ -476,6 +476,11 @@ public class ShockwaveFx : MonoBehaviour
 /// target and releases a falling bomb on each point with a short stagger (carpet-bombing run).</summary>
 public class Bomber : MonoBehaviour
 {
+    // Live bombers, so a ПЗРК can (with a small chance) shoot the airstrike plane down.
+    public static readonly List<Bomber> All = new List<Bomber>();
+    public bool samEngaged;   // a SAM has already committed a missile at this bomber
+    bool crashing; float crashVy;
+
     Vector3 dir, pos;
     List<Vector3> points;
     System.Action<Vector3> onImpact;
@@ -483,8 +488,15 @@ public class Bomber : MonoBehaviour
     float radius, life, nextDrop = 0.45f, speed = 75f;
     int dropped;
 
+    void OnDestroy() { All.Remove(this); }
+
+    /// <summary>ПЗРК hit: the plane is downed — it tips over, dives, and its crash devastates a
+    /// HUGE radius (everything in ~600m is wrecked). Stops the bombing run.</summary>
+    public void CrashDown() { crashing = true; }
+
     public void Init(Vector3 center, List<Vector3> pts, float r, System.Action<Vector3> cb)
     {
+        if (!All.Contains(this)) All.Add(this);
         points = pts; onImpact = cb; radius = r;
         dir = new Vector3(1f, 0f, 0.22f).normalized;
         pos = center - dir * 120f + Vector3.up * 56f; // bigger plane: higher & further out so the run reads
@@ -564,6 +576,21 @@ public class Bomber : MonoBehaviour
     void Update()
     {
         life += Time.deltaTime;
+
+        // Shot down by a ПЗРК: tumble out of the sky and wreck everything where it crashes.
+        if (crashing)
+        {
+            crashVy += 42f * Time.deltaTime;
+            pos += dir * (speed * 0.4f) * Time.deltaTime + Vector3.down * crashVy * Time.deltaTime;
+            transform.position = pos;
+            transform.Rotate(90f * Time.deltaTime, 45f * Time.deltaTime, 130f * Time.deltaTime, Space.Self);
+            Effects.Burst(pos, new Color(0.2f, 0.2f, 0.2f), 2);
+            Effects.Burst(pos, new Color(1f, 0.5f, 0.2f), 1);
+            float gy = GameBootstrap.Hill(pos.x, pos.z);
+            if (pos.y <= gy + 2f) { CrashImpact(new Vector3(pos.x, gy + 1f, pos.z)); Destroy(gameObject); }
+            return;
+        }
+
         pos += dir * speed * Time.deltaTime;
         transform.position = pos;
 
@@ -580,6 +607,25 @@ public class Bomber : MonoBehaviour
         }
 
         if (dropped >= points.Count && life > 4.5f) Destroy(gameObject);
+    }
+
+    // The downed plane's crash: a colossal blast that wrecks EVERYTHING (zombies + buildings) in ~600m.
+    void CrashImpact(Vector3 at)
+    {
+        Effects.Explosion(at);
+        Effects.AirBlast(at, 50f);
+        Effects.AirBlast(at, 72f);
+        Effects.FlashLight(at, 16f, 90f, new Color(1f, 0.6f, 0.25f));
+        const float R = 600f; float rSq = R * R;
+        for (int i = Zombie.All.Count - 1; i >= 0; i--)
+            if (Zombie.All[i] != null && (Zombie.All[i].transform.position - at).sqrMagnitude <= rSq)
+                Zombie.All[i].TakeDamage(999999f);
+        var blds = new List<Buildable>(Buildable.All);
+        foreach (var b in blds)
+            if (b != null && (b.transform.position - at).sqrMagnitude <= rSq)
+                b.TakeDamage(999999f);
+        foreach (var pc in Object.FindObjectsByType<PlayerController>(FindObjectsSortMode.None))
+            if (pc != null) pc.TakeDamage(9999f);
     }
 }
 

@@ -5,7 +5,7 @@ using UnityEngine;
 /// chance to be knocked out of the sky. Does not target zombies on the ground.</summary>
 public class AntiAir : Buildable
 {
-    const float Range = 40f;
+    const float Range = 25f;   // SHORT-range point defence (ПЗРК covers the long range)
     const float InterceptChance = 0.5f;
 
     // Unique, stable per-instance id used to let each AA roll once per bird.

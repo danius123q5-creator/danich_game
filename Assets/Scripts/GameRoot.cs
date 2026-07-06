@@ -388,6 +388,26 @@ public class GameRoot : MonoBehaviour
             var b = go != null ? go.GetComponent<Buildable>() : null;
             if (b != null) b.LoadState(level, health, funding);
         }
+
+        // Re-mark the base's critical dispenser (nearest the saved position) so continued games keep
+        // the lifeline: it can't be sold, and losing it still ends the run.
+        string dp = PlayerPrefs.GetString("save_disp_pos", "");
+        if (!string.IsNullOrEmpty(dp))
+        {
+            var f = dp.Split(',');
+            if (f.Length >= 2 && float.TryParse(f[0], NumberStyles.Float, ci, out float dx) && float.TryParse(f[1], NumberStyles.Float, ci, out float dz))
+            {
+                Dispenser best = null; float bestSq = float.MaxValue;
+                foreach (var d in Dispenser.All)
+                {
+                    if (d == null) continue;
+                    Vector3 pp = d.transform.position;
+                    float ds = (pp.x - dx) * (pp.x - dx) + (pp.z - dz) * (pp.z - dz);
+                    if (ds < bestSq) { bestSq = ds; best = d; }
+                }
+                if (best != null) best.Critical = true;
+            }
+        }
     }
 
     void ApplySave()

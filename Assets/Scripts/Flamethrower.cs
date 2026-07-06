@@ -45,30 +45,40 @@ public class Flamethrower : Buildable
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir.normalized), 8f * Time.deltaTime);
         }
 
-        // Torch everything in the forward cone within range.
+        // Torch EVERY zombie within its short range — a close-in incinerator (no cone gate, so it
+        // reliably melts anything that gets near, whatever side it comes from).
+        int burning = 0;
         if (Time.time >= nextTick)
         {
             nextTick = Time.time + Tick;
             float rSq = range * range;
-            Vector3 fwd = transform.forward;
             foreach (var z in Zombie.All)
             {
                 if (z == null || z.IsPuppet) continue;
                 if (GameRoot.IsZvZ && z.team == Team) continue;
                 Vector3 to = z.transform.position - origin; to.y = 0f;
                 if (to.sqrMagnitude > rSq) continue;
-                if (Vector3.Dot(fwd, to.normalized) < 0.35f) continue; // ~70° cone in front
                 z.TakeDamage(dps * Tick);
+                burning++;
             }
         }
 
-        // Flame plume when there's something to burn.
+        // Flame plume when there's something to burn — a fan of fire out to the nozzle range.
         if (target != null && Time.time >= nextFx)
         {
-            nextFx = Time.time + 0.05f;
-            Vector3 tip = origin + transform.forward * (range * 0.55f);
-            Effects.Burst(tip, new Color(1f, 0.5f, 0.15f), 4);
-            Effects.Burst(origin + transform.forward * (range * 0.25f), new Color(1f, 0.75f, 0.25f), 2);
+            nextFx = Time.time + 0.04f;
+            Vector3 fwd = transform.forward;
+            Effects.Burst(origin + fwd * (range * 0.25f), new Color(1f, 0.75f, 0.25f), 3);
+            Effects.Burst(origin + fwd * (range * 0.55f), new Color(1f, 0.5f, 0.15f), 4);
+            Effects.Burst(origin + fwd * (range * 0.85f), new Color(1f, 0.35f, 0.1f), 3);
+            // a little fire on each burning zombie so you SEE it working
+            if (burning > 0)
+                foreach (var z in Zombie.All)
+                {
+                    if (z == null) continue;
+                    if ((z.transform.position - origin).sqrMagnitude <= range * range)
+                        Effects.Burst(z.transform.position + Vector3.up, new Color(1f, 0.5f, 0.15f), 2);
+                }
         }
     }
 
