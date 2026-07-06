@@ -18,11 +18,9 @@ public class BallisticMissile : MonoBehaviour
 
     Zombie targetZombie;   // the claimed zombie (for reservation); may die mid-flight
     Vector3 target;        // ground impact point (centre of the crowd)
-    float apexY;           // top of the climb
+    Vector3 launch;        // where it lifted off from
     float blastR;
-    bool descending;
-    float tip;             // 0..1 flip-over progress during the dive
-    const float UpSpeed = 40f, DownSpeed = 70f;
+    float flightTime, arcHeight;
     float nextPuff, life;
 
     public static void Launch(Vector3 from, Vector3 target, float blastR, Zombie targetZombie = null)
@@ -52,39 +50,33 @@ public class BallisticMissile : MonoBehaviour
         GameBootstrap.SetColor(fin, new Color(1f, 0.7f, 0.2f));
 
         var m = go.AddComponent<BallisticMissile>();
+        m.launch = from;
         m.target = target;
         m.blastR = blastR;
-        m.apexY = Mathf.Max(from.y, target.y) + 48f; // climb high before the dive
+        float dist = Vector2.Distance(new Vector2(from.x, from.z), new Vector2(target.x, target.z));
+        m.arcHeight = Mathf.Clamp(dist * 0.45f + 24f, 34f, 80f); // longer shots arc higher
+        m.flightTime = Mathf.Clamp(dist / 34f + 1.2f, 1.8f, 4.5f);
         m.targetZombie = targetZombie;
         if (targetZombie != null) Reserved.Add(targetZombie);
     }
 
     void Update()
     {
-        float dt = Time.deltaTime;
-        life += dt;
+        life += Time.deltaTime;
+        // A single continuous ballistic arc from launch to target — always visible, no teleport.
+        // Nose is oriented along the velocity, so it naturally tips over and dives as it descends.
+        float t01 = Mathf.Clamp01(life / flightTime);
+        Vector3 prev = transform.position;
+        Vector3 basePos = Vector3.Lerp(launch, target, t01);          // straight line launch → target
+        float arc = arcHeight * Mathf.Sin(t01 * Mathf.PI);            // parabolic bump peaking mid-flight
+        Vector3 pos = new Vector3(basePos.x, basePos.y + arc, basePos.z);
+        transform.position = pos;
 
-        if (!descending)
-        {
-            transform.position += Vector3.up * UpSpeed * dt;
-            transform.rotation = Quaternion.identity; // nose up
-            if (transform.position.y >= apexY)
-            {
-                descending = true;
-                // Re-aim onto the reserved zombie's latest position if it's still alive.
-                if (targetZombie != null) target = targetZombie.transform.position;
-                transform.position = new Vector3(target.x, apexY, target.z); // line up over the crowd
-            }
-        }
-        else
-        {
-            // Tip over smoothly from nose-up to nose-down (the "flip and fall").
-            tip = Mathf.Min(1f, tip + dt * 3f);
-            transform.rotation = Quaternion.Slerp(Quaternion.identity, Quaternion.Euler(180f, 0f, 0f), tip);
-            float step = DownSpeed * dt;
-            if (transform.position.y - target.y <= step || life > 8f) { Explode(); return; }
-            transform.position += Vector3.down * step;
-        }
+        Vector3 vel = pos - prev;
+        if (vel.sqrMagnitude > 1e-6f)
+            transform.rotation = Quaternion.FromToRotation(Vector3.up, vel.normalized); // nose (local +Y) along flight
+
+        if (t01 >= 1f) { Explode(); return; }
 
         if (Time.time >= nextPuff)
         {

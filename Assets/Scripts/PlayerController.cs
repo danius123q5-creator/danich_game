@@ -540,14 +540,38 @@ public class PlayerController : MonoBehaviour
 
     void BeginDragBuild()
     {
-        if (RaycastNoSelf(30f, out RaycastHit hit)) { dragStart = hit.point; layingDrag = true; }
+        if (RaycastNoSelf(30f, out RaycastHit hit)) { dragStart = SnapDragPoint(SelectedBuild, hit.point); layingDrag = true; }
     }
 
     void EndDragBuild()
     {
         layingDrag = false;
         if (!RaycastNoSelf(30f, out RaycastHit hit)) return;
-        LayLine(SelectedBuild, dragStart, hit.point);
+        LayLine(SelectedBuild, dragStart, SnapDragPoint(SelectedBuild, hit.point));
+    }
+
+    // Drag-build snapping: pull a pipe/conveyor endpoint onto the nearest source or existing
+    // pipe/conveyor within range, so chains connect precisely instead of leaving a gap.
+    const float SnapRange = 14f;
+    Vector3 SnapDragPoint(int type, Vector3 p)
+    {
+        float bestSq = SnapRange * SnapRange; bool found = false; Vector3 best = p;
+        void Consider(Vector3 tp)
+        {
+            float dx = tp.x - p.x, dz = tp.z - p.z, d = dx * dx + dz * dz;
+            if (d < bestSq) { bestSq = d; best = new Vector3(tp.x, p.y, tp.z); found = true; }
+        }
+        if (type == 27) // oil pipe → snap to oil sources (НПЗ/вышка/хаб) or existing pipes
+        {
+            foreach (var s in OilSources.All) if (s != null && s.OilTransform != null) Consider(s.OilTransform.position);
+            foreach (var pp in OilPipe.All) if (pp != null) Consider(pp.transform.position);
+        }
+        else if (type == 30) // conveyor → snap to metal sources (шахта/буровая) or existing conveyors
+        {
+            foreach (var s in MetalSources.All) if (s != null && s.MetalTransform != null) Consider(s.MetalTransform.position);
+            foreach (var c in Conveyor.All) if (c != null) Consider(c.transform.position);
+        }
+        return found ? best : p;
     }
 
     // Lay a chain of segments from a→b, evenly spaced and all facing along the line,
@@ -848,6 +872,7 @@ public class PlayerController : MonoBehaviour
     {
         if (dragGhostType != SelectedBuild) { ClearDragGhosts(); dragGhostType = SelectedBuild; } // rebuilt for the right model
 
+        b = SnapDragPoint(SelectedBuild, b); // preview the snapped endpoint
         Vector3 d = b - a; d.y = 0f;
         float len = d.magnitude;
         Vector3 dir = len > 0.01f ? d / len : Vector3.forward;
