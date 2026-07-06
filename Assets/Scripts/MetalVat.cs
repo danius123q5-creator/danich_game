@@ -39,7 +39,9 @@ public class MetalVat : Buildable
 
     protected override void BuildableTick()
     {
-        float boost = WaveBoost();
+        // Throughput scales with the wave AND with how many conveyors feed the vat (+8%/conveyor,
+        // capped) — so wiring more conveyors visibly speeds up metal income.
+        float boost = WaveBoost() * (1f + Mathf.Min(Conveyor.LiveCount(), 25) * 0.08f);
         // Draw from EVERY captured mine wired to this vat (more mines = more metal/sec).
         if (Time.time >= nextScan) { nextScan = Time.time + 0.5f; Conveyor.CollectSources(transform.position, sources); }
         Supplied = sources.Count > 0;

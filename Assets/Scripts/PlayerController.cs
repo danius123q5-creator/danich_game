@@ -135,7 +135,7 @@ public class PlayerController : MonoBehaviour
         "Буровая: своя установка добычи металла (820 мет.) — не нужно захватывать шахту. Бурит руду в свой бак; подключи к ней конвейер и веди к чану.",
         "Нефтяной карман: доп. бак-хранилище — пока стоит, поднимает твой МАКС. запас нефти на +365. Ставь несколько, чтобы копить больше нефти под супер-пушки. Сломают/продашь — прибавка пропадёт.",
         "Огнемёт: стационарный, поливает коротким конусом огня. ОГРОМНЫЙ урон, но очень малая дальность — жарит всех вблизи, вдали бесполезен. Работает сам, без расхода. Улучшай (E) — урон и радиус.",
-        "Нефтяной хаб: узел-сумматор. Протяни к нему трубы от НЕСКОЛЬКИХ НПЗ/вышек — он качает нефть со ВСЕХ сразу в один бак. На выходе подключи трубу к дозатору и получишь суммарную нефть всех источников (нефтяной аналог чана для руды).",
+        "Нефтяной хаб: узел-сумматор И раздатчик. Протяни к нему трубы от НЕСКОЛЬКИХ НПЗ/вышек — он качает нефть со ВСЕХ сразу и сам выдаёт её тебе рядом. Чем больше труб подключено — тем БЫСТРЕЕ наливает (нефтяной аналог чана для руды).",
         "ПЗРК: дальнобойная зенитно-ракетная установка на 4 тубуса. Даёт ЗАЛП до 4 самонаводящихся ракет по 4 разным птицам-десантникам сразу — каждая гарантированно сбивает (ЗЕНИТКА бьёт лишь с шансом и вблизи). ОСТОРОЖНО: с шансом 10% может по ошибке сбить ТВОЙ же самолёт-авиаудар — а его падение сносит ВСЁ в огромном радиусе. Улучшай (E) — дальность и скорострельность.",
     };
 
@@ -1237,13 +1237,25 @@ public class PlayerController : MonoBehaviour
             }
         }
 
+        // Enemy air-raid warning (wave 24+): flashing banner while raider bombers are overhead.
+        bool airRaid = false;
+        foreach (var bmb in Bomber.All) if (bmb != null && bmb.enemy) { airRaid = true; break; }
+        if (airRaid)
+        {
+            Panel(new Rect(cx - 320f, 74f, 640f, 32f));
+            GUI.color = new Color(1f, 0.3f, 0.22f, 0.55f + 0.45f * Mathf.PingPong(Time.unscaledTime * 3f, 1f));
+            GUI.Label(new Rect(cx - 320f, 77f, 640f, 26f), "ВОЗДУШНЫЙ НАЛЁТ — сбивайте самолёты ПЗРК!", Line24);
+            GUI.color = Color.white;
+        }
+
         // Air-strike targeting computer hint — only during a WAVE (in prep the timer HUD owns the
         // top-centre, so showing it there overlapped the text).
         if (AirStrike.AnyOnline() && gm != null && !gm.IsPrep)
         {
-            Panel(new Rect(cx - 260f, 74f, 520f, 30f));
+            float ay = airRaid ? 110f : 74f; // drop below the raid banner when both show
+            Panel(new Rect(cx - 260f, ay, 520f, 30f));
             GUI.color = AirStrike.HasDesignation ? new Color(1f, 0.5f, 0.3f) : new Color(0.9f, 0.85f, 0.8f);
-            GUI.Label(new Rect(cx - 260f, 77f, 520f, 24f),
+            GUI.Label(new Rect(cx - 260f, ay + 3f, 520f, 24f),
                 AirStrike.HasDesignation ? "АВИАУДАР наведён на сектор" : "G — навести авиаудар на сектор (смотри на землю)", Sm);
             GUI.color = Color.white;
         }

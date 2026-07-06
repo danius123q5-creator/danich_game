@@ -476,10 +476,42 @@ public class ShockwaveFx : MonoBehaviour
 /// target and releases a falling bomb on each point with a short stagger (carpet-bombing run).</summary>
 public class Bomber : MonoBehaviour
 {
-    // Live bombers, so a ПЗРК can (with a small chance) shoot the airstrike plane down.
+    // Live bombers, so a ПЗРК can shoot planes down (your own airstrike, or ENEMY raiders).
     public static readonly List<Bomber> All = new List<Bomber>();
     public bool samEngaged;   // a SAM has already committed a missile at this bomber
+    public bool enemy;        // enemy raider (bombs YOUR base) vs your own airstrike plane
     bool crashing; float crashVy;
+
+    /// <summary>Spawn an ENEMY bomber that flies over the base and carpet-bombs the player's
+    /// buildings (dispenser included). Downed only by a ПЗРК (reliably) or ЗЕНИТКА (50%).</summary>
+    public static Bomber SpawnEnemy(Vector3 baseCentre)
+    {
+        var go = new GameObject("EnemyBomber");
+        if (GameBootstrap.World != null) go.transform.SetParent(GameBootstrap.World);
+        var b = go.AddComponent<Bomber>();
+        var pts = new List<Vector3> { baseCentre };
+        for (int i = 0; i < 5; i++)
+        {
+            Vector2 r = Random.insideUnitCircle * 14f;
+            Vector3 p = baseCentre + new Vector3(r.x, 0f, r.y);
+            p.y = GameBootstrap.Hill(p.x, p.z);
+            pts.Add(p);
+        }
+        b.enemy = true;
+        b.Init(baseCentre, pts, 8f, EnemyBombImpact);
+        return b;
+    }
+
+    // Enemy bomb blast: wrecks buildings (the dispenser too → can lose the base) and hurts the player.
+    static void EnemyBombImpact(Vector3 p)
+    {
+        float rSq = 8f * 8f;
+        var blds = new List<Buildable>(Buildable.All);
+        foreach (var b in blds)
+            if (b != null && (b.transform.position - p).sqrMagnitude <= rSq) b.TakeDamage(240f);
+        foreach (var pc in Object.FindObjectsByType<PlayerController>(FindObjectsSortMode.None))
+            if (pc != null && (pc.transform.position - p).sqrMagnitude <= rSq) pc.TakeDamage(45f);
+    }
 
     Vector3 dir, pos;
     List<Vector3> points;
@@ -501,8 +533,17 @@ public class Bomber : MonoBehaviour
         dir = new Vector3(1f, 0f, 0.22f).normalized;
         pos = center - dir * 120f + Vector3.up * 56f; // bigger plane: higher & further out so the run reads
 
+        // Enemy raiders fly in slower & from further out, and hold their bombs until near the base —
+        // giving the ПЗРК a real window to down them before they hit anything.
+        if (enemy) { speed = 46f; pos = center - dir * 175f + Vector3.up * 58f; nextDrop = 1.8f; }
+
         BuildTu95();
         transform.localScale = Vector3.one * 1.7f; // scale the whole airframe up (model only — flight/bombs unaffected)
+
+        // Enemy raiders wear a menacing dark-red skin so you can tell them from your own airstrike.
+        if (enemy)
+            foreach (var rend in GetComponentsInChildren<Renderer>())
+                if (rend != null) GameBootstrap.SetColor(rend.gameObject, new Color(0.35f, 0.08f, 0.08f));
 
         transform.position = pos;
         transform.rotation = Quaternion.LookRotation(dir);
@@ -609,10 +650,21 @@ public class Bomber : MonoBehaviour
         if (dropped >= points.Count && life > 4.5f) Destroy(gameObject);
     }
 
-    // The downed plane's crash: a colossal blast that wrecks EVERYTHING (zombies + buildings) in ~600m.
     void CrashImpact(Vector3 at)
     {
         Effects.Explosion(at);
+        // Downing an ENEMY raider is GOOD — just a clean fireball (kills nearby zombies), no self-harm.
+        if (enemy)
+        {
+            Effects.AirBlast(at, 16f);
+            Effects.FlashLight(at, 10f, 40f, new Color(1f, 0.6f, 0.25f));
+            float er = 16f, erSq = er * er;
+            for (int i = Zombie.All.Count - 1; i >= 0; i--)
+                if (Zombie.All[i] != null && (Zombie.All[i].transform.position - at).sqrMagnitude <= erSq)
+                    Zombie.All[i].TakeDamage(999999f);
+            return;
+        }
+        // Your OWN airstrike plane crashing: a colossal blast that wrecks EVERYTHING in ~600m.
         Effects.AirBlast(at, 50f);
         Effects.AirBlast(at, 72f);
         Effects.FlashLight(at, 16f, 90f, new Color(1f, 0.6f, 0.25f));

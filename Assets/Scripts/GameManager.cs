@@ -139,6 +139,22 @@ public class GameManager : MonoBehaviour
         zombiesToSpawn = BaseZombies + WaveNumber * PerWave;
         IsPrep = false;
         nextBird = Time.time + BirdEvery();
+
+        // Enemy air raids: from wave 24, every 3rd wave, a flight of 2-4 bombers hits the base.
+        // Only a ПЗРК can down them; their bombs wreck buildings (the dispenser too — build AA!).
+        if (WaveNumber >= 24 && WaveNumber % 3 == 0) SpawnAirRaid();
+    }
+
+    void SpawnAirRaid()
+    {
+        Vector3 baseC = GameBootstrap.HasBaseSpawn ? GameBootstrap.BaseSpawn
+                      : (player != null ? player.transform.position : Vector3.zero);
+        int planes = Mathf.Clamp(2 + (WaveNumber - 24) / 6, 2, 4); // 2 at wave 24, up to 4 later
+        for (int i = 0; i < planes; i++)
+        {
+            Vector2 off = Random.insideUnitCircle * 22f;
+            Bomber.SpawnEnemy(baseC + new Vector3(off.x, 0f, off.y));
+        }
     }
 
     // Seconds between bird fly-overs — shrinks as waves get harder (floored at 4s).

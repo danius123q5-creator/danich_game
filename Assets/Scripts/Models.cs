@@ -19,6 +19,15 @@ public static class Models
         return g;
     }
 
+    // A beam (thin box) spanning two local points — for lattice towers/derricks.
+    static void Beam(Transform parent, Vector3 a, Vector3 b, float thick, Color c)
+    {
+        Vector3 mid = (a + b) * 0.5f, d = b - a;
+        float len = d.magnitude;
+        var g = Prim(PrimitiveType.Cube, parent, mid, new Vector3(thick, len, thick), c);
+        if (len > 0.001f) g.transform.localRotation = Quaternion.FromToRotation(Vector3.up, d.normalized);
+    }
+
     public static GameObject BuildVisual(int type, int level)
     {
         switch (type)
@@ -216,32 +225,45 @@ public static class Models
         Color dark = new Color(0.18f, 0.19f, 0.21f);
         Color paint = new Color(0.5f, 0.55f, 0.6f);
         Color ore = new Color(0.5f, 0.42f, 0.3f);
-        float H = 6.5f;
+        float H = 6.5f, baseHalf = 1.1f, topHalf = 0.38f;
 
-        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.25f, 0f), new Vector3(2.2f, 0.5f, 2.2f), dark);          // base pad
-        for (int i = 0; i < 4; i++) // 4 legs leaning to a crown
-        {
-            float sx = (i & 1) == 0 ? 1f : -1f, sz = (i & 2) == 0 ? 1f : -1f;
-            var leg = Prim(PrimitiveType.Cube, t, new Vector3(sx * 0.9f, H * 0.5f, sz * 0.9f), new Vector3(0.2f, H, 0.2f), steel);
-            leg.transform.localRotation = Quaternion.Euler(sz * 7f, 0f, -sx * 7f);
-        }
-        for (float y = 1.6f; y < H; y += 1.6f) // braces
-        {
-            float w = Mathf.Lerp(1.9f, 0.6f, y / H);
-            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, w * 0.5f), new Vector3(w, 0.12f, 0.12f), dark);
-            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, -w * 0.5f), new Vector3(w, 0.12f, 0.12f), dark);
-        }
-        Prim(PrimitiveType.Cube, t, new Vector3(0f, H + 0.1f, 0f), new Vector3(0.8f, 0.3f, 0.8f), steel);       // crown
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.25f, 0f), new Vector3(2.6f, 0.5f, 2.6f), dark); // base pad
 
-        // spinning drill bit hanging in the centre ("Bit" — MetalDrill rotates it)
+        // Proper 4-leg lattice derrick: legs connect foot corners to a narrow crown, with ring +
+        // X-braces on every face (all beams actually meet the legs — no floating parts).
+        Vector3[] foot = {
+            new Vector3(-baseHalf, 0.4f, -baseHalf), new Vector3(baseHalf, 0.4f, -baseHalf),
+            new Vector3(baseHalf, 0.4f, baseHalf),   new Vector3(-baseHalf, 0.4f, baseHalf) };
+        Vector3[] top = {
+            new Vector3(-topHalf, H, -topHalf), new Vector3(topHalf, H, -topHalf),
+            new Vector3(topHalf, H, topHalf),   new Vector3(-topHalf, H, topHalf) };
+        for (int i = 0; i < 4; i++) Beam(t, foot[i], top[i], 0.16f, steel);      // 4 legs
+        int rungs = 4;
+        for (int r = 1; r <= rungs; r++)
+        {
+            float t0 = (r - 1) / (float)rungs, t1 = r / (float)rungs;
+            for (int i = 0; i < 4; i++)
+            {
+                int j = (i + 1) % 4;
+                Vector3 ai = Vector3.Lerp(foot[i], top[i], t1), aj = Vector3.Lerp(foot[j], top[j], t1);
+                Vector3 bi = Vector3.Lerp(foot[i], top[i], t0), bj = Vector3.Lerp(foot[j], top[j], t0);
+                Beam(t, ai, aj, 0.09f, dark);   // ring at this level
+                Beam(t, bi, aj, 0.07f, dark);   // diagonal → X-brace
+                Beam(t, bj, ai, 0.07f, dark);
+            }
+        }
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, H + 0.18f, 0f), new Vector3(1.0f, 0.36f, 1.0f), steel); // crown block
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.75f, 0f), new Vector3(2.0f, 0.22f, 2.0f), dark);      // drill floor
+
+        // Spinning drill string + bit hanging down the centre ("Bit" — MetalDrill rotates it).
         var bitGO = new GameObject("Bit");
         bitGO.transform.SetParent(t, false);
-        bitGO.transform.localPosition = new Vector3(0f, 1.6f, 0f);
-        Prim(PrimitiveType.Cylinder, bitGO.transform, new Vector3(0f, 0.7f, 0f), new Vector3(0.22f, 1.4f, 0.22f), paint); // drill string
-        Prim(PrimitiveType.Cylinder, bitGO.transform, new Vector3(0f, -0.2f, 0f), new Vector3(0.5f, 0.45f, 0.5f), dark);   // bit head (cone-ish)
+        bitGO.transform.localPosition = new Vector3(0f, 0.85f, 0f);
+        Prim(PrimitiveType.Cylinder, bitGO.transform, new Vector3(0f, 2.0f, 0f), new Vector3(0.16f, 2.2f, 0.16f), paint); // drill string up into the derrick
+        Prim(PrimitiveType.Cylinder, bitGO.transform, new Vector3(0f, -0.1f, 0f), new Vector3(0.5f, 0.4f, 0.5f), dark);   // bit head
 
-        Prim(PrimitiveType.Cube, t, new Vector3(1.4f, 0.8f, 0f), new Vector3(0.8f, 0.9f, 0.8f), steel);        // motor
-        Prim(PrimitiveType.Cube, t, new Vector3(-1.4f, 0.7f, 0f), new Vector3(1.0f, 0.8f, 1.2f), ore);         // ore hopper
+        Prim(PrimitiveType.Cube, t, new Vector3(1.55f, 0.85f, 0f), new Vector3(0.9f, 0.9f, 1.0f), steel); // motor shed
+        Prim(PrimitiveType.Cube, t, new Vector3(-1.55f, 0.75f, 0f), new Vector3(1.0f, 0.8f, 1.3f), ore);  // ore hopper
         return root;
     }
 

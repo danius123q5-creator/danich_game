@@ -8,9 +8,12 @@ using UnityEngine;
 public class OilHub : Buildable, IOilSource
 {
     const float TankCap = 500f;
-    const float PullRate = 60f;   // oil/sec pulled from the whole network into the tank
+    const float PullRate = 60f;   // oil/sec pulled from EACH wired source into the tank
+    const float Radius = 6f;      // auto-dispense radius
+    const float Tick = 0.5f;      // seconds between hand-outs
+    const int GiveAmount = 45;    // base oil per hand-out (scaled by connected pipe count)
     float stock;
-    float nextScan;
+    float nextScan, nextGive;
     readonly List<IOilSource> sources = new List<IOilSource>();
 
     // Register as an oil source so downstream pipes/dosers can draw the pooled oil from us.
@@ -42,6 +45,21 @@ public class OilHub : Buildable, IOilSource
                 stock += s.DrawOil(Mathf.Min(PullRate * Time.deltaTime, TankCap - stock));
                 if (stock >= TankCap) break;
             }
+
+        // The hub is ALSO a high-throughput dispenser: it hands oil to a nearby player at a rate
+        // that scales with how many pipes feed it (+10%/pipe) — so 5 pipes clearly beats 2-3.
+        if (Time.time < nextGive) return;
+        nextGive = Time.time + Tick;
+        if (stock < 1f) return;
+        float pipeBoost = 1f + Mathf.Min(OilPipe.LiveCount(), 25) * 0.10f;
+        foreach (var p in Object.FindObjectsByType<PlayerController>(FindObjectsSortMode.None))
+        {
+            if (p.IsDead) continue;
+            if ((p.transform.position - transform.position).sqrMagnitude > Radius * Radius) continue;
+            int give = Mathf.Min(Mathf.RoundToInt(GiveAmount * pipeBoost), Mathf.FloorToInt(stock));
+            give = Mathf.Min(give, PlayerController.OilMax - p.Oil);
+            if (give > 0) { p.AddOil(give); stock -= give; Effects.Burst(transform.position + Vector3.up * 1.6f, new Color(1f, 0.8f, 0.3f), 3); }
+        }
     }
 
     // IOilSource: hand the pooled oil to whatever draws from the hub (a doser, or another pipe run).

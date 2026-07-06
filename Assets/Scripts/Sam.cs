@@ -55,11 +55,22 @@ public class Sam : Buildable
 
         if (Time.time < next) return;
 
-        // 10% chance to LOCK the airstrike bomber if it's overhead — its crash wrecks EVERYTHING
-        // in a huge radius, so this is a real risk of your own air support.
+        // ENEMY raiders are the priority — engage them reliably (that's what the ПЗРК is FOR).
         foreach (var bmb in Bomber.All)
         {
-            if (bmb == null || bmb.samEngaged) continue;
+            if (bmb == null || bmb.samEngaged || !bmb.enemy) continue;
+            if ((bmb.transform.position - transform.position).sqrMagnitude > rSq) continue;
+            bmb.samEngaged = true;
+            next = Time.time + reload;
+            SamMissile.LaunchAtBomber(muzzle, bmb);
+            Effects.TurretShot(muzzle);
+            return;
+        }
+
+        // Your OWN airstrike plane: only a 10% slip — but its crash wrecks EVERYTHING in a huge radius.
+        foreach (var bmb in Bomber.All)
+        {
+            if (bmb == null || bmb.samEngaged || bmb.enemy) continue;
             if ((bmb.transform.position - transform.position).sqrMagnitude > rSq) continue;
             if (Random.value < 0.10f)
             {

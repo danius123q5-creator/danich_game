@@ -48,6 +48,16 @@ public class Conveyor : Buildable
         }
     }
 
+    /// <summary>How many conveyors are currently live (connected to a captured mine/drill). The
+    /// metal vat scales its throughput with this — more wired conveyors = more metal/sec.</summary>
+    public static int LiveCount()
+    {
+        Flood();
+        int n = 0;
+        foreach (var c in All) if (c != null && c.Live) n++;
+        return n;
+    }
+
     /// <summary>The captured mine feeding the given position — directly within Link, or via a
     /// live conveyor within Link. Null when nothing connects.</summary>
     public static IMetalSource SupplySource(Vector3 pos)
