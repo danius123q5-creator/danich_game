@@ -85,8 +85,7 @@ public class PlayerController : MonoBehaviour
     int ammo;
     int lastWave = -1;
     float nextShot;
-    float nextBonus;          // 10-minute cooldown on the +100 metal bonus
-    const float BonusCooldown = 600f;
+    Buildable heldBuild;      // building currently being relocated with the middle mouse button
     GameObject viewmodel;
     GameObject playerBody;
     Vector3 vmBasePos;     // viewmodel rest position; recoil animates around it
@@ -273,12 +272,10 @@ public class PlayerController : MonoBehaviour
         for (int k = 0; k < hotkeys; k++)
             if (Input.GetKeyDown(KeyCode.Alpha1 + k)) { SelectedBuild = k; SetTool(Tool.Build); }
 
-        // Middle mouse button (СКМ) = +100 metal bonus, once per 10 minutes.
-        if (Input.GetMouseButtonDown(2) && Time.time >= nextBonus)
-        {
-            AddMetal(100);
-            nextBonus = Time.time + BonusCooldown;
-        }
+        // Middle mouse button (СКМ) = pick up / relocate a building. First press grabs the one
+        // you're looking at; while held it follows your crosshair; press again to drop it there.
+        if (Input.GetMouseButtonDown(2)) MoveBuildAction();
+        if (heldBuild != null) FollowHeldBuild();
 
         switch (tool)
         {
@@ -609,6 +606,46 @@ public class PlayerController : MonoBehaviour
     // ---- transient on-screen toast (feedback for sell/delete actions) ----
     string toast = ""; float toastUntil;
     void Toast(string s) { toast = s; toastUntil = Time.time + 2.5f; }
+
+    // ---- relocate a building with the middle mouse button ----
+    void MoveBuildAction()
+    {
+        if (heldBuild == null)
+        {
+            if (!RaycastNoSelf(30f, out RaycastHit hit)) return;
+            var b = hit.collider.GetComponentInParent<Buildable>();
+            if (b == null) return;
+            if (b is Dispenser d && d.Critical) { Toast("Раздатчик-базу переносить нельзя"); return; }
+            if (b.Building) { Toast("Постройка ещё строится"); return; }
+            heldBuild = b;
+            foreach (var c in b.GetComponentsInChildren<Collider>()) if (c != null) c.enabled = false; // let the ground ray pass through
+            Toast("Перенос: наведись и нажми СКМ, чтобы поставить");
+        }
+        else
+        {
+            PlaceHeldAtCrosshair();
+            foreach (var c in heldBuild.GetComponentsInChildren<Collider>()) if (c != null) c.enabled = true;
+            Effects.Burst(heldBuild.transform.position + Vector3.up, new Color(0.4f, 1f, 0.5f), 6);
+            heldBuild = null;
+        }
+    }
+
+    void FollowHeldBuild()
+    {
+        if (heldBuild == null) return; // may have been destroyed mid-carry
+        PlaceHeldAtCrosshair();
+    }
+
+    void PlaceHeldAtCrosshair()
+    {
+        if (heldBuild == null) return;
+        if (RaycastNoSelf(80f, out RaycastHit hit))
+        {
+            Vector3 p = hit.point;
+            p.y = GameBootstrap.Hill(p.x, p.z) + 0.02f;
+            heldBuild.transform.position = p;
+        }
+    }
 
     /// <summary>Delete ALL placed buildings of the same type as the one you're aiming at (a bulk
     /// "clear this class" tool). Refunds each like a sell. The critical dispenser is never touched.</summary>
@@ -1186,9 +1223,7 @@ public class PlayerController : MonoBehaviour
         else if (tool == Tool.Build) toolLine = $"[2] СТРОЙКА {BuildNames[SelectedBuild]} ({BCost(SelectedBuild)})   ЛКМ=ставить  E=улучшить  ПКМ=продать  X=снести класс  Q=меню";
         else if (tool == Tool.Wrench) toolLine = "[3] КЛЮЧ — ближний бой + починка";
         else toolLine = "[4] ЛОПАТА — зажми ЛКМ чтобы копать";
-        float bonusRem = nextBonus - Time.time;
-        string bonusTxt = bonusRem <= 0f ? "СКМ:+100 металла" : $"бонус {Mathf.FloorToInt(bonusRem / 60f)}:{Mathf.FloorToInt(bonusRem % 60f):00}";
-        toolLine += $"     колесо=оружие   {bonusTxt}";
+        toolLine += "     колесо=оружие   СКМ=перенести постройку";
         Rect toolR = Place(3, new Rect(8f, UI.H - 44f, UI.W - 16f, 34f));
         Panel(toolR);
         GUI.color = Color.white; GUI.Label(new Rect(toolR.x, toolR.y + 1f, toolR.width, 30f), toolLine, Tool16);
