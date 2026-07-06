@@ -11,7 +11,7 @@ public class ProxyMine : Buildable
 
     protected override void Awake()
     {
-        BuildCost = 30;
+        BuildCost = 8;   // dirt-cheap one-shot consumable
         MaxLevel = 1;
         BuildTime = 1.0f;
         base.Awake();
