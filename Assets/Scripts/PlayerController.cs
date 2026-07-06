@@ -274,8 +274,13 @@ public class PlayerController : MonoBehaviour
 
         // Middle mouse button (СКМ) = pick up / relocate a building. First press grabs the one
         // you're looking at; while held it follows your crosshair; press again to drop it there.
+        // R rotates the carried building 90° (e.g. to face a conveyor the other way).
         if (Input.GetMouseButtonDown(2)) MoveBuildAction();
-        if (heldBuild != null) FollowHeldBuild();
+        if (heldBuild != null)
+        {
+            if (Input.GetKeyDown(KeyCode.R)) heldBuild.transform.Rotate(0f, 90f, 0f);
+            FollowHeldBuild();
+        }
 
         switch (tool)
         {
@@ -581,7 +586,14 @@ public class PlayerController : MonoBehaviour
         int cost = BCost(type);
         Vector3 d = b - a; d.y = 0f;
         float len = d.magnitude;
-        if (len < 1f) { Vector3 p0 = new Vector3(a.x, GameBootstrap.Hill(a.x, a.z), a.z); PlaceOne(type, p0, 0f, cost); return; }
+        if (len < 1f) // single click (no real drag): orient it along the way the player is FACING
+        {
+            Vector3 p0 = new Vector3(a.x, GameBootstrap.Hill(a.x, a.z), a.z);
+            float yaw0 = transform.eulerAngles.y;
+            if (IsWallDrag(type)) yaw0 += 90f;
+            PlaceOne(type, p0, yaw0, cost);
+            return;
+        }
         Vector3 dir = d / len;
         float yaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg; // pipe axis is +Z
         if (IsWallDrag(type)) yaw += 90f;                       // walls: their width runs along the path
