@@ -535,13 +535,36 @@ public class PlayerController : MonoBehaviour
     // ---- Drag-build (pipe / conveyor): hold LMB at the source, walk, release to lay a line ----
     bool layingDrag;
     Vector3 dragStart;
+    int dragSegs, dragTotalCost;   // live count/cost preview shown while dragging a line
     public const float DragSegment = 3f; // pipe/conveyor segment length (metres)
 
-    // Drag-built (hold LMB, drag a line, release): oil pipe / conveyor, and now WALLS too.
-    static bool IsDragBuild(int type) => type == 27 || type == 30 || IsWallDrag(type);
-    static bool IsWallDrag(int type) => type == 3 || type == 16 || type == 17; // СТЕНА / ДЛ.СТЕНА / ВЫС.СТЕНА
-    // Spacing between laid segments: walls abut edge-to-edge (their width); pipes use the pipe length.
-    static float DragStep(int type) => type == 16 ? 4.4f : IsWallDrag(type) ? 2.2f : DragSegment;
+    // Drag-built (hold LMB, drag a line, release): pipes/conveyors AND every "СТРОИТЕЛЬНОЕ" +
+    // "ОБОРОНА" item — so you can lay whole rows of walls, turrets, mines, etc. in one drag.
+    static readonly System.Collections.Generic.HashSet<int> DragTypes = BuildDragSet();
+    static System.Collections.Generic.HashSet<int> BuildDragSet()
+    {
+        var s = new System.Collections.Generic.HashSet<int> { 27, 30 }; // oil pipe, conveyor (ЭКОНОМИКА)
+        foreach (var i in BuildCategoryItems[0]) s.Add(i); // СТРОИТЕЛЬНОЕ
+        foreach (var i in BuildCategoryItems[1]) s.Add(i); // ОБОРОНА
+        return s;
+    }
+    static bool IsDragBuild(int type) => DragTypes.Contains(type);
+    // Walls & doors run their WIDTH along the drag line (perpendicular facing); others face along it.
+    static bool IsWallDrag(int type) => type == 3 || type == 16 || type == 17 || type == 4;
+    // Spacing between laid pieces (footprint-based), so a dragged row doesn't overlap.
+    static float DragStep(int type)
+    {
+        switch (type)
+        {
+            case 16: return 4.4f;                 // long wall
+            case 3: case 17: case 4: return 2.2f; // wall / tall wall / door
+            case 27: case 30: return DragSegment; // pipe / conveyor
+            case 23: case 26: return 8f;          // watchtower / big platform (huge footprint)
+            case 5: case 12: case 13: case 14: return 3.2f; // bridges
+            case 29: case 32: return 4f;          // oil derrick / drill
+            default: return 2.6f;                 // turrets, mines, ladders, etc.
+        }
+    }
 
     void BeginDragBuild()
     {
@@ -895,6 +918,7 @@ public class PlayerController : MonoBehaviour
         int need = count + 1;
 
         int cost = BCost(SelectedBuild);
+        dragSegs = need; dragTotalCost = need * cost;   // live preview for the HUD
         bool ok = Metal >= need * cost;
         Color col = ok ? new Color(0.3f, 1f, 0.3f, 0.16f) : new Color(1f, 0.4f, 0.3f, 0.16f);
 
@@ -1210,6 +1234,16 @@ public class PlayerController : MonoBehaviour
             GUI.DrawTexture(new Rect(cx - 2f * ch, cy - 14f * ch, 4f * ch, 28f * ch), Texture2D.whiteTexture);
         }
 
+        // Live cost while dragging a build line — updates with the length.
+        if (layingDrag && IsDragBuild(SelectedBuild))
+        {
+            bool afford = Metal >= dragTotalCost;
+            var st = new GUIStyle(GUI.skin.label) { fontSize = 22, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+            GUI.color = afford ? new Color(0.5f, 1f, 0.5f) : new Color(1f, 0.5f, 0.4f);
+            GUI.Label(new Rect(cx - 220f, cy + 44f, 440f, 30f), $"{dragSegs} шт.  —  {dragTotalCost} мет.", st);
+            GUI.color = Color.white;
+        }
+
         // Hardcore: floating ammo readout above each turret (so you can see which need a refill).
         if (GameRoot.Hardcore && !buildMenuOpen) DrawTurretAmmo();
 
@@ -1322,9 +1356,10 @@ public class PlayerController : MonoBehaviour
 
         // Air-strike targeting computer hint — only during a WAVE (in prep the timer HUD owns the
         // top-centre, so showing it there overlapped the text).
+        // Air-strike computer hint — bottom of the screen (well clear of the top wave banner).
         if (AirStrike.AnyOnline() && gm != null && !gm.IsPrep)
         {
-            float ay = airRaid ? 110f : 74f; // drop below the raid banner when both show
+            float ay = Refinery.All.Count > 0 ? UI.H - 180f : UI.H - 138f; // above the oil/metal readouts
             Panel(new Rect(cx - 260f, ay, 520f, 30f));
             GUI.color = AirStrike.HasDesignation ? new Color(1f, 0.5f, 0.3f) : new Color(0.9f, 0.85f, 0.8f);
             GUI.Label(new Rect(cx - 260f, ay + 3f, 520f, 24f),
@@ -1354,6 +1389,21 @@ public class PlayerController : MonoBehaviour
         if (aimed != null)
         {
             float pw = 460f, px = cx - pw * 0.5f, py = cy + 28f;
+
+            // Description of the building you're LOOKING AT (bound to its type, not the menu cursor).
+            if (aimed.Type >= 0 && aimed.Type < BuildDescriptions.Length)
+            {
+                float dh2 = 74f, dy2 = py - 12f - dh2;
+                GUI.color = new Color(0f, 0f, 0f, 0.8f);
+                GUI.DrawTexture(new Rect(px - 8f, dy2, pw + 16f, dh2), Texture2D.whiteTexture);
+                GUI.color = new Color(1f, 0.9f, 0.55f);
+                var dt2 = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft };
+                var db2 = new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true, alignment = TextAnchor.UpperLeft };
+                GUI.Label(new Rect(px, dy2 + 5f, pw, 22f), BuildNames[aimed.Type], dt2);
+                GUI.color = Color.white;
+                GUI.Label(new Rect(px, dy2 + 28f, pw, dh2 - 32f), BuildDescriptions[aimed.Type], db2);
+            }
+
             // The 3rd "перезаряд" bar appears whenever a cooldown-gated deposit is possible:
             // funding, a normal upgrade, OR upgrading a fully-charged reserve weapon.
             bool reserveUpgrade = aimed.UsesReserve && aimed.Reserve >= aimed.ReserveMax && aimed.CanUpgrade;

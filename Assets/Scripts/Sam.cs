@@ -82,11 +82,12 @@ public class Sam : Buildable
             }
         }
 
-        var targets = NearestBirds(rSq, 4); // up to 4 unclaimed birds — one per tube
+        var targets = NearestBirds(rSq, 4); // nearest birds (distinct, up to 4)
         if (targets.Count == 0) return;
 
         next = Time.time + reload;
-        // Four tube muzzles (left/right × top/bottom), rotated to the launcher's facing.
+        // ALWAYS a full 4-missile salvo, one from each tube. Spread across the nearest birds
+        // (round-robin), doubling up if there are fewer than 4 — so you always see all 4 fly.
         Vector3 right = transform.right;
         Vector3[] tubes =
         {
@@ -95,11 +96,8 @@ public class Sam : Buildable
             muzzle + right * -0.4f - Vector3.up * 0.15f,
             muzzle + right *  0.4f - Vector3.up * 0.15f,
         };
-        for (int i = 0; i < targets.Count; i++)
-        {
-            Claimed.Add(targets[i]);
-            SamMissile.Launch(tubes[i % 4], targets[i]);
-        }
+        for (int i = 0; i < 4; i++)
+            SamMissile.Launch(tubes[i], targets[i % targets.Count]);
         Effects.TurretShot(muzzle);
     }
 
@@ -109,7 +107,7 @@ public class Sam : Buildable
         _found.Clear();
         Vector3 p = transform.position;
         foreach (var b in Object.FindObjectsByType<Bird>(FindObjectsSortMode.None))
-            if (b != null && !Claimed.Contains(b) && (b.transform.position - p).sqrMagnitude <= rSq)
+            if (b != null && (b.transform.position - p).sqrMagnitude <= rSq)
                 _found.Add(b);
         _found.Sort((x, y) => (x.transform.position - p).sqrMagnitude.CompareTo((y.transform.position - p).sqrMagnitude));
         if (_found.Count > max) _found.RemoveRange(max, _found.Count - max);
