@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
@@ -36,6 +37,8 @@ public class GameRoot : MonoBehaviour
     bool inModes;   // showing the Modes sub-screen instead of the main menu
     bool inNewGame; // showing the New Game type picker (Обычный / Хардкор / Бесконечный)
     bool inSettings;        // showing the Settings (UI customization) screen
+    bool inSaves;           // showing the .gdf saves (load) screen
+    readonly Dictionary<int, Texture2D> thumbCache = new Dictionary<int, Texture2D>();
     bool settingsFromPause; // remember whether Settings was opened from the pause menu
 
     bool splashActive = true;
@@ -67,6 +70,8 @@ public class GameRoot : MonoBehaviour
             State = GState.Paused;
             Time.timeScale = 0f;
             FreeCursor(true);
+            // Every ESC grabs a fresh thumbnail and autosaves the current slot to .gdf (offline only).
+            if (CurrentMode == Mode.Offline && !IsZvZ && !IsPvp && !Hardcore) StartCoroutine(CaptureAndAutosave());
         }
         else if (State == GState.Paused && Input.GetKeyDown(KeyCode.Escape))
         {
@@ -97,6 +102,8 @@ public class GameRoot : MonoBehaviour
     {
         IsTutorial = false; IsZvZ = false; // a normal game clears any prior special-mode state
         if (menuCam != null) menuCam.gameObject.SetActive(false);
+        // A brand-new game writes into a fresh save slot; Continue/Load keep their slot.
+        if (!continueProgress) SaveSystem.CurrentSlot = SaveSystem.NextFreeSlot();
         GameBootstrap.BuildWorld();
         if (continueProgress)
         {
@@ -255,6 +262,52 @@ public class GameRoot : MonoBehaviour
         PlayerPrefs.Save();
     }
 
+    // ESC handler: grab the screen at end-of-frame, downscale to a thumbnail, then autosave the
+    // running game to its .gdf slot (both the readable fields and the machine restore data).
+    IEnumerator CaptureAndAutosave()
+    {
+        yield return new WaitForEndOfFrame();
+        byte[] png = null;
+        try
+        {
+            var full = ScreenCapture.CaptureScreenshotAsTexture();
+            var thumb = Downscale(full, 320, 180);
+            png = thumb.EncodeToPNG();
+            Destroy(full); Destroy(thumb);
+        }
+        catch { }
+        Save(); // populate PlayerPrefs first
+        SaveSystem.WriteSlot(SaveSystem.CurrentSlot, png);
+        if (thumbCache.TryGetValue(SaveSystem.CurrentSlot, out var old) && old != null) Destroy(old);
+        thumbCache.Remove(SaveSystem.CurrentSlot); // force a reload next time the menu shows it
+    }
+
+    static Texture2D Downscale(Texture2D src, int w, int h)
+    {
+        var rt = RenderTexture.GetTemporary(w, h);
+        Graphics.Blit(src, rt);
+        var prev = RenderTexture.active;
+        RenderTexture.active = rt;
+        var dst = new Texture2D(w, h, TextureFormat.RGB24, false);
+        dst.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+        dst.Apply();
+        RenderTexture.active = prev;
+        RenderTexture.ReleaseTemporary(rt);
+        return dst;
+    }
+
+    /// <summary>Load a chosen .gdf slot from the saves menu.</summary>
+    public void LoadSlot(int slot)
+    {
+        if (!SaveSystem.ApplySlotToPrefs(slot)) return;
+        CurrentMode = Mode.Offline; Hardcore = false;
+        Infinite = PlayerPrefs.GetInt("save_infinite", 0) == 1;
+        var h = SaveSystem.ReadHeader(slot);
+        GameBootstrap.ForceNight = h.night; GameBootstrap.ForceDay = !h.night; // restore the map's day/night
+        inSaves = false;
+        StartGame(true);
+    }
+
     // Persist capture state of the refineries/mines (fixed spawn order → restored by index).
     static void SaveSources()
     {
@@ -358,7 +411,7 @@ public class GameRoot : MonoBehaviour
         if (splashActive) { DrawSplash(); return; }
         if (UISettings.EditLayout) { DrawLayoutEdit(); return; } // HUD visible + draggable; menus hidden
         if (inSettings) { DrawSettingsMenu(); return; }
-        if (State == GState.Menu) { if (inNewGame) DrawNewGameMenu(); else if (inModes) DrawModesMenu(); else DrawMainMenu(); }
+        if (State == GState.Menu) { if (inSaves) DrawSavesMenu(); else if (inNewGame) DrawNewGameMenu(); else if (inModes) DrawModesMenu(); else DrawMainMenu(); }
         else if (State == GState.Paused) DrawPauseMenu();
     }
 
@@ -370,6 +423,69 @@ public class GameRoot : MonoBehaviour
         float cy = UI.H * 0.5f;
         var big = new GUIStyle(GUI.skin.label) { fontSize = 64, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         GUI.Label(new Rect(0f, cy - 60f, UI.W, 120f), "made by danich", big);
+    }
+
+    // Saves screen: list every .gdf slot with its ESC thumbnail; click to load or delete.
+    void DrawSavesMenu()
+    {
+        float cx = UI.W * 0.5f;
+        var title = new GUIStyle(GUI.skin.label) { fontSize = 40, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+        GUI.color = new Color(0.6f, 0.9f, 0.5f);
+        GUI.Label(new Rect(cx - 320f, 40f, 640f, 56f), "СОХРАНЕНИЯ (.gdf)", title);
+        GUI.color = Color.white;
+
+        var row = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.Bold };
+        var btn = new GUIStyle(GUI.skin.button) { fontSize = 18, fontStyle = FontStyle.Bold };
+        var small = new GUIStyle(GUI.skin.button) { fontSize = 15 };
+
+        float rowH = 108f, w = 720f, x = cx - w * 0.5f, y = 120f;
+        var slots = SaveSystem.ListSlots();
+        foreach (var s in slots)
+        {
+            GUI.color = new Color(0f, 0f, 0f, 0.5f);
+            GUI.DrawTexture(new Rect(x, y, w, rowH - 8f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+
+            // thumbnail
+            var thumb = GetThumb(s.slot, s.exists);
+            var shotRect = new Rect(x + 6f, y + 6f, 160f, 90f);
+            if (thumb != null) GUI.DrawTexture(shotRect, thumb, ScaleMode.ScaleToFit);
+            else { GUI.color = new Color(0.15f, 0.16f, 0.2f); GUI.DrawTexture(shotRect, Texture2D.whiteTexture); GUI.color = Color.white; }
+
+            if (s.exists)
+            {
+                GUI.Label(new Rect(x + 178f, y + 12f, 360f, 26f), $"Слот {s.slot + 1}   —   волна {s.wave}{(s.infinite ? "  (беск.)" : "")}{(s.night ? "  (ночь)" : "")}", row);
+                GUI.color = new Color(0.75f, 0.8f, 0.75f);
+                GUI.Label(new Rect(x + 178f, y + 42f, 360f, 24f), s.time, row);
+                GUI.color = Color.white;
+                if (GUI.Button(new Rect(x + w - 210f, y + 14f, 120f, 40f), "Загрузить", btn)) { LoadSlot(s.slot); return; }
+                if (GUI.Button(new Rect(x + w - 82f, y + 14f, 72f, 40f), "Удалить", small)) { SaveSystem.DeleteSlot(s.slot); DropThumb(s.slot); }
+            }
+            else
+            {
+                GUI.color = new Color(0.6f, 0.62f, 0.6f);
+                GUI.Label(new Rect(x + 178f, y + 34f, 360f, 26f), $"Слот {s.slot + 1}   —   пусто", row);
+                GUI.color = Color.white;
+            }
+            y += rowH;
+        }
+
+        if (GUI.Button(new Rect(cx - 120f, y + 12f, 240f, 46f), "Назад", btn)) inSaves = false;
+    }
+
+    Texture2D GetThumb(int slot, bool exists)
+    {
+        if (!exists) return null;
+        if (thumbCache.TryGetValue(slot, out var t)) return t;
+        var tex = SaveSystem.LoadThumb(slot);
+        thumbCache[slot] = tex;
+        return tex;
+    }
+
+    void DropThumb(int slot)
+    {
+        if (thumbCache.TryGetValue(slot, out var t) && t != null) Destroy(t);
+        thumbCache.Remove(slot);
     }
 
     void DrawMainMenu()
@@ -390,6 +506,8 @@ public class GameRoot : MonoBehaviour
         }
         y += 58f;
         if (GUI.Button(new Rect(x, y, bw, bh), "Новая игра", btn)) inNewGame = true;
+        y += 58f;
+        if (GUI.Button(new Rect(x, y, bw, bh), "Сохранения", btn)) inSaves = true;
         y += 58f;
         bool tutDone = PlayerPrefs.GetInt("tutorial_done", 0) == 1;
         if (!tutDone) GUI.backgroundColor = new Color(0.3f, 0.72f, 0.36f); // highlight until completed
@@ -432,7 +550,10 @@ public class GameRoot : MonoBehaviour
 
         var credit = new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         GUI.color = new Color(0.7f, 0.8f, 0.7f);
-        GUI.Label(new Rect(0f, UI.H - 28f, UI.W, 22f), "made by danich", credit);
+        GUI.Label(new Rect(0f, UI.H - 44f, UI.W, 22f), "made by danich", credit);
+        GUI.color = new Color(0.55f, 0.6f, 0.55f);
+        var cpr = new GUIStyle(GUI.skin.label) { fontSize = 12, alignment = TextAnchor.MiddleCenter };
+        GUI.Label(new Rect(0f, UI.H - 24f, UI.W, 20f), GameVersion.Copyright, cpr);
         GUI.color = Color.white;
     }
 

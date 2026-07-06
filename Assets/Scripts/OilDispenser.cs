@@ -30,10 +30,12 @@ public class OilDispenser : Buildable
     protected override void BuildableTick()
     {
         // Draw oil from the connected source network (refinery or derrick) into the tank.
+        // 2.3: more wired pipes = more efficient doser (+8%/pipe, capped) — pulls & hands out more oil.
         IOilSource src = OilPipe.SupplySource(transform.position);
         Supplied = src != null;
+        float pipeBoost = 1f + Mathf.Min(OilPipe.LiveCount(), 25) * 0.08f;
         if (src != null && stock < TankCap)
-            stock += src.DrawOil(Mathf.Min(PullRate * Time.deltaTime, TankCap - stock));
+            stock += src.DrawOil(Mathf.Min(PullRate * pipeBoost * Time.deltaTime, TankCap - stock));
 
         if (Time.time < nextGive) return;
         nextGive = Time.time + Tick;
@@ -43,7 +45,7 @@ public class OilDispenser : Buildable
         {
             if (p.IsDead) continue;
             if ((p.transform.position - transform.position).sqrMagnitude > Radius * Radius) continue;
-            int give = Mathf.Min(GiveAmount, Mathf.FloorToInt(stock));
+            int give = Mathf.Min(Mathf.RoundToInt(GiveAmount * pipeBoost), Mathf.FloorToInt(stock));
             give = Mathf.Min(give, PlayerController.OilMax - p.Oil); // don't waste on a full player
             if (give > 0) { p.AddOil(give); stock -= give; Effects.Burst(transform.position + Vector3.up * 1.4f, new Color(1f, 0.8f, 0.3f), 3); }
         }

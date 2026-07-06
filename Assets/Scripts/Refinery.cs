@@ -34,10 +34,11 @@ public class Refinery : MonoBehaviour, IOilSource
 
     public const float Zone = 10f;          // capture / contest radius
     public const float CaptureTime = 4f;    // seconds to capture from neutral
-    public const float OilCap = 200f;       // barrel capacity
+    public const float OilCap = 280f;       // barrel capacity (2.3: bigger barrel — drips more)
     public const float ControlMax = 100f;
+    public const int CaptureOilBonus = 600; // 2.3: capturing the НПЗ (вышка) hands you 600 oil
 
-    const float OilRate = 8f;               // oil/sec dripping into the barrel while held
+    const float OilRate = 13f;              // oil/sec dripping into the barrel while held (2.3: faster)
     const float ControlRegen = 9f;          // control/sec regained when no zombies are near
     const float DrainPerZombie = 7f;        // control/sec lost per nearby zombie (capped)
     const float CollectReach = 5.5f;        // how close to the barrel you can press E
@@ -174,7 +175,7 @@ public class Refinery : MonoBehaviour, IOilSource
                 if (Capture >= CaptureTime)
                 {
                     Captured = true; Capture = CaptureTime; Control = ControlMax;
-                    if (player != null) player.AddMetal(PlayerController.CaptureMetalBonus); // +2500 on capture
+                    if (player != null) { player.AddMetal(PlayerController.CaptureMetalBonus); player.AddOil(CaptureOilBonus); } // +metal & +600 oil
                     Effects.Upgrade(p + Vector3.up * 6f);
                 }
             }

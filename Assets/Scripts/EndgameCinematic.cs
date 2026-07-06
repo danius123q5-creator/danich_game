@@ -348,19 +348,20 @@ public class EndgameCinematic : MonoBehaviour
         if (t > 8f) { phase = Phase.Done; t = 0f; }
     }
 
-    // --- Phase 5: fade to black, then quit the game ---
+    // --- Phase 5: fade to black, then return to the main menu ---
+    bool finished;
     void DonePhase(float dt)
     {
         fade = Mathf.Min(1f, fade + dt / 2f);
-        if (t > 4f)
+        if (t > 4f && !finished)
         {
+            finished = true;
             RenderSettings.ambientLight = ambient0;
             Active = false;
-#if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
-#else
-            Application.Quit();
-#endif
+            // Back to the main menu (reliable — Application.Quit doesn't fire in the editor and
+            // could leave the player stuck staring at THE END). The cutscene object cleans itself up.
+            if (GameRoot.Instance != null) GameRoot.Instance.ExitToMenu();
+            Destroy(gameObject);
         }
     }
 

@@ -18,8 +18,22 @@ public class PlayerController : MonoBehaviour
     // each wave (+30/wave) so late-game super-weapons stay affordable.
     // 2.2 economy: you keep a big metal stockpile (base 2000, +2500 per captured point),
     // so the cap is high enough to hold it. Hardcore is a bit tighter.
-    public static int MetalMax => 600;
+    // Base 600; from wave 20 on the cap grows (+45/wave) so late-game metal income has somewhere to go.
+    public static int MetalMax
+    {
+        get
+        {
+            int cap = 600;
+            var gm = GameManager.Instance;
+            if (gm != null && gm.WaveNumber > 20) cap += (gm.WaveNumber - 20) * 45;
+            return cap;
+        }
+    }
     public const int CaptureMetalBonus = 677; // metal granted when you capture a refinery/mine
+    // 2.3: "нефтяной карман" building raises your personal oil capacity by 365 each.
+    public static int ExtraOilCap = 0;
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() { ExtraOilCap = 0; GodMode = false; }
     const int ReserveLoadChunk = 100; // metal loaded into a special weapon's reserve per E press
     const int OilFundChunk = 50;      // oil poured into a super-weapon's funding per E press
 
@@ -34,7 +48,7 @@ public class PlayerController : MonoBehaviour
     {
         get
         {
-            int cap = 500;
+            int cap = 500 + ExtraOilCap;   // +365 per built "нефтяной карман"
             var gm = GameManager.Instance;
             if (gm != null && gm.WaveNumber > 12) cap += (gm.WaveNumber - 12) * 50;
             return cap;
@@ -80,8 +94,8 @@ public class PlayerController : MonoBehaviour
     float gunHeat;         // 0..1 muzzle heat glow, decays each frame
     GameObject gunMuzzle;  // barrel tip — glows red-hot when firing
 
-    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ", "СМОТР. БАШНЯ", "ЛЕЗВИЯ", "РАКЕТ. ШАХТА", "ПЛАТФОРМА", "ТРУБА НЕФТИ", "ДОЗАТОР НЕФТИ", "НЕФТ. ВЫШКА", "КОНВЕЙЕР", "ЧАН РУДЫ", "БУРОВАЯ" };
-    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 20, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200, 90, 450, 550, 220, 15, 150, 870, 15, 200, 820 };
+    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ", "СМОТР. БАШНЯ", "ЛЕЗВИЯ", "РАКЕТ. ШАХТА", "ПЛАТФОРМА", "ТРУБА НЕФТИ", "ДОЗАТОР НЕФТИ", "НЕФТ. ВЫШКА", "КОНВЕЙЕР", "ЧАН РУДЫ", "БУРОВАЯ", "НЕФТ. КАРМАН", "ОГНЕМЁТ" };
+    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 30, 20, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200, 90, 450, 300, 220, 15, 150, 870, 15, 200, 820, 200, 220 };
 
     // Short "what it is / how it works" blurb per build type — shown in the Q menu on hover.
     static readonly string[] BuildDescriptions =
@@ -95,7 +109,7 @@ public class PlayerController : MonoBehaviour
         "Лестница/пандус: заехать или забраться наверх.",
         "Фугас-лепёшка: лежит на земле, наступил зомби — взрыв. Зомби его не атакуют.",
         "Колючая проволока: сильно замедляет зомби, идущих сквозь неё.",
-        "Авиаудар (супероружие): работает на НЕФТИ — залей нефть с НПЗ (E), затем вызывает удары по толпе на всю карту. Металл не нужен.",
+        "Авиаудар (супероружие): работает на НЕФТИ — залей нефть с НПЗ (E), затем вызывает удары по толпе на всю карту. КОМПЬЮТЕР НАВЕДЕНИЯ: посмотри на землю и нажми G — авиаудар будет бить по указанному сектору. Металл не нужен.",
         "Катушка Тесла (супероружие): работает на НЕФТИ — залей нефть с НПЗ (E). Бьёт молнией по ближним зомби, тратит нефть из резерва.",
         "Артиллерия (супероружие): работает на НЕФТИ — залей нефть с НПЗ (E). Фугасы по площади на всю карту, наводится на цель.",
         "Угловой мост (Г): поворот настила.",
@@ -111,7 +125,7 @@ public class PlayerController : MonoBehaviour
         "Орбитальная станция: блок управления, работает на НЕФТИ — залей нефть с НПЗ (E), металл не нужен. Когда готов — в небе появляется станция и циклит 3 атаки: точные лазеры со взрывом, выжигающий луч (ползёт от зомби к зомби) и тройная призма (3 луча крутятся вокруг базы). Тратит металл из своего бака — заряжай E.",
         "Смотровая башня (20 м): залезь по лестнице через люк на площадку наверху — отличная точка для стрельбы, зомби туда не достанут.",
         "Лезвия: крутящийся ротор рубит всех зомби рядом несколько раз в секунду. Работает как турель — сама, без зарядки и расхода металла. Дорогая в постройке.",
-        "Ракетная шахта: бьёт по толпам (3+ зомби) в радиусе ~50-70 м. Пускает ракету в одного зомби — она взлетает в небо и падает на него, а ЖИРНЫЙ сплеш сносит всех вокруг (радиус 10-16). Работает как турель, без расхода металла. Дорогая.",
+        "Ракетная шахта (супероружие): работает на НЕФТИ — залей нефть (E), чтобы включить, и каждый пуск тратит нефть из бака. Бьёт по толпам (3+ зомби) в радиусе ~50-70 м: ракета взлетает, переворачивается и падает на цель, а ЖИРНЫЙ сплеш сносит всех вокруг (10-16) и оставляет кратер. Ракеты не бьют в одного зомби дважды.",
         "Платформа: огромная площадка на 4 толстых столбах. Залезь по лестнице наверх — целый этаж под турели и линию обороны, зомби туда не достанут.",
         "Труба нефти: зажми ЛКМ у захваченного НПЗ и веди к базе — отпустишь, и труба ляжет цепочкой (15 мет./звено). Тянет нефть к дозатору. Зомби её ломают — защищай.",
         "Дозатор нефти: качает нефть из подключённого НПЗ (через трубы) и сам выдаёт её тебе, когда стоишь рядом. Поставь у базы — нефть течёт без беготни.",
@@ -119,6 +133,8 @@ public class PlayerController : MonoBehaviour
         "Конвейер: зажми ЛКМ у захваченной ШАХТЫ и веди к базе — ляжет цепочкой (15 мет./звено). Возит руду к чану. Зомби ломают — защищай.",
         "Чан для руды: качает руду из ВСЕХ подключённых шахт/буровых (через конвейеры) и сам выдаёт металл тебе рядом. Больше источников на сети — больше металла в секунду.",
         "Буровая: своя установка добычи металла (820 мет.) — не нужно захватывать шахту. Бурит руду в свой бак; подключи к ней конвейер и веди к чану.",
+        "Нефтяной карман: доп. бак-хранилище — пока стоит, поднимает твой МАКС. запас нефти на +365. Ставь несколько, чтобы копить больше нефти под супер-пушки. Сломают/продашь — прибавка пропадёт.",
+        "Огнемёт: стационарный, поливает коротким конусом огня. ОГРОМНЫЙ урон, но очень малая дальность — жарит всех вблизи, вдали бесполезен. Работает сам, без расхода. Улучшай (E) — урон и радиус.",
     };
 
     // Build-menu sections: each holds the build-type indices shown under that header.
@@ -126,20 +142,20 @@ public class PlayerController : MonoBehaviour
     static readonly int[][] BuildCategoryItems =
     {
         new[] { 3, 16, 17, 4, 6, 20, 23, 26, 29, 32, 5 }, // WALL, LONG/TALL WALL, DOOR, STAIRS, LADDER, WATCHTOWER, BIG PLATFORM, OIL DERRICK, DRILL, BRIDGE
-        new[] { 0, 19, 2, 7, 8, 15, 24, 25 },     // SENTRY, RPG, MINE, LANDMINE, BARBED WIRE, AA TURRET, BLADES, MISSILE SILO (dispenser removed — metal comes from the mine economy)
-        new[] { 27, 28, 30, 31 },                 // ЭКОНОМИКА: OIL PIPE, OIL DOSER, CONVEYOR, METAL VAT
+        new[] { 0, 19, 2, 7, 8, 15, 24, 25, 34 }, // SENTRY, RPG, MINE, LANDMINE, BARBED WIRE, AA TURRET, BLADES, MISSILE SILO, FLAMETHROWER
+        new[] { 27, 28, 30, 31, 33 },             // ЭКОНОМИКА: OIL PIPE, OIL DOSER, CONVEYOR, METAL VAT, OIL POCKET
         new[] { 9, 10, 11, 21, 22, 18 },          // AIR STRIKE, TESLA, ARTILLERY, FREEZE, ORBITAL, CAR
     };
 
     struct GunStats { public string name; public float dmg; public float rate; public int mag; }
     static readonly GunStats[] Guns =
     {
-        new GunStats { name = "ПИСТОЛЕТ", dmg = 22f,  rate = 0.35f, mag = 12 },
-        new GunStats { name = "ПП",       dmg = 16f,  rate = 0.09f, mag = 30 },
-        new GunStats { name = "ВИНТОВКА", dmg = 34f,  rate = 0.14f, mag = 25 },
-        new GunStats { name = "КАРАБИН",  dmg = 46f,  rate = 0.11f, mag = 30 },
-        new GunStats { name = "ПУЛЕМЁТ",  dmg = 30f,  rate = 0.07f, mag = 60 },
-        new GunStats { name = "РЕЛЬСОТРОН", dmg = 120f, rate = 0.50f, mag = 10 },
+        new GunStats { name = "ПИСТОЛЕТ", dmg = 22f,  rate = 0.26f, mag = 12 },
+        new GunStats { name = "ПП",       dmg = 16f,  rate = 0.06f, mag = 30 },
+        new GunStats { name = "ВИНТОВКА", dmg = 34f,  rate = 0.10f, mag = 25 },
+        new GunStats { name = "КАРАБИН",  dmg = 46f,  rate = 0.08f, mag = 30 },
+        new GunStats { name = "ПУЛЕМЁТ",  dmg = 30f,  rate = 0.05f, mag = 60 },
+        new GunStats { name = "РЕЛЬСОТРОН", dmg = 120f, rate = 0.38f, mag = 10 },
     };
 
     void Awake()
@@ -165,6 +181,7 @@ public class PlayerController : MonoBehaviour
         camGO.transform.localPosition = new Vector3(0f, 0.7f, 0f);
         cam = camGO.AddComponent<Camera>();
         camGO.AddComponent<AudioListener>();
+        if (GameBootstrap.Night) { cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = new Color(0.03f, 0.04f, 0.08f); } // dark night sky
         VisualFx.EnablePostFx(cam); // bloom / tonemapping / grading from the global volume
 
         BuildViewmodel();
@@ -231,6 +248,17 @@ public class PlayerController : MonoBehaviour
         }
 
         SetAimed(RaycastNoSelf(30f, out RaycastHit aimHit) ? aimHit.collider.GetComponentInParent<Buildable>() : null);
+
+        // Air-strike targeting computer: aim at the ground and press G to designate that sector —
+        // any online air strike then pounds it for a while. Only usable if you have one built.
+        if (Input.GetKeyDown(KeyCode.G) && AirStrike.AnyOnline())
+        {
+            if (RaycastNoSelf(300f, out RaycastHit gh))
+            {
+                AirStrike.Designate(gh.point);
+                Effects.Burst(gh.point + Vector3.up * 0.2f, new Color(1f, 0.35f, 0.2f), 10);
+            }
+        }
 
         // Mouse wheel switches weapon/tool (classic FPS feel).
         float sw = Input.GetAxis("Mouse ScrollWheel");
@@ -825,9 +853,11 @@ public class PlayerController : MonoBehaviour
     // ---- Misc ----
     public void Heal(float amount) { if (!IsDead) Health = Mathf.Min(MaxHealth, Health + amount); }
 
+    public static bool GodMode; // debug: player takes no damage
+
     public void TakeDamage(float amount)
     {
-        if (IsDead) return;
+        if (IsDead || GodMode) return;
         Health = Mathf.Max(0f, Health - amount);
         if (IsDead) { deathTime = Time.time; Deaths++; } // counted once per death (early-out above guards re-entry)
     }
@@ -1147,11 +1177,23 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                Panel(new Rect(cx - 360f, 8f, 720f, 40f));
+                Panel(new Rect(cx - 360f, 8f, 720f, 62f));
                 GUI.color = new Color(1f, 0.55f, 0.35f);
                 GUI.Label(new Rect(cx - 360f, 11f, 720f, 30f), $"ВОЛНА {gm.WaveNumber}   зомби: {gm.ZombiesLeft}", Line24);
+                GUI.color = new Color(0.85f, 0.85f, 0.85f);
+                GUI.Label(new Rect(cx - 360f, 40f, 720f, 24f), "чтобы сдаться нажмите K (заберёт всю нефть и металл)", Sm);
                 GUI.color = Color.white;
             }
+        }
+
+        // Air-strike targeting computer hint (shown whenever you have one online).
+        if (AirStrike.AnyOnline())
+        {
+            Panel(new Rect(cx - 260f, 74f, 520f, 30f));
+            GUI.color = AirStrike.HasDesignation ? new Color(1f, 0.5f, 0.3f) : new Color(0.9f, 0.85f, 0.8f);
+            GUI.Label(new Rect(cx - 260f, 77f, 520f, 24f),
+                AirStrike.HasDesignation ? "АВИАУДАР наведён на сектор" : "G — навести авиаудар на сектор (смотри на землю)", Sm);
+            GUI.color = Color.white;
         }
 
         // Driving hint

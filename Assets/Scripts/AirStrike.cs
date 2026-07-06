@@ -19,6 +19,23 @@ public class AirStrike : Buildable
     int bombs = 6;
     float next;
 
+    // 2.3: TARGETING COMPUTER. The player can designate a sector (aim at the ground + press G);
+    // while a designation is live, every air strike pounds THAT spot instead of auto-picking the
+    // densest crowd. Lets you soften a chosen approach before the horde even arrives.
+    public static Vector3 Designated;
+    public static float DesignatedUntil = -999f;
+    public static bool HasDesignation => Time.time < DesignatedUntil;
+    public static void Designate(Vector3 p, float seconds = 12f) { Designated = p; DesignatedUntil = Time.time + seconds; }
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetDesignation() { DesignatedUntil = -999f; }
+    /// <summary>Is there at least one funded/online air strike (so the computer is usable)?</summary>
+    public static bool AnyOnline()
+    {
+        foreach (var b in Buildable.All)
+            if (b is AirStrike a && !a.Building && !a.IsFunding) return true;
+        return false;
+    }
+
     protected override void Awake()
     {
         BuildCost = 250;
@@ -43,22 +60,32 @@ public class AirStrike : Buildable
     {
         if (Time.time < next) return;
 
-        // Aim at the densest pocket: the zombie with the most neighbours in blast range.
-        var zombies = Zombie.All;
-        if (zombies.Count == 0) return;
-        Vector3 best = Vector3.zero;
-        int bestCount = 0;
-        float rSq = blastRadius * blastRadius;
-        foreach (var z in zombies)
+        Vector3 best;
+        if (HasDesignation)
         {
-            Vector3 p = z.transform.position;
-            if ((p - transform.position).sqrMagnitude > ScanRange * ScanRange) continue;
-            int c = 0;
-            foreach (var o in zombies)
-                if ((o.transform.position - p).sqrMagnitude < rSq) c++;
-            if (c > bestCount) { bestCount = c; best = p; }
+            // Directed by the targeting computer — pound the designated sector, crowd or not.
+            best = Designated;
         }
-        if (bestCount <= 0) return;
+        else
+        {
+            // Auto: aim at the densest pocket — the zombie with the most neighbours in blast range.
+            var zombies = Zombie.All;
+            if (zombies.Count == 0) return;
+            best = Vector3.zero;
+            int bestCount = 0;
+            float rSq = blastRadius * blastRadius;
+            foreach (var z in zombies)
+            {
+                Vector3 p = z.transform.position;
+                if ((p - transform.position).sqrMagnitude > ScanRange * ScanRange) continue;
+                int c = 0;
+                foreach (var o in zombies)
+                    if ((o.transform.position - p).sqrMagnitude < rSq) c++;
+                if (c > bestCount) { bestCount = c; best = p; }
+            }
+            if (bestCount <= 0) return;
+        }
+
         if (!SpendMetal(strikeCost)) return; // can't afford — wait for more metal
 
         next = Time.time + interval;

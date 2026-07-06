@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -21,6 +22,9 @@ public class GameManager : MonoBehaviour
     public float BirdInterval = 13f; // a bird fly-over (drops a zombie) every so often during a wave
     float nextBird;
 
+    // Terrain altered this game (missile craters etc.)? The .gdf save records it. Reset each load.
+    public static bool LandscapeChanged;
+
     public int WaveNumber { get; private set; }
     public bool IsPrep { get; private set; } = true;
     public float PhaseTimeLeft { get; private set; }
@@ -29,9 +33,10 @@ public class GameManager : MonoBehaviour
     int zombiesToSpawn;
     int aliveCount;
     float nextSpawn;
+    float noDispTimer;   // how long the base has had zero live dispensers (game-over grace)
     PlayerController player;
 
-    void Awake() { Instance = this; }
+    void Awake() { Instance = this; LandscapeChanged = false; }
 
     void Start()
     {
@@ -71,6 +76,20 @@ public class GameManager : MonoBehaviour
         // Source of truth: how many zombies actually exist right now.
         aliveCount = Zombie.All.Count;
 
+        // Base lifeline safety net: once the base exists, if EVERY dispenser is gone for a moment
+        // (destroyed — the critical one included), the game is lost. A short grace avoids a false
+        // defeat while relocating the base. Suppressed during the evac finale.
+        if (Dispenser.BaseEstablished && !GameRoot.BaseLost && !EndgameCinematic.Active &&
+            !GameRoot.IsZvZ && !GameRoot.IsPvp)
+        {
+            if (Dispenser.AliveCount() == 0)
+            {
+                noDispTimer += Time.deltaTime;
+                if (noDispTimer > 1.5f) GameRoot.BaseLost = true;
+            }
+            else noDispTimer = 0f;
+        }
+
         if (IsPrep)
         {
             if (Input.GetKeyDown(KeyCode.J)) // "ready" — skip the prep and start the wave now
@@ -85,6 +104,10 @@ public class GameManager : MonoBehaviour
             if (PhaseTimeLeft <= 0f) StartWave();
             return;
         }
+
+        // Surrender the wave: K clears every zombie and ends the wave, but the price is steep —
+        // it strips ALL your oil and metal. A hint is shown in the HUD during a wave.
+        if (Input.GetKeyDown(KeyCode.K)) { Surrender(); return; }
 
         if (zombiesToSpawn > 0 && aliveCount < MaxAlive && Time.time >= nextSpawn)
         {
@@ -121,6 +144,24 @@ public class GameManager : MonoBehaviour
     // Seconds between bird fly-overs — shrinks as waves get harder (floored at 4s).
     float BirdEvery() => Mathf.Max(4f, BirdInterval - WaveNumber * 0.7f);
 
+    /// <summary>K during a wave: wipe the horde and end the wave early, at the cost of ALL your
+    /// oil and metal. A desperate reset button.</summary>
+    void Surrender()
+    {
+        foreach (var z in new List<Zombie>(Zombie.All))
+            if (z != null && z.team < 0) z.TakeDamage(999999f); // clear the invading horde
+        zombiesToSpawn = 0;
+        foreach (var p in FindObjectsByType<PlayerController>(FindObjectsSortMode.None))
+        {
+            if (p == null) continue;
+            p.AddMetal(-p.Metal);  // strip metal
+            p.AddOil(-p.Oil);      // strip oil
+            Effects.AirBlast(p.transform.position + Vector3.up * 1f, 6f);
+        }
+        IsPrep = true;
+        PhaseTimeLeft = PrepTime;
+    }
+
     void WaveComplete()
     {
         int bonus = 40 + WaveNumber * 15;
@@ -134,6 +175,19 @@ public class GameManager : MonoBehaviour
 
     /// <summary>Used by Continue to resume from a saved wave number.</summary>
     public void SetWave(int w) { WaveNumber = Mathf.Max(0, w); }
+
+    // ---- debug helpers (called by DebugOverlay) ----
+    /// <summary>Clear every zombie and finish the current wave with NO penalty (debug).</summary>
+    public void DebugClearWave()
+    {
+        foreach (var z in new List<Zombie>(Zombie.All)) if (z != null) z.TakeDamage(999999f);
+        zombiesToSpawn = 0;
+        if (!IsPrep) { IsPrep = true; PhaseTimeLeft = PrepTime; }
+    }
+    /// <summary>Skip the current prep and start the wave now (debug).</summary>
+    public void DebugSkipPrep() { if (IsPrep) PhaseTimeLeft = 0f; }
+    /// <summary>Jump ahead a number of waves (debug) — bumps the counter used for scaling.</summary>
+    public void DebugAddWaves(int n) { WaveNumber = Mathf.Max(0, WaveNumber + n); }
 
     /// <summary>Co-op client: adopt the host's wave/HUD state (the client doesn't run the sim).</summary>
     public void ApplyNetWave(int wave, bool prep, float timeLeft, int alive)

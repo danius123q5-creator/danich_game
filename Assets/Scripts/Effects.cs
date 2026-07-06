@@ -161,9 +161,25 @@ public static class Effects
             g.AddComponent<SmokeFx>().vel = new Vector3(Random.Range(-0.5f, 0.5f), Random.Range(1.4f, 2.6f), Random.Range(-0.5f, 0.5f));
         }
         Burst(pos, new Color(1f, 0.5f, 0.15f), 22);
+        FlashLight(pos, 7f, 24f);
         if (boomClip == null) boomClip = MakeTone(180f, 40f, 0.3f);
         PlayAt(boomClip, pos, 0.7f);
         Net('X', pos);
+    }
+
+    /// <summary>A brief point-light flash — makes explosions actually light up the scene, which
+    /// looks dramatic on night maps. Fades out and cleans itself up.</summary>
+    public static void FlashLight(Vector3 pos, float intensity = 6f, float range = 22f, Color? color = null)
+    {
+        var go = new GameObject("BoomLight");
+        if (GameBootstrap.World != null) go.transform.SetParent(GameBootstrap.World);
+        go.transform.position = pos + Vector3.up * 1.5f;
+        var l = go.AddComponent<Light>();
+        l.type = LightType.Point;
+        l.color = color ?? new Color(1f, 0.6f, 0.25f);
+        l.intensity = intensity;
+        l.range = range;
+        go.AddComponent<LightFlash>();
     }
 
     /// <summary>Soil kick-up + soft thud when digging with the shovel.</summary>
@@ -237,6 +253,7 @@ public static class Effects
         Shockwave(pos, radius);
         Burst(pos, new Color(1f, 0.55f, 0.15f), 38);
         Burst(pos, new Color(0.35f, 0.28f, 0.18f), 14); // debris
+        FlashLight(pos, Mathf.Clamp(radius * 0.5f, 5f, 14f), radius * 1.8f);
         if (bigBoomClip == null) bigBoomClip = MakeTone(95f, 26f, 0.65f, 0.95f);
         PlayAt(bigBoomClip, pos, 1f);
         if (!NetSuppress) { var lan = LanManager.Instance; if (lan != null && lan.Active) lan.FxAirBlast(pos, radius); }
@@ -387,6 +404,21 @@ public class TracerFx : MonoBehaviour
 }
 
 /// <summary>Expanding fireball that swells then darkens and vanishes.</summary>
+/// <summary>A short-lived point light that flares then fades — the glow of an explosion.</summary>
+public class LightFlash : MonoBehaviour
+{
+    Light l;
+    float t, i0;
+    void Start() { l = GetComponent<Light>(); i0 = l != null ? l.intensity : 0f; }
+    void Update()
+    {
+        t += Time.deltaTime;
+        float k = 1f - t / 0.35f;
+        if (l != null) l.intensity = i0 * Mathf.Max(0f, k);
+        if (t >= 0.35f) Destroy(gameObject);
+    }
+}
+
 public class FireballFx : MonoBehaviour
 {
     public float maxScale = 6f;

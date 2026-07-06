@@ -29,8 +29,17 @@ public class MetalVat : Buildable
 
     public bool Supplied { get; private set; }
 
+    // 2.3: from wave 15 on, the vat gets faster every wave (+10%/wave) — pulls & hands out more metal.
+    static float WaveBoost()
+    {
+        var gm = GameManager.Instance;
+        if (gm != null && gm.WaveNumber > 15) return 1f + (gm.WaveNumber - 15) * 0.1f;
+        return 1f;
+    }
+
     protected override void BuildableTick()
     {
+        float boost = WaveBoost();
         // Draw from EVERY captured mine wired to this vat (more mines = more metal/sec).
         if (Time.time >= nextScan) { nextScan = Time.time + 0.5f; Conveyor.CollectSources(transform.position, sources); }
         Supplied = sources.Count > 0;
@@ -38,7 +47,7 @@ public class MetalVat : Buildable
             foreach (var s in sources)
             {
                 if (s == null || !s.MetalActive) continue;
-                stock += s.DrawMetal(Mathf.Min(PullRate * Time.deltaTime, TankCap - stock));
+                stock += s.DrawMetal(Mathf.Min(PullRate * boost * Time.deltaTime, TankCap - stock));
                 if (stock >= TankCap) break;
             }
 
@@ -50,7 +59,7 @@ public class MetalVat : Buildable
         {
             if (p.IsDead) continue;
             if ((p.transform.position - transform.position).sqrMagnitude > Radius * Radius) continue;
-            int give = Mathf.Min(GiveAmount, Mathf.FloorToInt(stock));
+            int give = Mathf.Min(Mathf.RoundToInt(GiveAmount * boost), Mathf.FloorToInt(stock));
             give = Mathf.Min(give, PlayerController.MetalMax - p.Metal); // don't waste on a full wallet
             if (give > 0) { p.AddMetal(give); stock -= give; Effects.Burst(transform.position + Vector3.up * 1.4f, new Color(0.7f, 0.8f, 1f), 3); }
         }

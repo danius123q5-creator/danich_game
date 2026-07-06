@@ -30,6 +30,7 @@ public class OreMine : MonoBehaviour, IMetalSource
     public const float CaptureTime = 4f;
     public const float OreCap = 400f;
     public const float ControlMax = 100f;
+    public const int CaptureOilBonus = 300; // 2.3: capturing the mine hands you 300 oil
 
     const float OreRate = 12f;          // ore/sec mined while held
     const float ControlRegen = 9f;
@@ -99,18 +100,35 @@ public class OreMine : MonoBehaviour, IMetalSource
         Beam(new Vector3(-1.3f, 3.2f, 1.6f), new Vector3(1.3f, 3.2f, 1.6f), 0.12f, dark); // front cross-brace
         Beam(new Vector3(-1.2f, 2.0f, 0.3f), new Vector3(1.2f, 2.0f, 0.3f), 0.12f, dark); // mid cross-brace
 
-        // Big hoist wheel at the peak (kept as 'drill' — it spins).
-        drill = Prim(PrimitiveType.Cylinder, transform, peak + new Vector3(0f, 0.2f, 0f), new Vector3(1.9f, 0.18f, 1.9f), new Color(0.5f, 0.5f, 0.55f), false, new Vector3(90f, 0f, 0f)).transform;
+        Beam(new Vector3(0f, 5.2f, -2.2f), peak, 0.16f, steel);                                     // rear back-stay to the peak
+        Beam(new Vector3(-2.2f, 0f, -1.6f), new Vector3(0f, 5.2f, -2.2f), 0.14f, dark);              // brace
+        Beam(new Vector3(2.2f, 0f, -1.6f), new Vector3(0f, 5.2f, -2.2f), 0.14f, dark);               // brace
+
+        // Big hoist wheel at the peak (kept as 'drill' — it spins) with spokes + rim.
+        Color wheelC = new Color(0.5f, 0.5f, 0.55f);
+        drill = Prim(PrimitiveType.Cylinder, transform, peak + new Vector3(0f, 0.2f, 0f), new Vector3(2.1f, 0.16f, 2.1f), wheelC, false, new Vector3(90f, 0f, 0f)).transform;
+        Prim(PrimitiveType.Cylinder, drill, Vector3.zero, new Vector3(1.15f, 1.05f, 1.15f), dark, false);                        // dark inner (recessed)
+        for (int s = 0; s < 6; s++)                                                                   // spokes
+            Prim(PrimitiveType.Cube, drill, Vector3.zero, new Vector3(0.14f, 0.9f, 1.9f), new Color(0.4f, 0.4f, 0.44f), false, new Vector3(0f, 0f, s * 30f));
         Prim(PrimitiveType.Cylinder, transform, peak + new Vector3(0f, 0.2f, 0f), new Vector3(0.5f, 0.22f, 0.5f), dark, false, new Vector3(90f, 0f, 0f)); // hub
         Prim(PrimitiveType.Cube, transform, new Vector3(0f, 1.2f, 0.4f), new Vector3(0.1f, 2.4f, 0.1f), dark, false);            // hoist cable down the shaft
 
-        // ── Ore chute → cart on rails ──
+        // ── Winch/hoist house at the base of the headframe ──
+        Prim(PrimitiveType.Cube, transform, new Vector3(-3.0f, 0.9f, 2.4f), new Vector3(2.4f, 1.8f, 2.0f), timber, false);       // shed body
+        Prim(PrimitiveType.Cube, transform, new Vector3(-3.0f, 2.0f, 2.4f), new Vector3(2.7f, 0.35f, 2.3f), dark, false);        // shed roof
+        Prim(PrimitiveType.Cylinder, transform, new Vector3(-3.0f, 0.9f, 3.5f), new Vector3(0.5f, 0.6f, 0.5f), steel, false, new Vector3(90f, 0f, 0f)); // winch drum
+
+        // ── Ore chute → cart on rails, plus a couple of ore heaps ──
         var chute = Prim(PrimitiveType.Cube, transform, new Vector3(1.6f, 1.4f, 1.4f), new Vector3(0.7f, 0.25f, 2.2f), timber, false);
         chute.transform.localRotation = Quaternion.Euler(28f, -50f, 0f);
         Prim(PrimitiveType.Cube, transform, new Vector3(2.9f, 0.18f, 0.0f), new Vector3(0.1f, 0.12f, 3.0f), steel, false);       // rail
         Prim(PrimitiveType.Cube, transform, new Vector3(2.3f, 0.18f, 0.0f), new Vector3(0.1f, 0.12f, 3.0f), steel, false);       // rail
+        for (int s = -2; s <= 2; s++)                                                                 // rail sleepers
+            Prim(PrimitiveType.Cube, transform, new Vector3(2.6f, 0.12f, s * 1.2f), new Vector3(1.0f, 0.1f, 0.18f), timber, false);
         var cart = Prim(PrimitiveType.Cube, transform, new Vector3(2.6f, 0.55f, 0.8f), new Vector3(1.7f, 0.9f, 1.3f), dark, true); // collectable cart (collider)
         orePile = Prim(PrimitiveType.Cube, cart.transform, new Vector3(0f, 0.55f, 0f), new Vector3(0.85f, 0.1f, 0.85f), ore, false).transform;
+        Prim(PrimitiveType.Sphere, transform, new Vector3(3.6f, 0.35f, 2.4f), new Vector3(1.6f, 0.7f, 1.6f), ore, false);        // ore heap
+        Prim(PrimitiveType.Sphere, transform, new Vector3(-1.2f, 0.3f, 3.4f), new Vector3(1.2f, 0.5f, 1.2f), ore, false);        // ore heap
 
         statusOrb = Prim(PrimitiveType.Sphere, transform, peak + new Vector3(0f, 0.9f, 0f), new Vector3(0.8f, 0.8f, 0.8f), Color.grey, false).transform; // beacon on the peak
     }
@@ -149,7 +167,7 @@ public class OreMine : MonoBehaviour, IMetalSource
                 if (Capture >= CaptureTime)
                 {
                     Captured = true; Capture = CaptureTime; Control = ControlMax;
-                    if (player != null) player.AddMetal(PlayerController.CaptureMetalBonus); // +2500 on capture
+                    if (player != null) { player.AddMetal(PlayerController.CaptureMetalBonus); player.AddOil(CaptureOilBonus); } // +metal & +300 oil
                     Effects.Upgrade(p + Vector3.up * 5f);
                 }
             }

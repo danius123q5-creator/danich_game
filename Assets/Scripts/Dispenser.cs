@@ -1,9 +1,21 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>Heals players and hands out metal in a radius on a tick. Ported from
 /// sent_engi_dispenser.lua. Levels 1-3 scale heal/metal/radius and speed up.</summary>
 public class Dispenser : Buildable
 {
+    // Live-dispenser registry + "the base has been established" flag — lets GameManager reliably
+    // declare defeat if the base's lifeline is ever fully gone (belt-and-suspenders for game-over).
+    public static readonly List<Dispenser> All = new List<Dispenser>();
+    public static bool BaseEstablished;
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetRegistry() { All.Clear(); BaseEstablished = false; }
+    public static int AliveCount() { int n = 0; foreach (var d in All) if (d != null) n++; return n; }
+
+    protected override void OnEnable() { base.OnEnable(); if (!All.Contains(this)) All.Add(this); }
+    protected override void OnDisable() { base.OnDisable(); All.Remove(this); }
+
     float heal = 8f;
     float radius = 6f;
     float tick = 0.5f;
@@ -18,7 +30,8 @@ public class Dispenser : Buildable
     float stockCap = 150f;  // most it can hold
 
     // The single starter dispenser is the base's lifeline: if it's destroyed, the game is lost.
-    public bool Critical;
+    bool critical;
+    public bool Critical { get => critical; set { critical = value; if (value) BaseEstablished = true; } }
 
     protected override void Awake()
     {
@@ -29,7 +42,10 @@ public class Dispenser : Buildable
 
     protected override void OnDeath()
     {
-        if (Critical && !GameRoot.IsZvZ && !GameRoot.IsPvp) GameRoot.BaseLost = true; // base destroyed → defeat
+        // Base lifeline destroyed → defeat. Suppressed during the evac finale, where the cinematic
+        // deliberately levels every building (that's victory, not a base loss).
+        if (Critical && !GameRoot.IsZvZ && !GameRoot.IsPvp && !EndgameCinematic.Active)
+            GameRoot.BaseLost = true;
         base.OnDeath();
     }
 

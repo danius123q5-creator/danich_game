@@ -70,6 +70,16 @@ public class OilPipe : Buildable
         return null;
     }
 
+    /// <summary>How many pipes are currently live (connected to a captured source). The oil doser
+    /// scales its throughput with this — more wired pipes = more oil/sec.</summary>
+    public static int LiveCount()
+    {
+        Flood();
+        int n = 0;
+        foreach (var p in All) if (p != null && p.Live) n++;
+        return n;
+    }
+
     static IOilSource NearSource(Vector3 pos, float range)
     {
         IOilSource best = null; float bestSq = range * range;

@@ -10,10 +10,10 @@ using UnityEngine;
 public class OrbitalStation : Buildable
 {
     public override int FundingRequired => 0;     // oil-only super-weapon (no metal)
-    public override int OilRequired => 400;
+    public override int OilRequired => 280;        // 2.3: less hungry to bring online (was 400)
     public override bool ReserveIsOil => true;
     public override int ReserveMax => 450;        // oil pool the beams drain as they fire
-    const int ShotCost = 20;                       // metal burned per single-shot laser
+    const int ShotCost = 12;                       // oil burned per single-shot laser (2.3: was 20)
 
     enum Mode { Single, Burn, Prism }
     Mode mode = Mode.Single;
@@ -96,7 +96,7 @@ public class OrbitalStation : Buildable
         if (dmgTimer <= 0f)
         {
             dmgTimer = 0.12f;
-            if (!SpendMetal(6)) { HideBeams(); return; } // empty reserve halts the burn
+            if (!SpendMetal(4)) { HideBeams(); return; } // empty reserve halts the burn (2.3: cheaper)
             Scorch(burnPoint, 4.5f, 110f);
             Effects.Burst(burnPoint, new Color(1f, 0.6f, 0.2f), 6);
         }
@@ -123,7 +123,7 @@ public class OrbitalStation : Buildable
         if (dmgTimer <= 0f)
         {
             dmgTimer = 0.12f;
-            if (!SpendMetal(8)) { HideBeams(); return; } // empty reserve halts the prism
+            if (!SpendMetal(5)) { HideBeams(); return; } // empty reserve halts the prism (2.3: cheaper)
             for (int k = 0; k < 3; k++)
             {
                 Scorch(ends[k], 3.6f, 70f);

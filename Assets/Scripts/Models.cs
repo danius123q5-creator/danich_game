@@ -53,6 +53,8 @@ public static class Models
             case 30: return BuildConveyor(level);
             case 31: return BuildMetalVat(level);
             case 32: return BuildMetalDrill(level);
+            case 33: return BuildOilPocket(level);
+            case 34: return BuildFlamethrower(level);
             case 18: return BuildCar(level);
             case 19: return BuildRpg(level);
             default: return BuildProxyMine(level);
@@ -300,6 +302,40 @@ public static class Models
         Prim(PrimitiveType.Cube, t, new Vector3(0f, 1.35f, 0f), new Vector3(1.35f, 0.18f, 1.35f), trim);     // top rim
         Prim(PrimitiveType.Cube, t, new Vector3(0.75f, 0.9f, 0f), new Vector3(0.1f, 0.5f, 0.18f), trim);     // gauge
         Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.55f, 0.85f), new Vector3(0.18f, 0.3f, 0.18f), steel, new Vector3(90f, 0f, 0f)); // spout
+        return root;
+    }
+
+    // Oil pocket: a squat reserve tank (extra oil storage) with an orange band + fill cap.
+    public static GameObject BuildOilPocket(int level)
+    {
+        var root = new GameObject("OilPocketModel");
+        var t = root.transform;
+        Color tank = new Color(0.14f, 0.13f, 0.12f);
+        Color band = new Color(0.9f, 0.55f, 0.12f);
+        Color steel = new Color(0.30f, 0.31f, 0.34f);
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.12f, 0f), new Vector3(2.0f, 0.24f, 2.0f), steel);       // base skid
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.8f, 0f), new Vector3(1.7f, 0.62f, 1.7f), tank);     // fat tank body
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.8f, 0f), new Vector3(1.75f, 0.2f, 1.75f), band);    // orange band
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 1.5f, 0f), new Vector3(0.5f, 0.18f, 0.5f), steel);    // fill cap
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0.9f, 0.5f, 0.6f), new Vector3(0.18f, 0.4f, 0.18f), steel, new Vector3(30f, 0f, 0f)); // pipe fitting
+        return root;
+    }
+
+    // Stationary flamethrower: base + a forward-pointing nozzle over a fuel tank, with a pilot flame.
+    public static GameObject BuildFlamethrower(int level)
+    {
+        var root = new GameObject("FlamethrowerModel");
+        var t = root.transform;
+        Color body = new Color(0.28f, 0.22f, 0.18f);
+        Color steel = new Color(0.32f, 0.33f, 0.36f);
+        Color hot = new Color(1f, 0.5f, 0.15f);
+        Color redtank = new Color(0.5f, 0.15f, 0.12f);
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.14f, 0f), new Vector3(1.3f, 0.14f, 1.3f), steel);   // base plate
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.6f, 0f), new Vector3(0.5f, 0.45f, 0.5f), body);     // pivot post
+        Prim(PrimitiveType.Capsule, t, new Vector3(-0.35f, 0.9f, -0.1f), new Vector3(0.5f, 0.7f, 0.5f), redtank, new Vector3(90f, 0f, 0f)); // fuel tank
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 1.05f, 0.7f), new Vector3(0.22f, 0.7f, 0.22f), steel, new Vector3(90f, 0f, 0f));    // nozzle barrel (points +Z = forward)
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 1.05f, 1.15f), new Vector3(0.32f, 0.12f, 0.32f), steel, new Vector3(90f, 0f, 0f));  // muzzle flare guard
+        Prim(PrimitiveType.Sphere, t, new Vector3(0f, 1.05f, 1.35f), new Vector3(0.28f, 0.28f, 0.28f), hot);  // pilot flame
         return root;
     }
 

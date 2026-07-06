@@ -15,6 +15,11 @@ public static class GameBootstrap
     public static Vector3 BaseSpawn;
     public static bool HasBaseSpawn;
 
+    // 2.3: night variant of the current map — darker ambient, moonlight, dark sky. Decided per
+    // game (random unless forced). Explosions cast light, so night waves look dramatic.
+    public static bool Night;
+    public static bool ForceNight, ForceDay; // debug overrides
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Boot()
     {
@@ -35,22 +40,30 @@ public static class GameBootstrap
         HasBaseSpawn = false; // a fresh world has no base yet (BuildStarterBase sets it)
 
         var m = Cur;
+
+        // Decide day/night for this game (debug can force either way; else ~40% night).
+        Night = ForceNight || (!ForceDay && Random.value < 0.4f);
+
         var sun = new GameObject("Sun");
         sun.transform.SetParent(World);
         var light = sun.AddComponent<Light>();
         light.type = LightType.Directional;
-        light.intensity = m.sunInt;
-        light.color = m.sun;
-        sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
-        RenderSettings.ambientLight = m.ambient;
+        light.intensity = Night ? 0.28f : m.sunInt;
+        light.color = Night ? new Color(0.55f, 0.62f, 0.85f) : m.sun; // cold moonlight at night
+        sun.transform.rotation = Quaternion.Euler(Night ? 62f : 50f, Night ? 20f : -30f, 0f);
+        RenderSettings.ambientLight = Night
+            ? new Color(m.ambient.r * 0.22f + 0.03f, m.ambient.g * 0.24f + 0.04f, m.ambient.b * 0.30f + 0.07f)
+            : m.ambient;
 
         // Per-map fog (off when density is 0) sets the mood: desert haze, snow whiteout, etc.
-        RenderSettings.fog = m.fogDensity > 0f;
-        if (m.fogDensity > 0f)
+        // At night, force a light dark-blue haze so the darkness reads as depth, not a flat void.
+        bool fog = m.fogDensity > 0f || Night;
+        RenderSettings.fog = fog;
+        if (fog)
         {
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogColor = m.fog;
-            RenderSettings.fogDensity = m.fogDensity;
+            RenderSettings.fogColor = Night ? new Color(0.04f, 0.05f, 0.10f) : m.fog;
+            RenderSettings.fogDensity = Night ? Mathf.Max(m.fogDensity, 0.006f) : m.fogDensity;
         }
 
         // Stylized look: soft shadows + a global post-processing volume (bloom/ACES/grade).
@@ -77,12 +90,16 @@ public static class GameBootstrap
 
         var player = new GameObject("Player");
         player.transform.SetParent(World);
-        player.transform.position = CenterSpawnPoint(); // start (and the insertion drop) at the map centre
+        player.transform.position = BaseSpawnPoint(); // 2.3: drop out near the map objectives, in a varied spot (not dead centre)
         player.AddComponent<PlayerController>();
 
         var gm = new GameObject("GameManager");
         gm.transform.SetParent(World);
         gm.AddComponent<GameManager>();
+
+        var dbg = new GameObject("DebugOverlay");
+        dbg.transform.SetParent(World);
+        dbg.AddComponent<DebugOverlay>();
     }
 
     /// <summary>Tear the whole world down (back to the main menu).</summary>
@@ -241,6 +258,27 @@ public static class GameBootstrap
             }
         }
         return new Vector3(x, Hill(x, z) + 1.5f, z);
+    }
+
+    /// <summary>2.3 base drop: a RANDOM standing spot out on the ring where the map objectives
+    /// (refineries / mines) sit — so the starter base lands in a different place each game and
+    /// near the buildings, instead of dead centre. Avoids the river trench and the sea.</summary>
+    public static Vector3 BaseSpawnPoint()
+    {
+        var m = Cur;
+        float half = MapSize * 0.4f;
+        for (int t = 0; t < 40; t++)
+        {
+            float ang = Random.Range(0f, Mathf.PI * 2f);
+            float r = Random.Range(48f, 66f);   // out near the objective ring, not the centre
+            float x = Mathf.Cos(ang) * r, z = Mathf.Sin(ang) * r;
+            if (Mathf.Abs(x) > half || Mathf.Abs(z) > half) continue;
+            bool inTrench = m.channel && Mathf.Abs(x - RiverX) < RiverHalf + 3f;
+            bool inSea = m.waterPlane == 2 && Hill(x, z) < m.water + 0.5f;
+            if (inTrench || inSea) continue;
+            return new Vector3(x, Hill(x, z) + 1.5f, z);
+        }
+        return CenterSpawnPoint(); // fallback: never fail to place the player
     }
 
     /// <summary>A random standing point on the map (off the edges and out of the river).</summary>

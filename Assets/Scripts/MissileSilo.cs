@@ -9,6 +9,14 @@ public class MissileSilo : Buildable
 {
     public override bool IsTrap => false;
 
+    // 2.3: the silo is now a SUPER-WEAPON — it runs on OIL. Place the block, fund it with oil to
+    // bring it online, and each launch burns oil from its reserve (top up with E, empty = no fire).
+    public override int FundingRequired => 0;      // oil-only (no metal funding)
+    public override int OilRequired => 300;        // oil to bring the silo online
+    public override bool ReserveIsOil => true;
+    public override int ReserveMax => 350;         // oil pool each launch drains
+    const int LaunchCost = 40;                      // oil burned per missile
+
     float reload = 5f;       // seconds between launches
     float blastR = 5.5f;     // explosion radius (everything inside dies)
     float range = 55f;       // only targets crowds within this distance of the silo
@@ -17,7 +25,7 @@ public class MissileSilo : Buildable
 
     protected override void Awake()
     {
-        BuildCost = 550;
+        BuildCost = 300;     // place the block, then fund with oil
         MaxLevel = 3;
         UpgradeCost = 350;
         BuildTime = 3f;
@@ -45,10 +53,11 @@ public class MissileSilo : Buildable
         Zombie center = FindCrowd(blastR, out count);
         if (center == null || count < minCrowd) return; // hold fire until a crowd forms
 
+        if (!SpendMetal(LaunchCost)) return;             // out of oil → hold fire until refuelled
         next = Time.time + reload;
         Vector3 from = transform.position + Vector3.up * 2.2f;        // launch from the silo mouth
         Vector3 to = center.transform.position;                       // ground at the crowd's heart
-        BallisticMissile.Launch(from, to, blastR);                    // rises, then plummets onto the crowd
+        BallisticMissile.Launch(from, to, blastR, center);            // claim this zombie & dive on the crowd
         Effects.TurretShot(from);
     }
 
@@ -63,6 +72,7 @@ public class MissileSilo : Buildable
         {
             if (z == null || z.IsPuppet) continue;
             if (GameRoot.IsZvZ && z.team == Team) continue;
+            if (BallisticMissile.IsReserved(z)) continue;                        // another missile already claimed it
             if ((z.transform.position - silo).sqrMagnitude > rangeSq) continue; // only crowds within range
             int c = 0;
             foreach (var w in Zombie.All)
