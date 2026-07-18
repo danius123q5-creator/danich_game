@@ -49,6 +49,8 @@ public class GameManager : MonoBehaviour
                            !(LanManager.Instance != null && LanManager.Instance.Active && !LanManager.Instance.IsHost);
         if (defaultMode && Refinery.All.Count == 0) Refinery.SpawnAll();
         if (defaultMode && OreMine.All.Count == 0) OreMine.SpawnAll();
+
+        ModRuntime.OnGameStart(); // 3.2: fire GAME_START mod actions (player exists now)
     }
 
     void Update()
@@ -80,7 +82,7 @@ public class GameManager : MonoBehaviour
         // (destroyed — the critical one included), the game is lost. A short grace avoids a false
         // defeat while relocating the base. Suppressed during the evac finale.
         if (Dispenser.BaseEstablished && !GameRoot.BaseLost && !EndgameCinematic.Active &&
-            !GameRoot.IsZvZ && !GameRoot.IsPvp)
+            !GameRoot.IsZvZ && !GameRoot.IsPvp && !GameRoot.Sandbox && !GameRoot.Infinite)
         {
             if (Dispenser.AliveCount() == 0)
             {
@@ -92,15 +94,17 @@ public class GameManager : MonoBehaviour
 
         if (IsPrep)
         {
-            if (Input.GetKeyDown(KeyCode.J)) // "ready" — skip the prep and start the wave now
+            if (Input.GetKeyDown(KeyCode.J)) // press J when ready — skip the prep and start the wave now
             {
-                // Reward an early start: more metal the more prep time you skip.
-                int bonus = 40 + Mathf.RoundToInt(PhaseTimeLeft * 0.6f);
-                foreach (var p in FindObjectsByType<PlayerController>(FindObjectsSortMode.None)) p.AddMetal(bonus);
-                if (player != null) Effects.Upgrade(player.transform.position + Vector3.up * 1f); // ding + sparkle
+                if (!GameRoot.Sandbox) // reward an early start (sandbox has infinite metal anyway)
+                {
+                    int bonus = 40 + Mathf.RoundToInt(PhaseTimeLeft * 0.6f);
+                    foreach (var p in FindObjectsByType<PlayerController>(FindObjectsSortMode.None)) p.AddMetal(bonus);
+                    if (player != null) Effects.Upgrade(player.transform.position + Vector3.up * 1f); // ding + sparkle
+                }
                 PhaseTimeLeft = 0f;
             }
-            PhaseTimeLeft -= Time.deltaTime;
+            if (!GameRoot.Sandbox) PhaseTimeLeft -= Time.deltaTime; // sandbox: waves start only on J
             if (PhaseTimeLeft <= 0f) StartWave();
             return;
         }
@@ -135,26 +139,40 @@ public class GameManager : MonoBehaviour
     void StartWave()
     {
         WaveNumber++;
+        ModRuntime.OnWaveStart(); // 3.2: fire WAVE_START mod actions
         if (WaveNumber >= EvacWave && !GameRoot.Infinite) { EndgameCinematic.Begin(); return; } // evac finale (skipped in endless mode)
         zombiesToSpawn = BaseZombies + WaveNumber * PerWave;
         IsPrep = false;
         nextBird = Time.time + BirdEvery();
 
-        // Enemy air raids: from wave 24, every 3rd wave, a flight of 2-4 bombers hits the base.
-        // Only a ПЗРК can down them; their bombs wreck buildings (the dispenser too — build AA!).
-        if (WaveNumber >= 24 && WaveNumber % 3 == 0) SpawnAirRaid();
+        // 3.1.1: enemy BOMBER raids removed — the user found them too punishing. (Kamikaze DRONE
+        // raids below stay: they're cheaper, telegraphed and easily swatted by the ЗЕНИТКА.)
+        // if (WaveNumber >= 24 && WaveNumber % 3 == 0) SpawnAirRaid();
+
+        // Enemy kamikaze DRONE raids: from wave 12, every 4th wave, a swarm dives on your buildings.
+        // Cheaper/earlier than the bomber raids — the ЗЕНИТКА shoots them down.
+        if (WaveNumber >= 12 && WaveNumber % 4 == 0) SpawnDroneRaid();
     }
+
+    Vector3 BaseCentre() => GameBootstrap.HasBaseSpawn ? GameBootstrap.BaseSpawn
+                          : (player != null ? player.transform.position : Vector3.zero);
 
     void SpawnAirRaid()
     {
-        Vector3 baseC = GameBootstrap.HasBaseSpawn ? GameBootstrap.BaseSpawn
-                      : (player != null ? player.transform.position : Vector3.zero);
+        Vector3 baseC = BaseCentre();
         int planes = Mathf.Clamp(2 + (WaveNumber - 24) / 6, 2, 4); // 2 at wave 24, up to 4 later
         for (int i = 0; i < planes; i++)
         {
             Vector2 off = Random.insideUnitCircle * 22f;
             Bomber.SpawnEnemy(baseC + new Vector3(off.x, 0f, off.y));
         }
+    }
+
+    void SpawnDroneRaid()
+    {
+        Vector3 baseC = BaseCentre();
+        int drones = Mathf.Clamp(2 + (WaveNumber - 12) / 5, 2, 6); // grows with the wave
+        for (int i = 0; i < drones; i++) EnemyDrone.Spawn(baseC);
     }
 
     // Seconds between bird fly-overs — shrinks as waves get harder (floored at 4s).
@@ -180,13 +198,25 @@ public class GameManager : MonoBehaviour
 
     void WaveComplete()
     {
-        int bonus = 40 + WaveNumber * 15;
+        // 3.1.1: wave-clear metal ramps hard for late game (+30/wave plus a step every 10 waves),
+        // and doubles in endless mode. Was a meagre 40 + wave*15.
+        int bonus = Mathf.RoundToInt((60 + WaveNumber * 30 + (WaveNumber / 10) * 300) * GameRoot.IncomeMult);
         foreach (var p in FindObjectsByType<PlayerController>(FindObjectsSortMode.None))
         {
             p.AddMetal(bonus);
         }
+        ModRuntime.OnWaveClear(); // 3.2: fire WAVE_CLEAR mod actions
         IsPrep = true;
         PhaseTimeLeft = PrepTime;
+    }
+
+    /// <summary>3.1.1: metal granted for capturing an НПЗ/ШАХТА — grows every 10 waves (was a flat 677),
+    /// doubled in endless mode. Late-game captures finally pay off.</summary>
+    public static int CaptureMetalReward()
+    {
+        var gm = Instance;
+        int wave = gm != null ? gm.WaveNumber : 0;
+        return Mathf.RoundToInt((PlayerController.CaptureMetalBonus + (wave / 10) * 700) * GameRoot.IncomeMult);
     }
 
     /// <summary>Used by Continue to resume from a saved wave number.</summary>
@@ -217,15 +247,21 @@ public class GameManager : MonoBehaviour
 
     void SpawnZombie()
     {
-        // Random point anywhere on the map, but reachable: 25-130 m from the player.
-        float half = GameBootstrap.MapSize * 0.45f;
-        Vector3 pos = player.transform.position;
-        for (int t = 0; t < 12; t++)
+        // 3.1.1: spread the horde across the WHOLE map instead of a tight 25-130 m ring, so the FAR
+        // field always has targets for long-range weapons (ФАУ-1/Shahed/silo were idling with nothing
+        // beyond their minimum range). ~60% of spawns aim for the far field; near defenses still get
+        // plenty as the horde walks in. (Zombie range unchanged — only where they SPAWN.)
+        float half = GameBootstrap.MapSize * 0.48f;   // nearly the full map
+        Vector3 pp = player.transform.position;
+        Vector3 pos = pp;
+        bool wantFar = Random.value < 0.6f;
+        for (int t = 0; t < 16; t++)
         {
             var cand = new Vector3(Random.Range(-half, half), 0f, Random.Range(-half, half));
             pos = cand;
-            float dist = Vector3.Distance(cand, player.transform.position);
-            if (dist > 25f && dist < 130f) break;
+            float dist = Vector3.Distance(cand, pp);
+            if (dist < 50f) continue;                 // never right on top of the player
+            if (wantFar ? dist > 220f : dist < 260f) break; // far pass wants distant points; near pass anything mid
         }
         pos.y = GameBootstrap.Hill(pos.x, pos.z) + 1f;
         Zombie.Create(pos, PickKind());
@@ -249,5 +285,6 @@ public class GameManager : MonoBehaviour
         {
             killer.Score += 1; // kills only — no metal for kills
         }
+        ModRuntime.OnZombieKilled(); // 3.2: fire ZOMBIE_KILLED mod actions
     }
 }

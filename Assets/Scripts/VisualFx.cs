@@ -24,31 +24,52 @@ public static class VisualFx
     /// skybox shader (always shipped — no custom shader to get stripped from the build).</summary>
     static void SetupSunsetSky(Light sun)
     {
-        var skyShader = Shader.Find("Skybox/Procedural");
-        if (skyShader != null)
+        // НЕБО = реальное фото поля (Resources/game_sky) как ПАНОРАМНЫЙ скайбокс —
+        // видно во все стороны. Нет фото/шейдера → fallback на синее процедурное.
+        // Свет переведён с оранжевого заката на ЯСНЫЙ ДЕНЬ под фото. 2026-07-13.
+        var photo = Resources.Load<Texture2D>("game_sky");
+        var pano = Shader.Find("Skybox/Panoramic");
+        // ⚠️ Плоское фото как панорамный скайбокс = «небо сбоку» (фото стоит стеной, не куполом).
+        // Поэтому используем ПРОЦЕДУРНЫЙ купол (синь сверху → светлее к горизонту, верх=верх). 2026-07-13.
+        if (false && photo != null && pano != null)
         {
-            var sky = new Material(skyShader);
-            if (sky.HasProperty("_SkyTint")) sky.SetColor("_SkyTint", new Color(1f, 0.55f, 0.42f));
-            if (sky.HasProperty("_GroundColor")) sky.SetColor("_GroundColor", new Color(0.12f, 0.09f, 0.09f));
-            if (sky.HasProperty("_AtmosphereThickness")) sky.SetFloat("_AtmosphereThickness", 1.6f);
-            if (sky.HasProperty("_Exposure")) sky.SetFloat("_Exposure", 1.35f);
-            RenderSettings.skybox = sky;
+            var m = new Material(pano);
+            if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", photo);
+            if (m.HasProperty("_Tex")) m.SetTexture("_Tex", photo);
+            if (m.HasProperty("_Mapping")) m.SetFloat("_Mapping", 1);     // Latitude-Longitude
+            if (m.HasProperty("_ImageType")) m.SetFloat("_ImageType", 0); // 360
+            if (m.HasProperty("_Exposure")) m.SetFloat("_Exposure", 1.0f);
+            if (m.HasProperty("_Tint")) m.SetColor("_Tint", new Color(0.5f, 0.5f, 0.5f)); // 0.5 = без подкраски
+            RenderSettings.skybox = m;
+        }
+        else
+        {
+            var skyShader = Shader.Find("Skybox/Procedural");
+            if (skyShader != null)
+            {
+                var sky = new Material(skyShader);
+                if (sky.HasProperty("_SkyTint")) sky.SetColor("_SkyTint", new Color(0.45f, 0.62f, 0.90f)); // ясный день (было закат)
+                if (sky.HasProperty("_GroundColor")) sky.SetColor("_GroundColor", new Color(0.35f, 0.40f, 0.45f));
+                if (sky.HasProperty("_AtmosphereThickness")) sky.SetFloat("_AtmosphereThickness", 1.0f);
+                if (sky.HasProperty("_Exposure")) sky.SetFloat("_Exposure", 1.25f);
+                RenderSettings.skybox = sky;
+            }
         }
         RenderSettings.sun = sun;
 
         if (sun != null)
         {
-            sun.color = new Color(1f, 0.62f, 0.36f);          // warm orange sunlight
-            sun.intensity = 1.15f;
-            sun.transform.rotation = Quaternion.Euler(20f, -35f, 0f); // low = long, dramatic shadows
+            sun.color = new Color(1f, 0.97f, 0.90f);           // нейтральный дневной свет (было оранжевый)
+            sun.intensity = 1.25f;
+            sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f); // выше = день, тени короче
         }
 
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-        RenderSettings.ambientLight = new Color(0.34f, 0.26f, 0.24f); // warm, dim
+        RenderSettings.ambientLight = new Color(0.50f, 0.54f, 0.60f); // прохладный дневной подсвет (было тёплый тусклый)
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.ExponentialSquared;
-        RenderSettings.fogColor = new Color(0.55f, 0.32f, 0.24f);     // crimson haze
-        RenderSettings.fogDensity = 0.011f;
+        RenderSettings.fogColor = new Color(0.66f, 0.74f, 0.86f);     // светло-голубая дымка (было crimson)
+        RenderSettings.fogDensity = 0.006f;                           // легче — день ясный
 
         DynamicGI.UpdateEnvironment();
     }

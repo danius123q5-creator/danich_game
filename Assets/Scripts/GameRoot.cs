@@ -11,9 +11,10 @@ using UnityEngine;
 public class GameRoot : MonoBehaviour
 {
     public static GameRoot Instance;
-    public enum GState { Menu, Playing, Paused }
+    public enum GState { Menu, Playing, Paused, Epilogue }
     public GState State { get; private set; } = GState.Menu;
     public static bool IsPlaying => Instance != null && Instance.State == GState.Playing;
+    public static bool InMenu => Instance != null && Instance.State == GState.Menu; // for the menu background diorama
 
     // Selected game mode (set from the Modes screen, read by gameplay systems).
     public enum Mode { Offline, Coop, Pvp }
@@ -22,6 +23,14 @@ public class GameRoot : MonoBehaviour
     public static int PvpTeam = 0; // 0 = Team A, 1 = Team B (PvP friendly-fire / colours)
     public static bool Hardcore = false; // die = restart from wave 1, pricier builds, 170 metal cap
     public static bool Infinite = false; // endless mode: same as default but no evac finale
+    public static bool Sandbox = false;  // 3.1.1 creative sandbox: infinite metal, manual wave-start (J), immortal
+    public static bool ModTest = false;  // 3.2 node-mod test mode: sandbox + hotkeys to reload/fire mod events
+
+    // 3.1.1: income multiplier. Endless mode pours metal/oil TWICE as fast (sandbox is already infinite).
+    public static float IncomeMult => Sandbox ? 1f : (Infinite ? 2f : 1f);
+    // 3.1.1: buildings slowly auto-upgrade over time toward MaxLevel (faster in sandbox). Off in the
+    // competitive modes (PvP/ZvZ) so free upgrades don't unbalance those matches.
+    public static bool AutoUpgrade => !IsPvp && !IsZvZ;
 
     // WebGL ("инвалид эдишн") has no UDP sockets — hide all LAN/co-op/PvP networking in browser.
     public static bool NetSupported => Application.platform != RuntimePlatform.WebGLPlayer;
@@ -32,6 +41,7 @@ public class GameRoot : MonoBehaviour
     static string[] TeamNames => new[] { Lang.T("Команда A", "Team A"), Lang.T("Команда Б", "Team B") };
 
     Camera menuCam;
+    MenuBackground menuBg; // live "zombies storm the base" diorama behind the main menu
     LanManager lan;
     string joinIp = "127.0.0.1";
     bool inModes;   // showing the Modes sub-screen instead of the main menu
@@ -92,10 +102,19 @@ public class GameRoot : MonoBehaviour
             go.transform.position = new Vector3(0f, 3f, -8f);
             menuCam = go.AddComponent<Camera>();
             menuCam.clearFlags = CameraClearFlags.SolidColor;
-            menuCam.backgroundColor = new Color(0.08f, 0.10f, 0.14f);
+            menuCam.backgroundColor = new Color(0.32f, 0.40f, 0.50f); // hazy sky behind the diorama
             go.AddComponent<AudioListener>();
         }
         menuCam.gameObject.SetActive(true);
+
+        // Live background diorama — zombies endlessly storm a little base behind the menu (3.1.1).
+        if (menuBg == null)
+        {
+            var bgo = new GameObject("MenuBackground");
+            bgo.transform.SetParent(transform, false);
+            menuBg = bgo.AddComponent<MenuBackground>();
+            menuBg.cam = menuCam;
+        }
     }
 
     void StartGame(bool continueProgress)
@@ -147,6 +166,8 @@ public class GameRoot : MonoBehaviour
         CurrentMode = Mode.Offline;
         Hardcore = false;
         Infinite = false;
+        Sandbox = false;
+        ModTest = false;
         if (menuCam != null) menuCam.gameObject.SetActive(false);
         GameBootstrap.BuildWorld();
 
@@ -176,6 +197,8 @@ public class GameRoot : MonoBehaviour
         IsTutorial = false;
         Hardcore = false;
         Infinite = false;
+        Sandbox = false;
+        ModTest = false;
         CurrentMode = Mode.Offline;
         GameBootstrap.MapVariant = 2; // Arena — flat, fair field for the two bases
 
@@ -206,9 +229,29 @@ public class GameRoot : MonoBehaviour
         EnterMenu();
     }
 
+    // ── ARG post-credits epilogue (2026-07-11) ──────────────────────────────
+    // A self-contained playable sequence (SimEscape) runs after THE END. It owns
+    // its own world + FPS walker, so we just park GameRoot in a neutral state:
+    // NOT Menu (so no main menu draws over it), NOT Playing (so no game systems
+    // fire). SimEscape drives everything and calls ReturnToMenuFromEpilogue() when
+    // done. Cursor is locked for first-person look.
+    public void EnterEpilogue()
+    {
+        State = GState.Epilogue;
+        Time.timeScale = 1f;
+        FreeCursor(false);
+    }
+
+    public void ReturnToMenuFromEpilogue()
+    {
+        GameBootstrap.DestroyWorld(); // no-op if SimEscape already cleared it
+        EnterMenu();
+    }
+
     /// <summary>Public entry for the death screen's "Выйти" button.</summary>
     public void ExitToMenu()
     {
+        SaveOnExit(); // persist the run to its .gdf before leaving to the menu
         if (lan != null) lan.Shutdown();
         Time.timeScale = 1f;
         BaseLost = false;
@@ -239,8 +282,25 @@ public class GameRoot : MonoBehaviour
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
 #else
+        // Flush settings/save state, ask Unity to quit, then FORCE-terminate. Application.Quit()
+        // alone can hang if a background thread (e.g. the LAN UDP receive loop) is stuck in a native
+        // blocking call — killing the process guarantees the window actually closes.
+        SaveOnExit(); // write the current game to its .gdf slot before we go
+        try { PlayerPrefs.Save(); } catch { }
+        try { if (LanManager.Instance != null) LanManager.Instance.Shutdown(); } catch { }
         Application.Quit();
+        try { System.Diagnostics.Process.GetCurrentProcess().Kill(); } catch { }
 #endif
+    }
+
+    // Synchronously flush the running offline game to its .gdf save (used on Quit / exit to menu).
+    // Mirrors the autosave gate: offline, non-ZvZ/PvP, non-hardcore. No screenshot (keeps the last one).
+    static void SaveOnExit()
+    {
+        var gr = Instance;
+        if (gr == null || gr.State == GState.Menu) return;
+        if (CurrentMode != Mode.Offline || IsZvZ || IsPvp || Hardcore) return;
+        try { gr.Save(); SaveSystem.WriteSlot(SaveSystem.CurrentSlot, null); } catch { }
     }
 
     // ---- save / load (PlayerPrefs) ----
@@ -252,6 +312,7 @@ public class GameRoot : MonoBehaviour
         var p = Object.FindFirstObjectByType<PlayerController>();
         if (gm == null || p == null) return;
         PlayerPrefs.SetInt("save_exists", 1);
+        PlayerPrefs.SetInt("save_lost", BaseLost ? 1 : 0); // base (dispenser) was destroyed = a "lost" run
         PlayerPrefs.SetInt("save_wave", gm.WaveNumber);
         PlayerPrefs.SetInt("save_metal", p.Metal);
         PlayerPrefs.SetInt("save_score", p.Score);
@@ -430,7 +491,7 @@ public class GameRoot : MonoBehaviour
         UI.Begin(); // scale menus/splash to the screen resolution
         if (splashActive) { DrawSplash(); return; }
         if (UISettings.EditLayout) { DrawLayoutEdit(); return; } // HUD visible + draggable; menus hidden
-        if (inSettings) { DrawSettingsMenu(); return; }
+        if (inSettings) { DrawSettingsMenu(); Eula.Draw(); return; } // EULA overlay draws on top
         if (State == GState.Menu) { if (inSaves) DrawSavesMenu(); else if (inNewGame) DrawNewGameMenu(); else if (inModes) DrawModesMenu(); else DrawMainMenu(); }
         else if (State == GState.Paused) DrawPauseMenu();
     }
@@ -522,7 +583,17 @@ public class GameRoot : MonoBehaviour
         if (HasSave)
         {
             int w = PlayerPrefs.GetInt("save_wave", 0) + 1;
-            if (GUI.Button(new Rect(x, y, bw, bh), Lang.T($"Продолжить  (волна {w})", $"Continue  (wave {w})"), btn)) { CurrentMode = Mode.Offline; Hardcore = false; Infinite = PlayerPrefs.GetInt("save_infinite", 0) == 1; StartGame(true); }
+            if (GUI.Button(new Rect(x, y, bw, bh), Lang.T($"Продолжить  (волна {w})", $"Continue  (wave {w})"), btn)) { CurrentMode = Mode.Offline; Hardcore = false; Sandbox = false; ModTest = false; Infinite = PlayerPrefs.GetInt("save_infinite", 0) == 1; StartGame(true); }
+            // Base destroyed = a lost run — you may still load it, but it doesn't count as a win.
+            if (PlayerPrefs.GetInt("save_lost", 0) == 1)
+            {
+                var warn = new GUIStyle(GUI.skin.label) { fontSize = 13, fontStyle = FontStyle.Bold, wordWrap = true, alignment = TextAnchor.MiddleLeft };
+                GUI.color = new Color(1f, 0.5f, 0.45f);
+                GUI.Label(new Rect(x + bw + 14f, y - 6f, 320f, bh + 12f),
+                    Lang.T("Ты можешь вернуться и доиграть,\nно по правилам ты проиграл.",
+                           "You can come back and keep playing,\nbut by the rules you have lost."), warn);
+                GUI.color = Color.white;
+            }
         }
         y += 58f;
         if (GUI.Button(new Rect(x, y, bw, bh), Lang.T("Новая игра", "New Game"), btn)) inNewGame = true;
@@ -590,16 +661,17 @@ public class GameRoot : MonoBehaviour
         var lab = new GUIStyle(GUI.skin.label) { fontSize = 13, fontStyle = FontStyle.Bold, alignment = TextAnchor.UpperCenter, wordWrap = true };
         float bw = 440f, bh = 50f, capH = 40f, gap = 14f, x = cx - bw * 0.5f, y = cy - 250f;
 
-        void StartType(bool hardcore, bool infinite)
+        void StartType(bool hardcore, bool infinite, bool sandbox = false, bool modTest = false)
         {
-            CurrentMode = Mode.Offline; Hardcore = hardcore; Infinite = infinite;
+            CurrentMode = Mode.Offline; Hardcore = hardcore;
+            Sandbox = sandbox || modTest; ModTest = modTest; Infinite = infinite || Sandbox;
             PlayerPrefs.DeleteKey("save_exists"); PlayerPrefs.DeleteKey("save_builds");
             inNewGame = false; StartGame(false);
         }
 
-        void Row(string name, string desc, bool hc, bool inf)
+        void Row(string name, string desc, bool hc, bool inf, bool sb = false, bool mt = false)
         {
-            if (GUI.Button(new Rect(x, y, bw, bh), name, btn)) StartType(hc, inf);
+            if (GUI.Button(new Rect(x, y, bw, bh), name, btn)) StartType(hc, inf, sb, mt);
             GUI.color = new Color(0.78f, 0.83f, 0.78f);
             GUI.Label(new Rect(x + 6f, y + bh + 2f, bw - 12f, capH), desc, lab);
             GUI.color = Color.white;
@@ -608,7 +680,9 @@ public class GameRoot : MonoBehaviour
 
         Row(Lang.T("Обычный", "Normal"), Lang.T("стандартная оборона до эвакуации (волна 55)", "standard defense until evacuation (wave 55)"), false, false);
         Row(Lang.T("Хардкор", "Hardcore"), Lang.T("смерть = заново с 1-й волны, постройки дороже, раздатчик отдаёт лишь накопленное", "death = restart from wave 1, pricier builds, the dispenser only gives what's been accumulated"), true, false);
-        Row(Lang.T("Бесконечный", "Endless"), Lang.T("всё как в обычном, но финала нет — волны идут бесконечно", "same as normal, but there's no finale — waves go on endlessly"), false, true);
+        Row(Lang.T("Бесконечный", "Endless"), Lang.T("всё как в обычном, но финала нет — волны идут бесконечно; металл/нефть капают в 2× быстрее", "same as normal, but no finale — endless waves; metal/oil income is 2× faster"), false, true);
+        Row(Lang.T("Песочница", "Sandbox"), Lang.T("бесконечный металл, бессмертие, волны стартуют только по кнопке J — проверяй базу", "infinite metal, immortal, waves start only when you press J — test your base"), false, false, true);
+        Row(Lang.T("Тест нод (моды)", "Node test (mods)"), Lang.T("песочница + горячие клавиши: F5 перезагрузить моды, F6-F12 запускать события мода", "sandbox + hotkeys: F5 reload mods, F6-F12 fire mod events"), false, false, false, true);
 
         var small = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold };
         if (GUI.Button(new Rect(x, y + 6f, bw, 40f), Lang.T("Назад", "Back"), small)) inNewGame = false;
@@ -617,7 +691,7 @@ public class GameRoot : MonoBehaviour
     // ---- Modes screen: pick offline / online co-op / PvP, choose a map, host or join ----
     void DrawModesMenu()
     {
-        Infinite = false; // modes here (co-op/PvP/offline) are never the endless variant
+        Infinite = false; Sandbox = false; ModTest = false; // modes here (co-op/PvP/offline) are never the endless/sandbox variant
         float cx = UI.W * 0.5f, cy = UI.H * 0.5f;
         var title = new GUIStyle(GUI.skin.label) { fontSize = 44, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         GUI.color = new Color(0.6f, 0.9f, 0.5f);
@@ -739,12 +813,31 @@ public class GameRoot : MonoBehaviour
         GUI.Label(new Rect(cx - 200f, cy - 170f, 400f, 60f), Lang.T("ПАУЗА", "PAUSE"), title);
 
         var btn = new GUIStyle(GUI.skin.button) { fontSize = 22, fontStyle = FontStyle.Bold };
-        float bw = 280f, bh = 52f, x = cx - bw * 0.5f;
-        if (GUI.Button(new Rect(x, cy - 90f, bw, bh), Lang.T("Продолжить", "Continue"), btn)) Resume();
-        if (GUI.Button(new Rect(x, cy - 30f, bw, bh), Lang.T("Настройки", "Settings"), btn)) { settingsFromPause = true; inSettings = true; }
-        if (GUI.Button(new Rect(x, cy + 30f, bw, bh), Lang.T("В главное меню", "Main menu"), btn)) ExitToMenu();
-        if (GUI.Button(new Rect(x, cy + 90f, bw, bh), Lang.T("Выйти из игры", "Quit game"), btn)) QuitApp();
+        float bw = 280f, bh = 52f, x = cx - bw * 0.5f, y = cy - 150f;
+        bool canSave = CurrentMode == Mode.Offline && !IsZvZ && !IsPvp;
+        if (GUI.Button(new Rect(x, y, bw, bh), Lang.T("Продолжить", "Continue"), btn)) Resume();
+        y += 60f;
+        if (canSave)
+        {
+            if (GUI.Button(new Rect(x, y, bw, bh), Lang.T("Сохранить игру", "Save game"), btn)) { StartCoroutine(CaptureAndAutosave()); saveFlash = Time.unscaledTime; }
+            y += 60f;
+        }
+        if (GUI.Button(new Rect(x, y, bw, bh), Lang.T("Настройки", "Settings"), btn)) { settingsFromPause = true; inSettings = true; }
+        y += 60f;
+        if (GUI.Button(new Rect(x, y, bw, bh), Lang.T("В главное меню", "Main menu"), btn)) ExitToMenu();
+        y += 60f;
+        if (GUI.Button(new Rect(x, y, bw, bh), Lang.T("Выйти из игры", "Quit game"), btn)) QuitApp();
+
+        if (Time.unscaledTime - saveFlash < 1.6f)
+        {
+            var ok = new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+            GUI.color = new Color(0.5f, 1f, 0.5f);
+            GUI.Label(new Rect(cx - 200f, y + 58f, 400f, 30f), Lang.T("Сохранено ✓", "Saved ✓"), ok);
+            GUI.color = Color.white;
+        }
     }
+    float saveFlash = -99f;
+    string musicPathBuf; // settings text buffer for the custom-music path
 
     // ---- Settings: UI customization (live preview; persisted in PlayerPrefs) ----
     void DrawSettingsMenu()
@@ -765,11 +858,40 @@ public class GameRoot : MonoBehaviour
 
         var lab = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft };
         var small = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold };
-        float bw = 460f, x = cx - bw * 0.5f, y = cy - 150f;
+        float bw = 460f, x = cx - bw * 0.5f, y = cy - 210f;
 
         // Language toggle (shows the CURRENT language; click to switch)
-        if (GUI.Button(new Rect(x, y, bw, 40f), Lang.T("Язык: Русский", "Language: English"), small)) Lang.Toggle();
-        y += 52f;
+        if (GUI.Button(new Rect(x, y, bw * 0.5f - 4f, 40f), Lang.T("Язык: Русский", "Language: English"), small)) Lang.Toggle();
+        // View the End-User License Agreement.
+        if (GUI.Button(new Rect(x + bw * 0.5f + 4f, y, bw * 0.5f - 4f, 40f), Lang.T("Лицензия (EULA)…", "License (EULA)…"), small)) Eula.Shown = true;
+        y += 50f;
+
+        // Custom music: type/paste a path to an MP3/OGG/WAV and it plays as looping background music.
+        if (musicPathBuf == null) musicPathBuf = PlayerPrefs.GetString("custom_music_path", "");
+        GUI.Label(new Rect(x, y, bw, 20f), Lang.T("Своя музыка — путь к MP3/OGG/WAV:", "Custom music — path to MP3/OGG/WAV:"), new GUIStyle(GUI.skin.label) { fontSize = 15, fontStyle = FontStyle.Bold });
+        y += 22f;
+        musicPathBuf = GUI.TextField(new Rect(x, y, bw - 150f, 30f), musicPathBuf, 300);
+        if (GUI.Button(new Rect(x + bw - 146f, y, 70f, 30f), Lang.T("Играть", "Play"), small) && CustomMusic.Instance != null) CustomMusic.Instance.Play(musicPathBuf);
+        if (GUI.Button(new Rect(x + bw - 72f, y, 70f, 30f), Lang.T("Стоп", "Stop"), small) && CustomMusic.Instance != null) CustomMusic.Instance.Stop();
+        y += 32f;
+        if (CustomMusic.Instance != null && !string.IsNullOrEmpty(CustomMusic.Instance.Status))
+        {
+            GUI.color = new Color(0.75f, 0.9f, 0.75f);
+            GUI.Label(new Rect(x, y, bw, 18f), CustomMusic.Instance.Status, new GUIStyle(GUI.skin.label) { fontSize = 12, wordWrap = false });
+            GUI.color = Color.white;
+        }
+        y += 24f;
+
+        // Bhop toggle (default OFF). ON → momentum/inertia + auto-hop (hold space). OFF → plain movement.
+        if (GUI.Button(new Rect(x, y, bw, 34f),
+            Lang.T($"Бхоп — инерция + авто-прыжок: {(PlayerController.AutoBhop ? "ВКЛ" : "выкл")}",
+                   $"Bhop — inertia + auto-hop: {(PlayerController.AutoBhop ? "ON" : "off")}"), small))
+        {
+            PlayerController.AutoBhop = !PlayerController.AutoBhop;
+            PlayerPrefs.SetInt("bhop_auto", PlayerController.AutoBhop ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+        y += 42f;
 
         // UI scale
         GUI.Label(new Rect(x, y, bw, 22f), Lang.T($"Размер интерфейса: {Mathf.RoundToInt(UISettings.Scale * 100f)}%", $"Interface scale: {Mathf.RoundToInt(UISettings.Scale * 100f)}%"), lab);
@@ -822,6 +944,7 @@ public class GameRoot : MonoBehaviour
     // draws the actual movable HUD). Entered from the in-game Settings screen.
     void DrawLayoutEdit()
     {
+        Cursor.lockState = CursorLockMode.None; Cursor.visible = true; // must be free to drag the frames
         float cx = UI.W * 0.5f;
         GUI.color = new Color(0f, 0f, 0f, 0.8f);
         GUI.DrawTexture(new Rect(cx - 470f, 6f, 940f, 60f), Texture2D.whiteTexture);

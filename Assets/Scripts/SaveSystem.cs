@@ -20,14 +20,68 @@ public static class SaveSystem
 
     public static int CurrentSlot = 0; // slot the running game autosaves into
 
+    /// <summary>The base data folder for the game — beside the LAUNCHER when it dropped a savepath.txt
+    /// pointer, else the game's own install dir (fallback: persistentDataPath). Both the "saves" and
+    /// "mods" folders live under here. Public so ModRuntime can find the mods folder too.</summary>
+    public static string BaseDir
+    {
+        get
+        {
+            if (Application.platform == RuntimePlatform.WebGLPlayer)
+                return Application.persistentDataPath; // browser: no real filesystem
+
+            string gameDir = null;
+            try { gameDir = Directory.GetParent(Application.dataPath)?.FullName; } catch { }
+            string baseDir = gameDir;
+            try
+            {
+                if (!string.IsNullOrEmpty(gameDir))
+                {
+                    string ptr = Path.Combine(gameDir, "savepath.txt"); // launcher points saves beside itself
+                    if (File.Exists(ptr))
+                    {
+                        string lp = File.ReadAllText(ptr).Trim();
+                        if (!string.IsNullOrEmpty(lp) && Directory.Exists(lp)) baseDir = lp;
+                    }
+                }
+            }
+            catch { }
+            return string.IsNullOrEmpty(baseDir) ? Application.persistentDataPath : baseDir;
+        }
+    }
+
     static string Dir
     {
         get
         {
-            string d = Path.Combine(Application.persistentDataPath, "saves");
+            string d = Path.Combine(BaseDir, "saves");
             if (!Directory.Exists(d)) Directory.CreateDirectory(d);
+            MigrateOldSaves(d);
             return d;
         }
+    }
+
+    // Copy any pre-3.1.1 saves from the old AppData\LocalLow location into the new game-dir folder,
+    // once, so players keep their runs after the move. Never overwrites a save already in the new dir.
+    static bool migrated;
+    static void MigrateOldSaves(string newDir)
+    {
+        if (migrated) return;
+        migrated = true;
+        try
+        {
+            string old = Path.Combine(Application.persistentDataPath, "saves");
+            if (!Directory.Exists(old)) return;
+            if (string.Equals(Path.GetFullPath(old).TrimEnd('\\', '/'),
+                              Path.GetFullPath(newDir).TrimEnd('\\', '/'),
+                              StringComparison.OrdinalIgnoreCase)) return; // same folder — nothing to do
+            foreach (var f in Directory.GetFiles(old))
+            {
+                string dst = Path.Combine(newDir, Path.GetFileName(f));
+                if (!File.Exists(dst)) File.Copy(f, dst);
+            }
+        }
+        catch (Exception e) { Debug.LogWarning($"[gdf] migrate old saves: {e.Message}"); }
     }
 
     public static string GdfPath(int slot) => Path.Combine(Dir, $"slot{slot}.gdf");

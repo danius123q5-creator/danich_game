@@ -7,7 +7,7 @@ using UnityEngine;
 public class OilPipe : Buildable
 {
     public static readonly List<OilPipe> All = new List<OilPipe>();
-    public const float Link = 16f; // connection range: pipe↔pipe, pipe↔НПЗ, pipe↔doser
+    public const float Link = 4f; // TIGHT connection range: pipe↔pipe, pipe↔НПЗ, pipe↔doser (must be run together)
 
     public bool Live { get; private set; } // connected back to a captured refinery
 
@@ -80,6 +80,16 @@ public class OilPipe : Buildable
         return n;
     }
 
+    /// <summary>Is an oil pipe segment run up to within 'radius' of this position? Super-weapons
+    /// require a pipe physically connected to them before they'll auto-fuel (not just proximity).</summary>
+    public static bool PipeNear(Vector3 pos, float radius)
+    {
+        float rSq = radius * radius;
+        foreach (var p in All)
+            if (p != null && !p.Building && (p.transform.position - pos).sqrMagnitude <= rSq) return true;
+        return false;
+    }
+
     static IOilSource NearSource(Vector3 pos, float range)
     {
         IOilSource best = null; float bestSq = range * range;
@@ -99,7 +109,7 @@ public class OilPipe : Buildable
     /// <summary>Fill 'into' with every active oil source (НПЗ / derrick — NOT hubs) reachable from
     /// 'pos', directly within Link or through a connected chain of pipes. Used by the oil hub to
     /// pool oil from several sources at once.</summary>
-    public static void CollectSources(Vector3 pos, List<IOilSource> into)
+    public static void CollectSources(Vector3 pos, List<IOilSource> into, IOilSource exclude = null)
     {
         into.Clear();
         _visited.Clear(); _bfs.Clear();
@@ -119,7 +129,7 @@ public class OilPipe : Buildable
         foreach (var s in OilSources.All)
         {
             if (s == null || !s.OilActive || s.OilTransform == null) continue;
-            if (s is OilHub) continue; // never pool a hub into another hub (avoids loops/double count)
+            if (ReferenceEquals(s, exclude)) continue; // only skip the caller itself — hubs CAN feed further
             Vector3 sp = s.OilTransform.position;
             bool reach = (sp - pos).sqrMagnitude <= Link * Link;
             if (!reach)

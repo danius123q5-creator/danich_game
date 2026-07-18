@@ -7,8 +7,9 @@ using System.Collections.Generic;
 public class AirStrike : Buildable
 {
     public override int FundingRequired => 0;   // oil-only super-weapon (no metal)
-    public override int OilRequired => 350;
+    public override int OilRequired => 600;
     public override bool ReserveIsOil => true;
+    public override bool AutoOilFuel => false;  // Air Strike is NOT auto-fuelled by pipes — manual E only
     public override int ReserveMax => 500;      // ammo reserve, paid in oil
 
     const float ScanRange = 90f;

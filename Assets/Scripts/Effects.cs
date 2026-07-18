@@ -76,6 +76,7 @@ public static class Effects
     /// <summary>Visible bullet trail in the Game view (not just a debug line).</summary>
     public static void Tracer(Vector3 a, Vector3 b)
     {
+        if (!View.Visible(a, 1f) && !View.Visible(b, 1f)) return; // both ends off-screen → skip
         GameObject go = null;
         while (go == null && _tracerPool.Count > 0) go = _tracerPool.Pop(); // skip any destroyed entry
         LineRenderer lr;
@@ -110,6 +111,7 @@ public static class Effects
 
     public static void TurretShot(Vector3 pos)
     {
+        if (!View.Visible(pos)) return; // muzzle flash + shot pop skipped when off-screen
         if (turretClip == null) turretClip = MakeTone(520f, 130f, 0.09f);
         PlayAt(turretClip, pos, 0.55f); // punchy auto-turret "pew"
         MuzzleFlash(pos);
@@ -220,6 +222,7 @@ public static class Effects
 
     public static void Burst(Vector3 pos, Color c, int count)
     {
+        if (!View.Visible(pos)) return; // off-screen sparks/smoke are never seen — don't spawn them
         for (int i = 0; i < count; i++)
         {
             var g = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -480,7 +483,11 @@ public class Bomber : MonoBehaviour
     public static readonly List<Bomber> All = new List<Bomber>();
     public bool samEngaged;   // a SAM has already committed a missile at this bomber
     public bool enemy;        // enemy raider (bombs YOUR base) vs your own airstrike plane
-    bool crashing; float crashVy;
+
+    // Each ЗЕНИТКА gets ONE roll per bomber (by its id), so multiple emplacements stack their
+    // 50% chances instead of one gun re-rolling every frame. True only the first time for that id.
+    readonly System.Collections.Generic.HashSet<int> aaRolled = new System.Collections.Generic.HashSet<int>();
+    public bool TryAaEngage(int aaId) => aaRolled.Add(aaId);
 
     /// <summary>Spawn an ENEMY bomber that flies over the base and carpet-bombs the player's
     /// buildings (dispenser included). Downed only by a ПЗРК (reliably) or ЗЕНИТКА (50%).</summary>
@@ -489,11 +496,23 @@ public class Bomber : MonoBehaviour
         var go = new GameObject("EnemyBomber");
         if (GameBootstrap.World != null) go.transform.SetParent(GameBootstrap.World);
         var b = go.AddComponent<Bomber>();
-        var pts = new List<Vector3> { baseCentre };
-        for (int i = 0; i < 5; i++)
+        // 3.1.1: aim the bombs at your BUILDINGS (spread across the base), not a tight circle on the
+        // base centre where the player stands — so the raid hits your structures, not you.
+        var pts = new List<Vector3>();
+        var blds = Buildable.All;
+        for (int i = 0; i < 4; i++) // 4 bombs per plane (was 6)
         {
-            Vector2 r = Random.insideUnitCircle * 14f;
-            Vector3 p = baseCentre + new Vector3(r.x, 0f, r.y);
+            Vector3 p;
+            if (blds != null && blds.Count > 0)
+            {
+                var hit = blds[Random.Range(0, blds.Count)];
+                p = hit != null ? hit.transform.position : baseCentre;
+            }
+            else
+            {
+                Vector2 r = Random.insideUnitCircle * 16f;
+                p = baseCentre + new Vector3(r.x, 0f, r.y);
+            }
             p.y = GameBootstrap.Hill(p.x, p.z);
             pts.Add(p);
         }
@@ -505,12 +524,14 @@ public class Bomber : MonoBehaviour
     // Enemy bomb blast: wrecks buildings (the dispenser too → can lose the base) and hurts the player.
     static void EnemyBombImpact(Vector3 p)
     {
-        float rSq = 8f * 8f;
+        // 3.1.1: enemy bombs are ANTI-STRUCTURE ONLY — they wreck buildings but NO LONGER hurt the
+        // player. Being bombed from the sky with no counterplay ("самолёты падают прям на игрока")
+        // felt like a cheap death; now the raid threatens your BASE, which you answer with the AA gun.
+        // Tighter blast (8→5.5 m) and much less building damage (240→95) than before, too.
+        float rSq = 5.5f * 5.5f;
         var blds = new List<Buildable>(Buildable.All);
         foreach (var b in blds)
-            if (b != null && (b.transform.position - p).sqrMagnitude <= rSq) b.TakeDamage(240f);
-        foreach (var pc in Object.FindObjectsByType<PlayerController>(FindObjectsSortMode.None))
-            if (pc != null && (pc.transform.position - p).sqrMagnitude <= rSq) pc.TakeDamage(45f);
+            if (b != null && (b.transform.position - p).sqrMagnitude <= rSq) b.TakeDamage(95f);
     }
 
     Vector3 dir, pos;
@@ -522,9 +543,16 @@ public class Bomber : MonoBehaviour
 
     void OnDestroy() { All.Remove(this); }
 
-    /// <summary>ПЗРК hit: the plane is downed — it tips over, dives, and its crash devastates a
-    /// HUGE radius (everything in ~600m is wrecked). Stops the bombing run.</summary>
-    public void CrashDown() { crashing = true; }
+    /// <summary>ПЗРК/ЗЕНИТКА hit: the plane is downed. It just blows up in the AIR where it was hit
+    /// and its run ends — planes never fall/crash to the ground anymore (no base wrecks, no self-harm).</summary>
+    public void CrashDown()
+    {
+        if (this == null) return;
+        Effects.Explosion(transform.position);
+        Effects.AirBlast(transform.position, 12f);
+        Effects.FlashLight(transform.position, 8f, 36f, new Color(1f, 0.6f, 0.25f));
+        Destroy(gameObject);
+    }
 
     public void Init(Vector3 center, List<Vector3> pts, float r, System.Action<Vector3> cb)
     {
@@ -618,20 +646,6 @@ public class Bomber : MonoBehaviour
     {
         life += Time.deltaTime;
 
-        // Shot down by a ПЗРК: tumble out of the sky and wreck everything where it crashes.
-        if (crashing)
-        {
-            crashVy += 42f * Time.deltaTime;
-            pos += dir * (speed * 0.4f) * Time.deltaTime + Vector3.down * crashVy * Time.deltaTime;
-            transform.position = pos;
-            transform.Rotate(90f * Time.deltaTime, 45f * Time.deltaTime, 130f * Time.deltaTime, Space.Self);
-            Effects.Burst(pos, new Color(0.2f, 0.2f, 0.2f), 2);
-            Effects.Burst(pos, new Color(1f, 0.5f, 0.2f), 1);
-            float gy = GameBootstrap.Hill(pos.x, pos.z);
-            if (pos.y <= gy + 2f) { CrashImpact(new Vector3(pos.x, gy + 1f, pos.z)); Destroy(gameObject); }
-            return;
-        }
-
         pos += dir * speed * Time.deltaTime;
         transform.position = pos;
 
@@ -650,35 +664,6 @@ public class Bomber : MonoBehaviour
         if (dropped >= points.Count && life > 4.5f) Destroy(gameObject);
     }
 
-    void CrashImpact(Vector3 at)
-    {
-        Effects.Explosion(at);
-        // Downing an ENEMY raider is GOOD — just a clean fireball (kills nearby zombies), no self-harm.
-        if (enemy)
-        {
-            Effects.AirBlast(at, 16f);
-            Effects.FlashLight(at, 10f, 40f, new Color(1f, 0.6f, 0.25f));
-            float er = 16f, erSq = er * er;
-            for (int i = Zombie.All.Count - 1; i >= 0; i--)
-                if (Zombie.All[i] != null && (Zombie.All[i].transform.position - at).sqrMagnitude <= erSq)
-                    Zombie.All[i].TakeDamage(999999f);
-            return;
-        }
-        // Your OWN airstrike plane crashing: a colossal blast that wrecks EVERYTHING in ~600m.
-        Effects.AirBlast(at, 50f);
-        Effects.AirBlast(at, 72f);
-        Effects.FlashLight(at, 16f, 90f, new Color(1f, 0.6f, 0.25f));
-        const float R = 600f; float rSq = R * R;
-        for (int i = Zombie.All.Count - 1; i >= 0; i--)
-            if (Zombie.All[i] != null && (Zombie.All[i].transform.position - at).sqrMagnitude <= rSq)
-                Zombie.All[i].TakeDamage(999999f);
-        var blds = new List<Buildable>(Buildable.All);
-        foreach (var b in blds)
-            if (b != null && (b.transform.position - at).sqrMagnitude <= rSq)
-                b.TakeDamage(999999f);
-        foreach (var pc in Object.FindObjectsByType<PlayerController>(FindObjectsSortMode.None))
-            if (pc != null) pc.TakeDamage(9999f);
-    }
 }
 
 /// <summary>A bomb falling from the bomber: accelerates downward, then detonates (AirBlast +

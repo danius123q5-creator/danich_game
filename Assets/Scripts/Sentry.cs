@@ -21,7 +21,7 @@ public class Sentry : Buildable
 
     protected override void Awake()
     {
-        BuildCost = 130;
+        BuildCost = 90;   // 3.1.1: cheaper (was 130)
         MaxLevel = 3;
         base.Awake();
     }
@@ -30,10 +30,12 @@ public class Sentry : Buildable
     {
         switch (Mathf.Clamp(Level, 1, 3))
         {
-            case 1: MaxHealth = 150f; fireRate = 0.15f; damage = 22f; numShots = 1; break;
-            case 2: MaxHealth = 180f; fireRate = 0.11f; damage = 38f; numShots = 1; break;
-            default: MaxHealth = 216f; fireRate = 0.08f; damage = 60f; numShots = 2; break;
+            // 3.1.1: sentry hits harder & is tougher (was 22/38/60 dmg).
+            case 1: MaxHealth = 210f; fireRate = 0.14f; damage = 34f; numShots = 1; break;
+            case 2: MaxHealth = 260f; fireRate = 0.10f; damage = 58f; numShots = 1; break;
+            default: MaxHealth = 320f; fireRate = 0.07f; damage = 95f; numShots = 2; break;
         }
+        damage *= ModRuntime.TurretDmgMult; // 3.2: mod multiplier
         Health = MaxHealth;
     }
 
@@ -115,7 +117,7 @@ public class Sentry : Buildable
         Effects.Explosion(loc + Vector3.up * 0.5f); // visible rocket blast
         foreach (var t in Zombie.All)
         {
-            if ((t.transform.position - loc).sqrMagnitude < 4f) t.TakeDamage(70f); // 2 m AoE
+            if ((t.transform.position - loc).sqrMagnitude < 4f) t.TakeDamage(120f); // 3.1.1: 2 m AoE (was 70)
         }
     }
 }

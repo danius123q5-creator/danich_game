@@ -10,7 +10,7 @@ using UnityEngine;
 public class OrbitalStation : Buildable
 {
     public override int FundingRequired => 0;     // oil-only super-weapon (no metal)
-    public override int OilRequired => 280;        // 2.3: less hungry to bring online (was 400)
+    public override int OilRequired => 500;        // pricier on oil (2.7)
     public override bool ReserveIsOil => true;
     public override int ReserveMax => 450;        // oil pool the beams drain as they fire
     const int ShotCost = 12;                       // oil burned per single-shot laser (2.3: was 20)

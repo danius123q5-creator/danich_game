@@ -39,6 +39,8 @@ public static class GameBootstrap
         World = new GameObject("World").transform;
         HasBaseSpawn = false; // a fresh world has no base yet (BuildStarterBase sets it)
 
+        ModRuntime.Load(); // 3.2: load node-graph mods FIRST so their multipliers apply to every build
+
         var m = Cur;
 
         // Maps are DAY only (night variants removed by request — they read too dark).
@@ -743,7 +745,10 @@ public static class GameBootstrap
         foreach (var col in go.GetComponentsInChildren<Collider>()) Object.Destroy(col); // ghost must not collide
         foreach (var r in go.GetComponentsInChildren<Renderer>())
         {
-            var m = r.material;
+            // Swap to a fresh UNLIT material forced into alpha-blend mode. URP/Lit frequently refuses
+            // to go transparent when only its properties are poked at runtime (stays opaque) — a plain
+            // unlit transparent material is reliable and is all a placement ghost needs.
+            var m = new Material(LineShader());
             m.SetOverrideTag("RenderType", "Transparent");
             if (m.HasProperty("_Surface")) m.SetFloat("_Surface", 1f);            // URP: Transparent
             if (m.HasProperty("_Blend")) m.SetFloat("_Blend", 0f);                // URP: Alpha blend
@@ -755,6 +760,7 @@ public static class GameBootstrap
             m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
             m.EnableKeyword("_ALPHABLEND_ON");
             m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            r.material = m;
         }
         SetGhostColor(go, c);
     }

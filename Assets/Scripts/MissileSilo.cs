@@ -13,7 +13,7 @@ public class MissileSilo : Buildable
     // holds fire until a crowd forms, then launches a ballistic missile. Pricey to build.
     float reload = 5f;       // seconds between launches
     float blastR = 5.5f;     // explosion radius (everything inside dies)
-    float range = 55f;       // only targets crowds within this distance of the silo
+    float range = 600f;      // LONG-RANGE weapon — reaches crowds far across the map
     int minCrowd = 3;        // only fire at a cluster of at least this many zombies
     float next;
 
@@ -30,9 +30,9 @@ public class MissileSilo : Buildable
     {
         switch (Mathf.Clamp(Level, 1, 3))
         {
-            case 1: MaxHealth = 500f; blastR = 10f; reload = 5f; range = 50f; break;
-            case 2: MaxHealth = 640f; blastR = 13f; reload = 4f; range = 60f; break;
-            default: MaxHealth = 800f; blastR = 16f; reload = 3f; range = 70f; break;
+            case 1: MaxHealth = 500f; blastR = 10f; reload = 5f; range = 600f; break;
+            case 2: MaxHealth = 640f; blastR = 13f; reload = 4f; range = 1300f; break;
+            default: MaxHealth = 800f; blastR = 16f; reload = 3f; range = 2000f; break;
         }
         Health = MaxHealth;
     }
@@ -59,6 +59,7 @@ public class MissileSilo : Buildable
     {
         float rSq = radius * radius;
         float rangeSq = range * range;
+        const float minRangeSq = 180f * 180f;   // 3.1.1: don't waste a long-range missile point-blank
         Vector3 silo = transform.position;
         Zombie best = null; bestCount = 0;
         foreach (var z in Zombie.All)
@@ -66,7 +67,8 @@ public class MissileSilo : Buildable
             if (z == null || z.IsPuppet) continue;
             if (GameRoot.IsZvZ && z.team == Team) continue;
             if (BallisticMissile.IsReserved(z)) continue;                        // another missile already claimed it
-            if ((z.transform.position - silo).sqrMagnitude > rangeSq) continue; // only crowds within range
+            float dSilo = (z.transform.position - silo).sqrMagnitude;
+            if (dSilo > rangeSq || dSilo < minRangeSq) continue;                 // only FAR crowds within range
             int c = 0;
             foreach (var w in Zombie.All)
             {

@@ -36,7 +36,7 @@ public class OilHub : Buildable, IOilSource
     protected override void BuildableTick()
     {
         // Pull oil from EVERY source wired to this hub (directly or down a chain of pipes).
-        if (Time.time >= nextScan) { nextScan = Time.time + 0.5f; OilPipe.CollectSources(transform.position, sources); }
+        if (Time.time >= nextScan) { nextScan = Time.time + 0.5f; OilPipe.CollectSources(transform.position, sources, this); }
         Supplied = sources.Count > 0;
         if (stock < TankCap)
             foreach (var s in sources)

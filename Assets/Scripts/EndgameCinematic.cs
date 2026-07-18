@@ -358,9 +358,14 @@ public class EndgameCinematic : MonoBehaviour
             finished = true;
             RenderSettings.ambientLight = ambient0;
             Active = false;
-            // Back to the main menu (reliable — Application.Quit doesn't fire in the editor and
-            // could leave the player stuck staring at THE END). The cutscene object cleans itself up.
-            if (GameRoot.Instance != null) GameRoot.Instance.ExitToMenu();
+            // ── ARG (2026-07-11): the game is NOT over. Instead of dropping to the
+            // main menu, hand the black screen to the post-credits stinger — an
+            // intercepted handler channel that reveals the "quarantine" was a
+            // proving ground and the player was an expendable subject. The stinger
+            // runs on the already-black screen and returns to the menu itself.
+            // Layers 1-3 (escape the sim cube → lab → deep-space reveal) build on
+            // top of this hook. Host/SP only (same gate as this cutscene).
+            ExperimentEpilogue.Begin();
             Destroy(gameObject);
         }
     }

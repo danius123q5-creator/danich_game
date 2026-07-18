@@ -12,6 +12,7 @@ public class GameMusic : MonoBehaviour
     const float BaseVolume = 0.32f;
 
     AudioSource _calm, _combat;
+    bool _menuMode;   // главное меню: играет только спокойная тема, без боевой логики
 
     public static void Spawn(Transform parent)
     {
@@ -20,11 +21,25 @@ public class GameMusic : MonoBehaviour
         go.AddComponent<GameMusic>();
     }
 
+    // Музыка ГЛАВНОГО МЕНЮ — спокойная атмосферная тема (та же процедурка).
+    // Спавнится из MenuBackground, живёт пока открыто меню. 2026-07-18.
+    public static void SpawnMenu(Transform parent)
+    {
+        var go = new GameObject("MenuMusic");
+        if (parent != null) go.transform.SetParent(parent);
+        go.AddComponent<GameMusic>()._menuMode = true;
+    }
+
     void Start()
     {
         _calm = MakeSource(BuildCalmTrack());
-        _combat = MakeSource(BuildCombatTrack());
         _calm.Play();
+        if (_menuMode)
+        {
+            _calm.volume = BaseVolume;   // сразу играем меню-тему
+            return;
+        }
+        _combat = MakeSource(BuildCombatTrack());
         _combat.Play();
     }
 
@@ -42,6 +57,11 @@ public class GameMusic : MonoBehaviour
 
     void Update()
     {
+        if (_menuMode)   // меню: держим спокойную тему, боевую не трогаем
+        {
+            _calm.volume = Mathf.MoveTowards(_calm.volume, BaseVolume, 0.6f * Time.deltaTime);
+            return;
+        }
         var gm = GameManager.Instance;
         // Combat music while a wave is actually running (not prep, not the evac cutscene, not PvP idle).
         bool combat = gm != null && !gm.IsPrep && !EndgameCinematic.Active;
@@ -89,33 +109,60 @@ public class GameMusic : MonoBehaviour
         return ToClip(buf, "music_calm");
     }
 
-    // Faster, darker, driving: pulsing saw bass + square arpeggio + a low thump on the beat.
+    // High-energy driving combat theme: full drum kit (four-on-the-floor kick +
+    // backbeat snare + sixteenth hats), syncopated octave-accented saw bass, and a
+    // build — the second half of the loop layers a square arp + a soaring lead hook,
+    // so the track keeps lifting instead of just repeating. Progression Am–F–G–E
+    // (i–VI–VII–V) for a tense, forward-pushing drive.
     AudioClip BuildCombatTrack()
     {
-        const float bpm = 142f;
+        const float bpm = 150f;
         float beat = 60f / bpm;
         int bars = 8;
         float dur = bars * 4 * beat;
         var buf = new float[(int)(Rate * dur)];
 
-        int[] prog = { 45, 45, 41, 43 }; // Am Am F G — tense, repeating
+        int[] prog = { 45, 41, 43, 40 }; // Am F G E — driving cadence with a V (E) push
         for (int bar = 0; bar < bars; bar++)
         {
             int root = prog[bar % 4];
             float t0 = bar * 4 * beat;
+            bool full = (bar % 8) >= 4; // build: second half of the loop layers up
 
-            // driving eighth-note bass
+            // ── drums ──
+            for (int q = 0; q < 4; q++)              // four-on-the-floor kick
+                AddKick(buf, t0 + q * beat, 0.55f);
+            if (full) AddKick(buf, t0 + 3.5f * beat, 0.45f); // extra push into the bar-line
+            AddHit(buf, t0 + 1 * beat, 0.13f, 0.30f, false); // snare backbeat (2 & 4)
+            AddHit(buf, t0 + 3 * beat, 0.13f, 0.30f, false);
+            int hats = full ? 16 : 8;                // hats: eighths → sixteenths in the build
+            for (int s = 0; s < hats; s++)
+            {
+                float step = (4f * beat) / hats;
+                float amp = (s % 2 == 0) ? 0.055f : 0.032f; // accent the down-beats
+                AddHit(buf, t0 + s * step, 0.03f, amp, true);
+            }
+
+            // ── syncopated octave bass ──
             for (int e = 0; e < 8; e++)
-                AddTone(buf, Midi(root - 12), t0 + e * beat * 0.5f, beat * 0.42f, 0.15f, 2);
+            {
+                int n = root - 12;
+                if (e == 3 || e == 6) n = root; // octave jumps give it groove
+                AddTone(buf, Midi(n), t0 + e * beat * 0.5f, beat * 0.45f, 0.16f, 2); // saw
+            }
 
-            // sixteenth-note minor arpeggio (root, m3, 5, octave)
-            int[] arp = { root, root + 3, root + 7, root + 12 };
-            for (int s = 0; s < 16; s++)
-                AddTone(buf, Midi(arp[s % 4] + 12), t0 + s * beat * 0.25f, beat * 0.20f, 0.06f, 1);
+            if (full)
+            {
+                // sixteenth-note minor arpeggio (root, m3, 5, octave)
+                int[] arp = { root, root + 3, root + 7, root + 12 };
+                for (int s = 0; s < 16; s++)
+                    AddTone(buf, Midi(arp[s % 4] + 12), t0 + s * beat * 0.25f, beat * 0.20f, 0.06f, 1);
 
-            // low thump on each beat for drive
-            for (int q = 0; q < 4; q++)
-                AddTone(buf, 55f, t0 + q * beat, 0.11f, 0.22f, 0);
+                // soaring lead hook — one bright note per beat, an octave-plus above
+                int[] lead = { root + 12, root + 19, root + 15, root + 17 };
+                for (int q = 0; q < 4; q++)
+                    AddTone(buf, Midi(lead[q]), t0 + q * beat, beat * 0.9f, 0.09f, 3); // triangle
+            }
         }
         return ToClip(buf, "music_combat");
     }
@@ -146,6 +193,47 @@ public class GameMusic : MonoBehaviour
             if (i < atk) env = i / atk;
             else if (i > len - rel) env = (len - i) / rel;
             buf[idx] += w * amp * env;
+        }
+    }
+
+    // Deterministic noise source for percussion (seeded → same track every run).
+    static System.Random _rng = new System.Random(20260716);
+
+    // Punchy kick: sine with a fast downward pitch sweep (155→45 Hz) + quick decay.
+    static void AddKick(float[] buf, float start, float amp)
+    {
+        int s0 = (int)(start * Rate);
+        int len = (int)(0.16f * Rate);
+        float phase = 0f;
+        for (int i = 0; i < len; i++)
+        {
+            int idx = s0 + i;
+            if (idx < 0 || idx >= buf.Length) continue;
+            float t = (float)i / Rate;
+            float f = 45f + 110f * Mathf.Exp(-t * 30f); // pitch sweep gives the "thump"
+            phase += f / Rate;
+            float env = Mathf.Exp(-t * 16f);
+            buf[idx] += Mathf.Sin(2f * Mathf.PI * phase) * amp * env;
+        }
+    }
+
+    // Percussive noise hit. bright=true → crude high-pass + snappier decay for hi-hats;
+    // bright=false → fuller body for a snare.
+    static void AddHit(float[] buf, float start, float dur, float amp, bool bright)
+    {
+        int s0 = (int)(start * Rate);
+        int len = (int)(dur * Rate);
+        if (len < 1) len = 1;
+        float prev = 0f;
+        float decay = bright ? 20f : 11f;
+        for (int i = 0; i < len; i++)
+        {
+            int idx = s0 + i;
+            if (idx < 0 || idx >= buf.Length) continue;
+            float n = (float)(_rng.NextDouble() * 2.0 - 1.0);
+            if (bright) { float hp = n - prev; prev = n; n = hp; } // high-pass → brighter
+            float env = Mathf.Exp(-((float)i / len) * decay);
+            buf[idx] += n * amp * env;
         }
     }
 

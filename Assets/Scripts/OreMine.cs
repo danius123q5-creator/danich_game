@@ -167,7 +167,7 @@ public class OreMine : MonoBehaviour, IMetalSource
                 if (Capture >= CaptureTime)
                 {
                     Captured = true; Capture = CaptureTime; Control = ControlMax;
-                    if (player != null) { player.AddMetal(PlayerController.CaptureMetalBonus); player.AddOil(CaptureOilBonus); } // +metal & +300 oil
+                    if (player != null) { player.AddMetal(GameManager.CaptureMetalReward()); player.AddOil(CaptureOilBonus); } // +metal (scales w/ wave) & +300 oil
                     Effects.Upgrade(p + Vector3.up * 5f);
                 }
             }
@@ -175,7 +175,7 @@ public class OreMine : MonoBehaviour, IMetalSource
         }
         else
         {
-            Ore = Mathf.Min(OreCap, Ore + OreRate * dt);
+            Ore = Mathf.Min(OreCap, Ore + OreRate * GameRoot.IncomeMult * dt); // 2× in endless mode
             if (zc > 0) Control -= DrainPerZombie * Mathf.Min(zc, 6) * dt;
             else Control = Mathf.Min(ControlMax, Control + ControlRegen * dt);
             if (Control <= 0f) { Captured = false; Control = 0f; Capture = 0f; Effects.AirBlast(p + Vector3.up * 1f, 8f); }

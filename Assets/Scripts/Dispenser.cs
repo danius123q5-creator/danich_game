@@ -42,21 +42,45 @@ public class Dispenser : Buildable
 
     protected override void OnDeath()
     {
+        // Endless mode: the base lifeline never truly dies — a fresh critical dispenser RESPAWNS in its
+        // place, so a lost dispenser is a setback, not game-over. (Sandbox is immortal already.)
+        if (Critical && GameRoot.Infinite && !GameRoot.IsZvZ && !GameRoot.IsPvp && !EndgameCinematic.Active)
+        {
+            RespawnCritical();
+            base.OnDeath();
+            return;
+        }
         // Base lifeline destroyed → defeat. Suppressed during the evac finale, where the cinematic
         // deliberately levels every building (that's victory, not a base loss).
-        if (Critical && !GameRoot.IsZvZ && !GameRoot.IsPvp && !EndgameCinematic.Active)
+        if (Critical && !GameRoot.IsZvZ && !GameRoot.IsPvp && !EndgameCinematic.Active && !GameRoot.Sandbox)
             GameRoot.BaseLost = true;
         base.OnDeath();
+    }
+
+    // Endless: place a brand-new full-health critical dispenser where this one stood (or where the
+    // player relocated it), so the base pops right back up instead of ending the run.
+    void RespawnCritical()
+    {
+        var owner = Object.FindFirstObjectByType<PlayerController>();
+        Vector3 p = transform.position;
+        p.y = GameBootstrap.Hill(p.x, p.z);
+        var go = Buildable.Create(Type, p, transform.rotation, owner);
+        var nd = go != null ? go.GetComponent<Dispenser>() : null;
+        if (nd != null) { nd.LoadState(1, 9999f, 0); nd.Critical = true; }
+        Effects.Upgrade(p + Vector3.up * 1f);
+        GameRoot.BaseLost = false; // make sure no stale defeat flag lingers
     }
 
     protected override void ApplyLevel()
     {
         switch (Mathf.Clamp(Level, 1, 3))
         {
-            case 1: MaxHealth = 120f; heal = 8f; metalGive = 12; ammoGive = 6; radius = 2.5f; tick = 0.50f; accrueRate = 10f; stockCap = 150f; break;
-            case 2: MaxHealth = 160f; heal = 16f; metalGive = 26; ammoGive = 12; radius = 3.5f; tick = 0.32f; accrueRate = 22f; stockCap = 300f; break;
-            default: MaxHealth = 200f; heal = 28f; metalGive = 48; ammoGive = 20; radius = 4.5f; tick = 0.20f; accrueRate = 40f; stockCap = 500f; break;
+            // 3.1.1: dispenser is far tankier, hands out more, over a bigger radius, faster.
+            case 1: MaxHealth = 260f; heal = 12f; metalGive = 20; ammoGive = 10; radius = 4.0f; tick = 0.34f; accrueRate = 16f; stockCap = 260f; break;
+            case 2: MaxHealth = 360f; heal = 22f; metalGive = 40; ammoGive = 18; radius = 5.5f; tick = 0.22f; accrueRate = 32f; stockCap = 480f; break;
+            default: MaxHealth = 480f; heal = 36f; metalGive = 72; ammoGive = 30; radius = 7.0f; tick = 0.14f; accrueRate = 60f; stockCap = 800f; break;
         }
+        MaxHealth *= ModRuntime.DispenserHpMult; // 3.2: mod multiplier
         Health = MaxHealth;
     }
 
@@ -74,8 +98,8 @@ public class Dispenser : Buildable
             if ((p.transform.position - transform.position).magnitude <= radius)
             {
                 p.Heal(heal);
-                int give = metalGive;
-                if (limited) { give = Mathf.Min(metalGive, Mathf.FloorToInt(stock)); stock -= give; }
+                int give = Mathf.RoundToInt(metalGive * GameRoot.IncomeMult); // endless mode: 2× metal
+                if (limited) { give = Mathf.Min(give, Mathf.FloorToInt(stock)); stock -= give; }
                 if (give > 0) p.AddMetal(give);
                 p.AddAmmo(ammoGive);
             }

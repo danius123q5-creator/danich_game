@@ -13,13 +13,15 @@
 /// against the latest release on GitHub.</summary>
 public static class GameVersion
 {
-    public const string Current = "2.5";
+    public const string Current = "3.4";
 
     /// <summary>Codename for this release (shown in credits/notes).</summary>
-    public static string Codename => Lang.T("Английское Обновление", "English Update");
+    public static string Codename => Lang.T("Ближнее будущее", "Near Future");
 
-    /// <summary>Copyright line shown in menus/credits.</summary>
-    public const string Copyright = "Copyright (C) 2026 Danich. All Rights Reserved";
+    /// <summary>Copyright line shown in menus/credits. The game is distributed under an
+    /// End-User License Agreement (see the EULA screen in Settings).</summary>
+    public static string Copyright => Lang.T("© 2026 Danich. Все права защищены. Лицензия EULA (Настройки).",
+                                             "© 2026 Danich. All Rights Reserved. EULA licensed (Settings).");
 
     // Internal joke codename for the cut-down WebGL/browser build. NOT shown to players and
     // NOT the public store title — Yandex Games moderation forbids it. Working name only.

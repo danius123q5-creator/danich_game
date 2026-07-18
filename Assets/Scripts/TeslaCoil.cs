@@ -6,7 +6,7 @@ using UnityEngine;
 public class TeslaCoil : Buildable
 {
     public override int FundingRequired => 0;   // oil-only super-weapon (no metal)
-    public override int OilRequired => 250;
+    public override int OilRequired => 430;
     public override bool ReserveIsOil => true;
     public override int ReserveMax => 400;      // ammo reserve, paid in oil
 

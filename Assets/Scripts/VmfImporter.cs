@@ -93,7 +93,7 @@ public static class VmfImporter
     // ─────────────────────────────────────────────────────────────────────────
     //  Import — walk the tree, build every solid, return the player spawn point
     // ─────────────────────────────────────────────────────────────────────────
-    public struct Result { public Vector3 spawn; public bool hasSpawn; public int brushes; public int tris; public int entities; }
+    public struct Result { public Vector3 spawn; public bool hasSpawn; public float spawnYaw; public int brushes; public int tris; public int entities; }
 
     public static Result Import(string vmfText, Transform parent)
     {
@@ -111,8 +111,11 @@ public static class VmfImporter
         foreach (var ent in root.Where("entity"))
         {
             string cls = ent.Get("classname");
-            foreach (var solid in ent.Where("solid"))
-                res.brushes += BuildSolid(solid, combined, ref res);
+            bool movable = IsMovableEntity(cls);
+            var entBatches = movable ? new Dictionary<Color32, MeshBuild>() : combined; // движимые → в СВОЙ меш
+            if (!IsNonRenderEntity(cls))
+                foreach (var solid in ent.Where("solid"))
+                    res.brushes += BuildSolid(solid, entBatches, ref res);
 
             Vector3 epos = TryVec(ent.Get("origin"), out var eo) ? ToUnity(eo) : ToUnity(EntityCentroid(ent));
 
@@ -124,12 +127,41 @@ public static class VmfImporter
             foreach (var kvp in ent.kv) ve.kv[kvp.Key] = kvp.Value;
             foreach (var conn in ent.Where("connections"))
                 foreach (var kvp in conn.kv) AddConnection(ve, kvp.Key, kvp.Value);
+            if (EntityAABBUnity(ent, out var _bc, out var _bh))   // AABB зоны (Unity) для бокс-теста триггеров
+            { ve.boundsCenter = _bc; ve.boundsHalf = _bh; ve.boundsRadius = _bh.magnitude; }
             res.entities++;
+
+            // Движимые брашевые энтити (дверь/кнопка/movelinear) — СВОЙ меш+коллайдер под ego,
+            // чтобы рантайм (VmfRuntime) их двигал независимо от статичной карты.
+            if (movable && entBatches.Count > 0)
+            {
+                foreach (var kvp in entBatches)
+                {
+                    var mgo = new GameObject("brush");
+                    mgo.transform.SetParent(ego.transform, true);
+                    var mmesh = kvp.Value.ToMesh();
+                    mgo.AddComponent<MeshFilter>().sharedMesh = mmesh;
+                    var mmr = mgo.AddComponent<MeshRenderer>();
+                    var mmat = new Material(GameBootstrap.StdShader());
+                    Color mc = (Color)kvp.Key;
+                    if (mmat.HasProperty("_BaseColor")) mmat.SetColor("_BaseColor", mc);
+                    mmat.color = mc;
+                    mmr.material = mmat;
+                    mgo.AddComponent<MeshCollider>().sharedMesh = mmesh;
+                    res.tris += mmesh.triangles.Length / 3;
+                }
+                ve.moveRoot = ego.transform;
+            }
 
             // Well-known entities also get a real in-game effect on top of the carrier.
             if (cls == "info_player_start" || cls == "info_player_deathmatch")
             {
                 res.spawn = epos + Vector3.up * 0.1f; res.hasSpawn = true;
+                // Угол взгляда: Source "angles"="pitch yaw roll". Source yaw (вокруг Z-up) → Unity yaw
+                // (вокруг Y-up): forward +Y(Source)=+Z(Unity) → Unity_yaw = 90 - source_yaw.
+                var ap = (ent.Get("angles") ?? "").Split(' ');
+                if (ap.Length >= 2 && float.TryParse(ap[1], NumberStyles.Float, CI, out float syaw))
+                    res.spawnYaw = 90f - syaw;
             }
             else if (cls == "light" || cls == "light_spot" || cls == "light_environment")
             {
@@ -150,6 +182,22 @@ public static class VmfImporter
             Color col = (Color)kvp.Key;
             if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", col);
             if (mat.HasProperty("_Color")) mat.SetColor("_Color", col);
+            // РЕШЁТКА: цвет (88,92,98) от MatColor → клеим процедурную сетку-текстуру.
+            if (kvp.Key.r == 88 && kvp.Key.g == 92 && kvp.Key.b == 98)
+            {
+                var gt = GrateTex();
+                if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", gt);
+                if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", gt);
+                mat.mainTexture = gt;
+                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", Color.white);
+                if (mat.HasProperty("_Color")) mat.SetColor("_Color", Color.white);
+                // ПРОЗРАЧНОСТЬ: альфа-клип (дырки альфа 0 вырезаются) + двусторонний рендер.
+                if (mat.HasProperty("_AlphaClip")) mat.SetFloat("_AlphaClip", 1f);
+                if (mat.HasProperty("_Cutoff")) mat.SetFloat("_Cutoff", 0.5f);
+                mat.EnableKeyword("_ALPHATEST_ON");
+                if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f); // видно сетку с обеих сторон
+                mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
+            }
             mr.sharedMaterial = mat;
             go.AddComponent<MeshCollider>().sharedMesh = mesh;
             res.tris += mesh.triangles.Length / 3;
@@ -217,12 +265,56 @@ public static class VmfImporter
                 continue;
             }
 
+            if (SkipMaterial(pl.side.Get("material"))) continue; // tool/sky/trigger/nodraw → don't render
+
+            // РЕШЁТКА: строим СЕТКУ ИЗ БРУСЬЕВ с настоящими дырками (сквозь видно), а не сплошную грань.
+            if (IsGrateMat(pl.side.Get("material"))) { BuildGrateFace(onFace, pl.n, batches); continue; }
+
             if (!batches.TryGetValue(pl.col, out var mb)) { mb = new MeshBuild(); batches[pl.col] = mb; }
             Vector3 u0 = ToUnity(onFace[0]);
             for (int t = 1; t < onFace.Count - 1; t++)
                 mb.AddTri(u0, ToUnity(onFace[t]), ToUnity(onFace[t + 1]), pl.n);
         }
         return 1;
+    }
+
+    static bool IsGrateMat(string mat)
+    {
+        var m = (mat ?? "").ToUpperInvariant();
+        return m.Contains("GRATE") || m.Contains("GRID");
+    }
+
+    // Решётка как ГЕОМЕТРИЯ: 4-угольная грань → сетка из брусьев (тонкие полосы по линиям
+    // сетки), между ними РЕАЛЬНЫЕ дырки (пустота) — сквозь видно, без альфа-шейдера. 2026-07-13.
+    static void BuildGrateFace(List<Vector3> face, Vector3 srcN, Dictionary<Color32, MeshBuild> batches)
+    {
+        Color32 barCol = new Color32(120, 126, 134, 255); // сплошной металл прутьев
+        if (!batches.TryGetValue(barCol, out var mb)) { mb = new MeshBuild(); batches[barCol] = mb; }
+        if (face.Count != 4) // не квад → просто солид-заливка (fallback)
+        {
+            Vector3 u0 = ToUnity(face[0]);
+            for (int t = 1; t < face.Count - 1; t++) mb.AddTri(u0, ToUnity(face[t]), ToUnity(face[t + 1]), srcN);
+            return;
+        }
+        Vector3 P0 = face[0], P1 = face[1], P2 = face[2], P3 = face[3];
+        System.Func<float, float, Vector3> B = (u, v) =>
+            Vector3.Lerp(Vector3.Lerp(P0, P1, u), Vector3.Lerp(P3, P2, u), v);
+        int N = 4; float w = 0.06f; // 4 ячейки, толщина прутка ~6%
+        for (int i = 0; i <= N; i++) // вертикальные прутья
+        {
+            float uc = (float)i / N, ua = Mathf.Clamp01(uc - w), ub = Mathf.Clamp01(uc + w);
+            GrateQuad(mb, B(ua, 0f), B(ub, 0f), B(ub, 1f), B(ua, 1f), srcN);
+        }
+        for (int j = 0; j <= N; j++) // горизонтальные прутья
+        {
+            float vc = (float)j / N, va = Mathf.Clamp01(vc - w), vb = Mathf.Clamp01(vc + w);
+            GrateQuad(mb, B(0f, va), B(1f, va), B(1f, vb), B(0f, vb), srcN);
+        }
+    }
+    static void GrateQuad(MeshBuild mb, Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 srcN)
+    {
+        mb.AddTri(ToUnity(a), ToUnity(b), ToUnity(c), srcN);
+        mb.AddTri(ToUnity(a), ToUnity(c), ToUnity(d), srcN);
     }
 
     static Node Disp(Node side)
@@ -296,6 +388,24 @@ public static class VmfImporter
 
     // Centre of a brush entity (average of its side plane sample points) — a marker position for
     // entities that have geometry instead of an 'origin'.
+    // AABB энтити в Unity-юнитах (центр + полуразмеры) — рантайм-триггеры юзают как ТОЧНУЮ зону.
+    static bool EntityAABBUnity(Node ent, out Vector3 center, out Vector3 half)
+    {
+        Vector3 mn = Vector3.one * 1e9f, mx = Vector3.one * -1e9f; bool any = false;
+        foreach (var solid in ent.Where("solid"))
+            foreach (var side in solid.Where("side"))
+                if (TryPlane(side.Get("plane"), out var a, out var b, out var c))
+                {
+                    Vector3 ua = ToUnity(a), ub = ToUnity(b), uc = ToUnity(c);
+                    mn = Vector3.Min(mn, Vector3.Min(ua, Vector3.Min(ub, uc)));
+                    mx = Vector3.Max(mx, Vector3.Max(ua, Vector3.Max(ub, uc)));
+                    any = true;
+                }
+        center = any ? (mn + mx) * 0.5f : Vector3.zero;
+        half = any ? (mx - mn) * 0.5f : Vector3.zero;
+        return any;
+    }
+
     static Vector3 EntityCentroid(Node ent)
     {
         Vector3 sum = Vector3.zero; int n = 0;
@@ -384,16 +494,105 @@ public static class VmfImporter
         return true;
     }
 
+    // Valve TOOL / invisible / sky materials that must NOT render — otherwise the map's
+    // skybox brush encloses the whole level in a grey box and nodraw/clip/trigger/hint
+    // volumes clutter it. These faces are skipped from the render+collision mesh. Real
+    // world surfaces (concrete/metal/wood/textured) keep rendering. 2026-07-12.
+    static bool SkipMaterial(string mat)
+    {
+        string m = (mat ?? "").ToUpperInvariant();
+        if (m.Length == 0) return false;
+        if (m.StartsWith("TOOLS/") || m.StartsWith("TOOLS\\")) return true; // all toolsX textures
+        if (m.StartsWith("SKY/") || m.StartsWith("SKYBOX")) return true;    // 2D sky faces
+        return m.Contains("NODRAW") || m.Contains("SKYBOX") || m.Contains("TRIGGER")
+            || m.Contains("CLIP") || m.Contains("HINT") || m.Contains("SKIP")
+            || m.Contains("INVISIBLE") || m.Contains("AREAPORTAL") || m.Contains("OCCLUDER")
+            || m.Contains("BLOCKLIGHT") || m.Contains("BLOCK_LOS") || m.Contains("FOG")
+            || m.Contains("PLAYERCLIP") || m.Contains("NPCCLIP");
+    }
+
+    // Brush entities whose geometry should NOT render (invisible logic volumes). Their VmfEntity
+    // carrier is still created (for scripting) — only the visible mesh is skipped.
+    // Брашевые энтити, которые РАНТАЙМ двигает (дверь/кнопка/лифт) — им нужен свой меш.
+    static bool IsMovableEntity(string cls)
+    {
+        switch (cls)
+        {
+            case "func_door":
+            case "func_door_rotating":
+            case "prop_door_rotating":
+            case "func_movelinear":
+            case "func_button":
+            case "func_rot_button":
+            case "func_rotating":
+            case "func_platrot":
+            case "func_tracktrain":
+                return true;
+            default: return false;
+        }
+    }
+
+    static bool IsNonRenderEntity(string cls)
+    {
+        if (string.IsNullOrEmpty(cls)) return false;
+        if (cls.StartsWith("trigger_")) return true;
+        switch (cls)
+        {
+            case "func_areaportal":
+            case "func_areaportalwindow":
+            case "func_occluder":
+            case "func_clip_vphysics":
+            case "func_nav_blocker":
+            case "func_nav_avoid":
+            case "func_nav_prefer":
+            case "func_viscluster":
+            case "func_precipitation":
+            case "env_fog_controller":
+                return true;
+        }
+        return false;
+    }
+
+    // Процедурная текстура РЕШЁТКИ — сетка металлических прутков + тёмные ячейки, тайлится.
+    static Texture2D _grateTex;
+    static Texture2D GrateTex()
+    {
+        if (_grateTex != null) return _grateTex;
+        int N = 32; var t = new Texture2D(N, N, TextureFormat.RGBA32, true);
+        t.wrapMode = TextureWrapMode.Repeat; t.filterMode = FilterMode.Bilinear;
+        var px = new Color32[N * N];
+        int bar = 5; // толщина прутка (по краям ячейки → при тайлинге образует сетку)
+        for (int y = 0; y < N; y++)
+            for (int x = 0; x < N; x++)
+            {
+                bool isBar = (x < bar) || (y < bar);
+                px[y * N + x] = isBar ? new Color32(158, 163, 170, 255)  // пруток — светлый металл, непрозрачный
+                                      : new Color32(0, 0, 0, 0);         // ячейка — ПРОЗРАЧНАЯ (сквозная дырка, альфа 0)
+            }
+        t.SetPixels32(px); t.Apply();
+        _grateTex = t;
+        return t;
+    }
+
+    // Цвет грани по имени Source-материала. Порядок ВАЖЕН: кирпич до "WALL", решётка до металла.
+    // (VTF-текстур нет — красим категориями, чтобы карта читалась: кирпич красный, металл стальной…)
     static Color32 MatColor(string mat)
     {
         string m = (mat ?? "").ToUpperInvariant();
-        if (m.Contains("METAL") || m.Contains("STEEL")) return new Color32(120, 124, 132, 255);
-        if (m.Contains("CONCRETE") || m.Contains("WALL"))  return new Color32(140, 140, 138, 255);
-        if (m.Contains("FLOOR") || m.Contains("TILE"))     return new Color32(110, 112, 116, 255);
-        if (m.Contains("DIRT") || m.Contains("GROUND"))    return new Color32(96, 82, 60, 255);
+        if (m.Contains("BRICK"))                            return new Color32(156, 88, 68, 255);   // кирпич — тёпло-красный
+        if (m.Contains("GRATE") || m.Contains("GRID"))      return new Color32(88, 92, 98, 255);    // решётка — тёмный металл
+        if (m.Contains("METALFLOOR"))                       return new Color32(96, 100, 108, 255);
+        if (m.Contains("METAL") || m.Contains("STEEL") || m.Contains("CITADEL")) return new Color32(122, 128, 140, 255); // металл — сталь с синевой
+        if (m.Contains("CONCRETEFLOOR"))                    return new Color32(118, 118, 116, 255);  // бетонный пол — темнее
+        if (m.Contains("CONCRETE"))                         return new Color32(152, 150, 144, 255);  // бетон стен — светло-серый тёплый
+        if (m.Contains("FLOOR") || m.Contains("TILE"))      return new Color32(104, 106, 110, 255);
+        if (m.Contains("PROP") || m.Contains("COMBINE") || m.Contains("DISPLAY")) return new Color32(66, 78, 88, 255);   // пропсы/техно — тёмно-сине-серый
+        if (m.Contains("WOOD") || m.Contains("PLASTER"))    return new Color32(150, 120, 84, 255);
+        if (m.Contains("DIRT") || m.Contains("GROUND") || m.Contains("SAND")) return new Color32(104, 88, 64, 255);
         if (m.Contains("GLASS"))                            return new Color32(150, 190, 210, 255);
+        if (m.Contains("WALL"))                             return new Color32(140, 140, 138, 255);  // общая стена — после кирпича
         if (m.Contains("NODRAW") || m.Contains("TOOLS"))    return new Color32(70, 70, 74, 255);
-        return new Color32(128, 128, 128, 255);
+        return new Color32(130, 130, 128, 255);
     }
 
     static void SpawnLight(Vector3 pos, string lightStr, Transform parent)
@@ -423,6 +622,7 @@ public static class VmfImporter
     {
         public readonly List<Vector3> v = new List<Vector3>();
         public readonly List<Vector3> nrm = new List<Vector3>();
+        public readonly List<Vector2> uv = new List<Vector2>();
         public readonly List<int> tri = new List<int>();
         public void AddTri(Vector3 a, Vector3 b, Vector3 c, Vector3 sourceNormal)
         {
@@ -433,13 +633,21 @@ public static class VmfImporter
             int i0 = v.Count;
             v.Add(a); v.Add(b); v.Add(c);
             nrm.Add(un); nrm.Add(un); nrm.Add(un);
+            // Планарные UV (world-space проекция на плоскость грани) — для тайл-текстур (решётка и т.п.)
+            Vector3 up = Mathf.Abs(un.y) > 0.9f ? Vector3.right : Vector3.up;
+            Vector3 ua = Vector3.Normalize(Vector3.Cross(un, up));
+            Vector3 va = Vector3.Normalize(Vector3.Cross(un, ua));
+            const float SC = 0.7f; // тайлинг
+            uv.Add(new Vector2(Vector3.Dot(a, ua), Vector3.Dot(a, va)) * SC);
+            uv.Add(new Vector2(Vector3.Dot(b, ua), Vector3.Dot(b, va)) * SC);
+            uv.Add(new Vector2(Vector3.Dot(c, ua), Vector3.Dot(c, va)) * SC);
             tri.Add(i0); tri.Add(i0 + 1); tri.Add(i0 + 2);
         }
         public Mesh ToMesh()
         {
             var m = new Mesh();
             m.indexFormat = v.Count > 65000 ? UnityEngine.Rendering.IndexFormat.UInt32 : UnityEngine.Rendering.IndexFormat.UInt16;
-            m.SetVertices(v); m.SetNormals(nrm); m.SetTriangles(tri, 0);
+            m.SetVertices(v); m.SetNormals(nrm); m.SetUVs(0, uv); m.SetTriangles(tri, 0);
             m.RecalculateBounds();
             return m;
         }

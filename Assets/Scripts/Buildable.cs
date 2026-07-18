@@ -21,8 +21,10 @@ public class Buildable : MonoBehaviour
     public float Health = 100f;
     public float MaxHealth = 100f;
     public bool Building = true;
+    public bool BeingMoved;      // true while carried with the MMB relocate — freezes its function
     public float BuildTime = 2.5f;
     public float UpgradeCooldown = 1f; // seconds between investments
+    int nextAutoUpgWave = -1;           // 3.1.1: wave at which this building next auto-levels (every 3 waves)
 
     // ---- networking (co-op): buildings are host-authoritative; clients see puppets ----
     public int NetId;
@@ -71,6 +73,8 @@ public class Buildable : MonoBehaviour
     // Super-weapons run entirely on OIL (no metal): their funding, ammo reserve and upgrades
     // are all paid in oil. Hardcore turret ammo keeps using metal (this stays false there).
     public virtual bool ReserveIsOil => false;
+    // Oil super-weapons auto-fuel from a connected pipe by default; set false to require manual E.
+    public virtual bool AutoOilFuel => true;
 
     float noMetalUntil;                                   // set when a shot is denied for lack of metal
     bool NoMetalWarning => Time.time < noMetalUntil;      // drives the floating "NO METAL" alert
@@ -164,6 +168,9 @@ public class Buildable : MonoBehaviour
             case 34: AddBox(new Vector3(0f, 0.8f, 0f), new Vector3(1.4f, 1.6f, 1.4f)); break;          // flamethrower
             case 35: AddBox(new Vector3(0f, 0.9f, 0f), new Vector3(2.2f, 1.8f, 2.2f)); break;          // oil hub
             case 36: AddBox(new Vector3(0f, 0.8f, 0f), new Vector3(1.6f, 1.6f, 1.6f)); break;          // SAM launcher
+            case 37: AddBox(new Vector3(0f, 0.3f, 0f), new Vector3(2.0f, 0.6f, 2.0f)); break;          // FPV drone pad
+            case 38: AddBox(new Vector3(0f, 0.3f, 0f), new Vector3(2.4f, 0.6f, 2.4f)); break;          // Geran-2 pad
+            case 39: AddBox(new Vector3(0f, 0.9f, 0f), new Vector3(5.0f, 1.9f, 7.4f)); break;          // V-1 launch ramp (huge)
             case 26: // big platform: huge top deck on 4 columns + a climb column up the OUTSIDE front
                 AddBox(new Vector3(0f, BigPlatform.Height - 0.3f, 0f), new Vector3(BigPlatform.Half * 2f, 0.4f, BigPlatform.Half * 2f)); // walkable deck
                 var cz2 = new GameObject("ClimbZone");
@@ -174,9 +181,10 @@ public class Buildable : MonoBehaviour
                 cz2c.size = new Vector3(1.2f, BigPlatform.Height + 1.2f, 1.0f);          // full-height climb column
                 cz2.AddComponent<ClimbZone>();
                 break;
-            case 25: AddBox(new Vector3(0f, 1.1f, 0f), new Vector3(1.7f, 2.2f, 1.7f)); break;          // missile silo
+            case 25: AddBox(new Vector3(0f, 2.0f, 0f), new Vector3(3.0f, 4.2f, 3.0f)); break;          // ФАУ-2 (V-2) launch stand
             case 18: AddBox(new Vector3(0f, 0.6f, 0f), new Vector3(2.0f, 1.2f, 4.0f)); break;          // car
             case 19: AddBox(new Vector3(0f, 0.6f, 0f), new Vector3(1.0f, 1.2f, 1.2f)); break;          // rpg turret
+            case 40: AddBox(new Vector3(0f, 0.9f, 0f), new Vector3(1.5f, 1.8f, 1.4f)); break;          // quad turret
             case 12: // corner bridge (L): north arm + east arm
                 AddBox(new Vector3(0f, 2.0f, 1.0f), new Vector3(2.6f, 0.4f, 2.0f));
                 AddBox(new Vector3(1.0f, 2.0f, 0f), new Vector3(2.0f, 0.4f, 2.6f));
@@ -189,6 +197,10 @@ public class Buildable : MonoBehaviour
                 AddBox(new Vector3(0f, 2.0f, 0f), new Vector3(2.6f, 0.4f, 3.4f));
                 AddBox(new Vector3(0f, 2.0f, 0f), new Vector3(3.4f, 0.4f, 2.6f));
                 break;
+            case 41: AddBox(new Vector3(0f, 0.85f, 0f), new Vector3(1.4f, 1.7f, 1.4f)); break; // плазма-турель (ДЛС)
+            case 42: AddBox(new Vector3(0f, 0.8f, 0f), new Vector3(2.6f, 1.6f, 0.5f), true); break; // решётка-ловушка (trigger: зомби идут сквозь)
+            case 43: AddBox(new Vector3(0f, 0.85f, 0f), new Vector3(4.4f, 1.7f, 0.5f)); break;  // стена+колючка (длинная стена, сплошная)
+            case 44: AddBox(new Vector3(0f, 0.85f, 0f), new Vector3(2.2f, 1.7f, 0.45f)); break; // стена+турель (стена, сплошная)
             default: AddBox(new Vector3(0f, 0.6f, 0f), new Vector3(1.0f, 1.2f, 1.0f)); break;
         }
     }
@@ -226,9 +238,17 @@ public class Buildable : MonoBehaviour
             case 34: return root.AddComponent<Flamethrower>();
             case 35: return root.AddComponent<OilHub>();
             case 36: return root.AddComponent<Sam>();
+            case 37: return root.AddComponent<FpvDronePad>();
+            case 38: return root.AddComponent<ShahedPad>();
+            case 39: return root.AddComponent<VOnePad>();
             case 25: return root.AddComponent<MissileSilo>();
             case 18: return root.AddComponent<Car>();
             case 19: return root.AddComponent<Rpg>();
+            case 40: return root.AddComponent<QuadTurret>();
+            case 41: return root.AddComponent<PlasmaTurret>(); // ДЛС «Не далёкое будущее»
+            case 42: return root.AddComponent<LatticeFence>(); // решётка-ловушка
+            case 43: return root.AddComponent<WallBarbed>();   // стена+колючка
+            case 44: return root.AddComponent<WallTurret>();   // стена+турель
             case 16: case 17: return root.AddComponent<Wall>(); // long / tall wall behave like a wall
             default: return root.AddComponent<ProxyMine>();
         }
@@ -323,15 +343,75 @@ public class Buildable : MonoBehaviour
                 Building = false;
                 if (visual != null) visual.localScale = baseScale;
                 OnActivated();
+                if (!IsPuppet && Team == 0) ModRuntime.OnBuildingBuilt(); // 3.2: fire BUILDING_BUILT mod actions
             }
             return;
         }
 
+        if (BeingMoved) return;                           // carried building doesn't function (no metal/oil/fire)
         if (Health <= 0f) { OnDeath(); return; }         // safety net: never linger at <=0 HP
+        AutoUpgradeOverTime();                             // 3.1.1: buildings slowly level up on their own
+        ChargeFromOilNetwork();                            // oil pipes auto-fuel super-weapons
         if (!IsFunding) BuildableTick();                  // special weapons stay dark until funded
     }
 
+    // Oil super-weapons (ReserveIsOil) draw oil straight from a connected PIPE network — first to
+    // pay their activation cost (OilPaid), then to keep the reserve topped up as they fire. Run a
+    // pipe from an НПЗ/вышка/хаб to within ~16 m of the weapon and it fuels itself, hands-free.
+    const float OilChargeRate = 40f; // oil/sec pumped in through the pipe (scales with pipe count)
+    float oilChargeFrac;
+    void ChargeFromOilNetwork()
+    {
+        if (!ReserveIsOil || !AutoOilFuel) return;
+        bool needFund = OilPaid < OilRequired;
+        bool needReserve = UsesReserve && Reserve < ReserveMax;
+        if (!needFund && !needReserve) return;
+
+        // Require a PIPE actually run up to the weapon (~6 m) — being merely near a refinery won't fuel it.
+        if (!OilPipe.PipeNear(transform.position, 6f)) return;
+
+        var src = OilPipe.SupplySource(transform.position);
+        if (src == null || !src.OilActive) return;
+
+        float boost = 1f + Mathf.Min(OilPipe.LiveCount(), 25) * 0.08f; // more pipes = faster fuel
+        oilChargeFrac += OilChargeRate * boost * Time.deltaTime;
+        int whole = Mathf.FloorToInt(oilChargeFrac);
+        if (whole <= 0) return;
+
+        int oil = Mathf.FloorToInt(src.DrawOil(whole)); // only pull what we can actually apply
+        oilChargeFrac -= oil;
+        if (oil <= 0) return;
+
+        if (needFund)
+        {
+            int pay = Mathf.Min(oil, OilRequired - OilPaid);
+            OilPaid += pay; oil -= pay;
+            CheckOnline();
+        }
+        if (oil > 0 && UsesReserve && Reserve < ReserveMax)
+            Reserve += Mathf.Min(oil, ReserveMax - Reserve);
+    }
+
     protected virtual void ApplyLevel() { Health = MaxHealth; }
+
+    // 3.1.1: every building auto-upgrades one level every 3 WAVES (wave-based, not a real-time timer),
+    // so a base you've walked away from keeps getting tougher at a steady, wave-paced rate.
+    const int AutoUpgradeEveryWaves = 3;
+    void AutoUpgradeOverTime()
+    {
+        if (!GameRoot.AutoUpgrade || !CanUpgrade || IsFunding) return;
+        var gm = GameManager.Instance;
+        int wave = gm != null ? gm.WaveNumber : 0;
+        if (nextAutoUpgWave < 0) { nextAutoUpgWave = wave + AutoUpgradeEveryWaves; return; } // arm on first tick
+        if (wave >= nextAutoUpgWave)
+        {
+            nextAutoUpgWave = wave + AutoUpgradeEveryWaves;
+            Level++;
+            ApplyLevel();                                  // new level heals to full
+            Effects.Upgrade(transform.position + Vector3.up * 0.7f);
+        }
+    }
+
     protected virtual void OnActivated() { }
     protected virtual void BuildableTick() { }
 

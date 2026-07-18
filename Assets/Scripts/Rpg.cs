@@ -26,10 +26,12 @@ public class Rpg : Buildable
     {
         switch (Mathf.Clamp(Level, 1, 3))
         {
-            case 1: MaxHealth = 120f; rate = 1.8f; blastDamage = 65f; blastRadius = 2.8f; range = 22f; break;
-            case 2: MaxHealth = 150f; rate = 1.4f; blastDamage = 105f; blastRadius = 3.3f; range = 25f; break;
-            default: MaxHealth = 190f; rate = 1.1f; blastDamage = 155f; blastRadius = 3.8f; range = 28f; break;
+            // 3.1.1: RPG hits much harder & faster with bigger splash (was 65/105/155 dmg).
+            case 1: MaxHealth = 170f; rate = 1.5f; blastDamage = 130f; blastRadius = 3.4f; range = 26f; break;
+            case 2: MaxHealth = 220f; rate = 1.1f; blastDamage = 210f; blastRadius = 4.0f; range = 30f; break;
+            default: MaxHealth = 290f; rate = 0.85f; blastDamage = 320f; blastRadius = 4.6f; range = 34f; break;
         }
+        blastDamage *= ModRuntime.RpgDmgMult; // 3.2: mod multiplier
         Health = MaxHealth;
     }
 

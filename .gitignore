@@ -73,3 +73,9 @@ build.log
 # OS files
 .DS_Store
 Thumbs.db
+
+# build artifacts / installers — belong in GitHub Releases, not git
+/ZombieShooterSetup.exe
+/ZombieShooterLauncher.exe
+/Packaging/*.exe
+webgl_build.log

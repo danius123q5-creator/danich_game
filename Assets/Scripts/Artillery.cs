@@ -6,7 +6,7 @@ using UnityEngine;
 public class Artillery : Buildable
 {
     public override int FundingRequired => 0;   // oil-only super-weapon (no metal)
-    public override int OilRequired => 300;
+    public override int OilRequired => 520;
     public override bool ReserveIsOil => true;
     public override int ReserveMax => 450;      // ammo reserve, paid in oil
 

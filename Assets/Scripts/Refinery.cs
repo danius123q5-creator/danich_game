@@ -175,7 +175,7 @@ public class Refinery : MonoBehaviour, IOilSource
                 if (Capture >= CaptureTime)
                 {
                     Captured = true; Capture = CaptureTime; Control = ControlMax;
-                    if (player != null) { player.AddMetal(PlayerController.CaptureMetalBonus); player.AddOil(CaptureOilBonus); } // +metal & +600 oil
+                    if (player != null) { player.AddMetal(GameManager.CaptureMetalReward()); player.AddOil(CaptureOilBonus); } // +metal (scales w/ wave) & +600 oil
                     Effects.Upgrade(p + Vector3.up * 6f);
                 }
             }
@@ -183,7 +183,7 @@ public class Refinery : MonoBehaviour, IOilSource
         }
         else
         {
-            Oil = Mathf.Min(OilCap, Oil + OilRate * dt); // pipe keeps dripping
+            Oil = Mathf.Min(OilCap, Oil + OilRate * GameRoot.IncomeMult * dt); // pipe keeps dripping (2× in endless)
 
             if (zc > 0) Control -= DrainPerZombie * Mathf.Min(zc, 6) * dt;
             else Control = Mathf.Min(ControlMax, Control + ControlRegen * dt);

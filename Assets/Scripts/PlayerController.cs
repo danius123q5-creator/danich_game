@@ -11,7 +11,7 @@ public class PlayerController : MonoBehaviour
     public float JumpSpeed = 6f;
     public float Gravity = 18f;
     public float MouseSensitivity = 2.2f;
-    public float MaxHealth = 200f;
+    public float MaxHealth = 300f;   // 3.1.1: raised (200→300) — late-game survivability
     public float RespawnDelay = 3f;
 
     // Hardcore caps the wallet lower and makes builds pricier. After wave 12 the cap grows
@@ -25,15 +25,18 @@ public class PlayerController : MonoBehaviour
         {
             int cap = 600;
             var gm = GameManager.Instance;
-            if (gm != null && gm.WaveNumber > 20) cap += (gm.WaveNumber - 20) * 45;
+            // Grows every wave from 15 on (+65/wave) so it reaches 2500+ by wave ~45 — late-game
+            // metal income has somewhere to pool for drone / Big-FPV-drun batteries.
+            if (gm != null && gm.WaveNumber > 15) cap += (gm.WaveNumber - 15) * 65;
             return cap;
         }
     }
     public const int CaptureMetalBonus = 677; // metal granted when you capture a refinery/mine
     // 2.3: "нефтяной карман" building raises your personal oil capacity by 365 each.
     public static int ExtraOilCap = 0;
+    public static bool AutoBhop; // settings toggle: HOLDING space auto-hops (default off = standard jumps)
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() { ExtraOilCap = 0; GodMode = false; }
+    static void ResetStatics() { ExtraOilCap = 0; GodMode = false; AutoBhop = PlayerPrefs.GetInt("bhop_auto", 0) == 1; }
     const int ReserveLoadChunk = 100; // metal loaded into a special weapon's reserve per E press
     const int OilFundChunk = 50;      // oil poured into a super-weapon's funding per E press
 
@@ -63,6 +66,7 @@ public class PlayerController : MonoBehaviour
     public bool IsDead => Health <= 0f;
 
     CharacterController cc;
+    public static bool NoClip = false;   // ноклип-полёт сквозь стены (тоггл на V, песочница)
     Camera cam;
     float pitch;
     float vSpeed;
@@ -86,6 +90,9 @@ public class PlayerController : MonoBehaviour
     int lastWave = -1;
     float nextShot;
     Buildable heldBuild;      // building currently being relocated with the middle mouse button
+    int buildYawStep;         // 0..3 — R rotates the pipe/conveyor drag axis in 90° steps
+    bool topBuild;            // top-down logistics build mode (camera overhead, free mouse)
+    Vector3 topSavedPos, topSavedRot; // FPS camera transform saved while in top-down mode
     GameObject viewmodel;
     GameObject playerBody;
     Vector3 vmBasePos;     // viewmodel rest position; recoil animates around it
@@ -93,9 +100,9 @@ public class PlayerController : MonoBehaviour
     float gunHeat;         // 0..1 muzzle heat glow, decays each frame
     GameObject gunMuzzle;  // barrel tip — glows red-hot when firing
 
-    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ", "СМОТР. БАШНЯ", "ЛЕЗВИЯ", "РАКЕТ. ШАХТА", "ПЛАТФОРМА", "ТРУБА НЕФТИ", "ДОЗАТОР НЕФТИ", "НЕФТ. ВЫШКА", "КОНВЕЙЕР", "ЧАН РУДЫ", "БУРОВАЯ", "НЕФТ. КАРМАН", "ОГНЕМЁТ", "НЕФТ. ХАБ", "РЗК" };
-    static readonly string[] BuildNamesEN = { "TURRET", "DISPENSER", "TRIPWIRE", "WALL", "DOOR", "BRIDGE", "STAIRS", "LANDMINE", "BARBED WIRE", "AIR STRIKE", "TESLA", "ARTILLERY", "BRIDGE-CORNER", "BRIDGE-T", "BRIDGE-CROSS", "AA GUN", "LONG WALL", "TALL WALL", "CAR", "RPG", "VERT. LADDER", "FREEZE GUN", "ORB. STATION", "WATCHTOWER", "BLADES", "MISSILE SILO", "PLATFORM", "OIL PIPE", "OIL DOSER", "OIL DERRICK", "CONVEYOR", "ORE VAT", "DRILL", "OIL POCKET", "FLAMETHROWER", "OIL HUB", "SAM" };
-    static readonly int[] BuildCosts = { 130, 100, 60, 25, 40, 35, 30, 8, 10, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200, 90, 450, 550, 220, 15, 150, 870, 15, 200, 820, 200, 220, 180, 250 };
+    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ", "СМОТР. БАШНЯ", "ЛЕЗВИЯ", "ФАУ-2", "ПЛАТФОРМА", "ТРУБА НЕФТИ", "ДОЗАТОР НЕФТИ", "НЕФТ. ВЫШКА", "КОНВЕЙЕР", "ЧАН РУДЫ", "БУРОВАЯ", "НЕФТ. КАРМАН", "ОГНЕМЁТ", "НЕФТ. ХАБ", "РЗК", "FPV-ДРОН", "БОЛЬШОЙ ФПВ-ДРУН", "ФАУ-1", "КВАДРО-ТУРЕЛЬ", "ПЛАЗМА-ТУРЕЛЬ", "РЕШЁТКА", "СТЕНА+КОЛЮЧКА", "СТЕНА+ТУРЕЛЬ" };
+    static readonly string[] BuildNamesEN = { "TURRET", "DISPENSER", "TRIPWIRE", "WALL", "DOOR", "BRIDGE", "STAIRS", "LANDMINE", "BARBED WIRE", "AIR STRIKE", "TESLA", "ARTILLERY", "BRIDGE-CORNER", "BRIDGE-T", "BRIDGE-CROSS", "AA GUN", "LONG WALL", "TALL WALL", "CAR", "RPG", "VERT. LADDER", "FREEZE GUN", "ORB. STATION", "WATCHTOWER", "BLADES", "V-2", "PLATFORM", "OIL PIPE", "OIL DOSER", "OIL DERRICK", "CONVEYOR", "ORE VAT", "DRILL", "OIL POCKET", "FLAMETHROWER", "OIL HUB", "SAM", "FPV DRONE", "BIG FPV DRONE", "V-1", "QUAD TURRET", "PLASMA TURRET", "LATTICE FENCE", "WALL+WIRE", "WALL+TURRET" };
+    static readonly int[] BuildCosts = { 90, 100, 60, 25, 40, 35, 30, 8, 10, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200, 90, 450, 550, 220, 15, 150, 870, 15, 200, 820, 200, 220, 180, 250, 20, 200, 350, 380, 300, 35, 55, 115 };
 
     // Short "what it is / how it works" blurb per build type — shown in the Q menu on hover.
     static readonly string[] BuildDescriptions =
@@ -109,9 +116,9 @@ public class PlayerController : MonoBehaviour
         "Лестница/пандус: заехать или забраться наверх.",
         "Фугас-лепёшка: лежит на земле, наступил зомби — взрыв. Зомби его не атакуют.",
         "Колючая проволока: сильно замедляет зомби, идущих сквозь неё.",
-        "Авиаудар (супероружие): работает на НЕФТИ — залей нефть с НПЗ (E), затем вызывает удары по толпе на всю карту. КОМПЬЮТЕР НАВЕДЕНИЯ: посмотри на землю и нажми G — авиаудар будет бить по указанному сектору. Металл не нужен.",
-        "Катушка Тесла (супероружие): работает на НЕФТИ — залей нефть с НПЗ (E). Бьёт молнией по ближним зомби, тратит нефть из резерва.",
-        "Артиллерия (супероружие): работает на НЕФТИ — залей нефть с НПЗ (E). Фугасы по площади на всю карту, наводится на цель.",
+        "Авиаудар (супероружие): работает на НЕФТИ — залей нефть с НПЗ вручную (E) (трубой НЕ заправляется), затем вызывает удары по толпе на всю карту. КОМПЬЮТЕР НАВЕДЕНИЯ: посмотри на землю и нажми G — авиаудар будет бить по указанному сектору. Металл не нужен.",
+        "Катушка Тесла (супероружие): работает на НЕФТИ — залей нефть с НПЗ (E) ИЛИ подведи к ней ТРУБУ НЕФТИ — заправит сама. Бьёт молнией по ближним зомби, тратит нефть из резерва.",
+        "Артиллерия (супероружие): работает на НЕФТИ — залей нефть с НПЗ (E) ИЛИ подведи к ней ТРУБУ НЕФТИ — заправит сама. Фугасы по площади на всю карту, наводится на цель.",
         "Угловой мост (Г): поворот настила.",
         "Т-мост: развилка настила.",
         "Крест-мост: перекрёсток настила.",
@@ -122,10 +129,10 @@ public class PlayerController : MonoBehaviour
         "РПГ: дешёвая ракетная турель. Сама бьёт ракетами по площади — хороша против толпы, но хрупкая и медленно перезаряжается.",
         "Вертикальная лестница: встань вплотную и лезь вверх/вниз на W/S. Заберись на стены и мосты. Пробел — спрыгнуть.",
         "Стоп-пушка: раз в ~16с пускает волну, замораживающую ВСЕХ зомби на карте на 10 секунд. Дёшево, без расхода металла.",
-        "Орбитальная станция: блок управления, работает на НЕФТИ — залей нефть с НПЗ (E), металл не нужен. Когда готов — в небе появляется станция и циклит 3 атаки: точные лазеры со взрывом, выжигающий луч (ползёт от зомби к зомби) и тройная призма (3 луча крутятся вокруг базы). Тратит металл из своего бака — заряжай E.",
+        "Орбитальная станция: блок управления, работает на НЕФТИ — залей нефть с НПЗ (E) ИЛИ подведи к ней ТРУБУ НЕФТИ — заправит сама, металл не нужен. Когда готов — в небе появляется станция и циклит 3 атаки: точные лазеры со взрывом, выжигающий луч (ползёт от зомби к зомби) и тройная призма (3 луча крутятся вокруг базы). Тратит металл из своего бака — заряжай E.",
         "Смотровая башня (20 м): залезь по лестнице через люк на площадку наверху — отличная точка для стрельбы, зомби туда не достанут.",
         "Лезвия: крутящийся ротор рубит всех зомби рядом несколько раз в секунду. Работает как турель — сама, без зарядки и расхода металла. Дорогая в постройке.",
-        "Ракетная шахта: мощная «супер»-турель — работает САМА, без нефти и металла. Бьёт по толпам (3+ зомби) в радиусе ~50-70 м: ракета взлетает, переворачивается и падает на цель, а ЖИРНЫЙ сплеш сносит всех вокруг (10-16). Ракеты не бьют в одного зомби дважды. Дорогая в постройке.",
+        "ФАУ-2: огромная баллистическая ракета, стоящая ВЕРТИКАЛЬНО на пусковой стойке — мощная «супер»-турель ДАЛЬНЕГО действия, работает САМА, без нефти и металла. Бьёт по толпам (3+ зомби) на дистанции до ~2000 м через всю карту: ракета стартует со стойки, идёт по высокой баллистической дуге, переворачивается и падает на цель, а ЖИРНЫЙ сплеш сносит всех вокруг (10-16). Ракеты не бьют в одного зомби дважды. Дорогая в постройке.",
         "Платформа: огромная площадка на 4 толстых столбах. Залезь по лестнице наверх — целый этаж под турели и линию обороны, зомби туда не достанут.",
         "Труба нефти: зажми ЛКМ у захваченного НПЗ и веди к базе — отпустишь, и труба ляжет цепочкой (15 мет./звено). Тянет нефть к дозатору. Зомби её ломают — защищай.",
         "Дозатор нефти: качает нефть из подключённого НПЗ (через трубы) и сам выдаёт её тебе, когда стоишь рядом. Поставь у базы — нефть течёт без беготни.",
@@ -136,7 +143,15 @@ public class PlayerController : MonoBehaviour
         "Нефтяной карман: доп. бак-хранилище — пока стоит, поднимает твой МАКС. запас нефти на +365. Ставь несколько, чтобы копить больше нефти под супер-пушки. Сломают/продашь — прибавка пропадёт.",
         "Огнемёт: стационарный, поливает коротким конусом огня. ОГРОМНЫЙ урон, но очень малая дальность — жарит всех вблизи, вдали бесполезен. Работает сам, без расхода. Улучшай (E) — урон и радиус.",
         "Нефтяной хаб: узел-сумматор И раздатчик. Протяни к нему трубы от НЕСКОЛЬКИХ НПЗ/вышек — он качает нефть со ВСЕХ сразу и сам выдаёт её тебе рядом. Чем больше труб подключено — тем БЫСТРЕЕ наливает (нефтяной аналог чана для руды).",
-        "РЗК: дальнобойная зенитно-ракетная установка на 4 тубуса. Даёт ЗАЛП 4 самонаводящихся ракет по птицам-десантникам — каждая гарантированно сбивает (ЗЕНИТКА бьёт лишь с шансом и вблизи). С 24 волны сбивает вражеские бомбардировщики. ОСТОРОЖНО: с шансом 2% может по ошибке сбить ТВОЙ же самолёт-авиаудар — а его падение сносит ВСЁ в огромном радиусе. Улучшай (E) — дальность и скорострельность.",
+        "РЗК: дальнобойная зенитно-ракетная установка на 4 тубуса. Даёт ЗАЛП 4 самонаводящихся ракет по птицам-десантникам — каждая гарантированно сбивает (ЗЕНИТКА бьёт лишь с шансом и вблизи). С 24 волны сбивает вражеские бомбардировщики — сбитый самолёт взрывается прямо в воздухе (никаких падений на базу). Улучшай (E) — дальность и скорострельность.",
+        "Дон дрон с дрыном дон, в щещню залетел дон! FPV-дрон (он же друн): дешёвая площадка (20 мет.) — сама запускает друна-камикадзе в ближайшего зомби: взлетает, таранит цель и взрывается сплешем. Работает сам, без нефти и металла — только перезарядка. БЛИЖНИЙ радиус — держит оборону у базы (для дальнобойного бери «Большой ФПВ-друн»). Ставь пачками для роя. Улучшай (E) — быстрее, шире радиус, больше урона. рамзан ахматович одобряет.",
+        "БОЛЬШОЙ ФПВ-ДРУН: тяжёлый барражирующий боеприпас с дельта-крылом (200 мет.) — лейтгейм-мопед для тотального ада. Взлетает с площадки, выходит на крейсер ~12 м над землёй, идёт к ближайшему зомби через полкарты и ПИКИРУЕТ в него мощным фугасом. Дёшев для своей мощи — воткни БАТАРЕЮ из 5-6 рамп на полный карман и ковровый удар по орде обеспечен. Работает сам, без нефти. Бьёт по РАЗНЫМ зомби (резерв целей). Улучшай (E) — дальность до ~2000 м, радиус взрыва до 8 и урон до 620.",
+        "ФАУ-1: самый большой «друн» — крылатая бомба «Фау-1» на ОГРОМНОЙ наклонной рампе (350 мет.). Бомба идёт РОВНЫМ КРЕЙСЕРОМ ~10 м над землёй через полкарты в дальнего зомби и ныряет в него ГИГАНТСКИМ фугасом (радиус до 32, урон до 4200 — выносит толпу целиком). Дальнобойный (до 2000 м) и самый мощный, но дорогой и с долгой перезарядкой. Бьёт по РАЗНЫМ зомби (резерв целей). Работает сам, без нефти. Улучшай (E) — дальность, радиус взрыва и урон растут.",
+        "КВАДРО-ТУРЕЛЬ: тяжёлая турель на ЧЕТЫРЕ ствола (380 мет.) — топовая автопушка ближней/средней обороны. Даёт БЫСТРЫЙ ЗАЛП из 4 стволов, распределяя огонь по ЧЕТЫРЁМ разным зомби сразу — рвёт толпу, а не одну цель. Толстая броня (до 640 ХП) и дальность до 40 м. С ур.2 плюсом ЛУПИТ ракетами по площади. Работает сама, без нефти и патронов. Улучшай (E) — урон, скорострельность, дальность и ракеты.",
+        "ПЛАЗМА-ТУРЕЛЬ (ДЛС «Не далёкое будущее»): повстанческий плазма-тех. Стреляет быстрым ПРОБИВАЮЩИМ разрядом — цианный луч прошивает ЦЕЛУЮ ЛИНИЮ врагов до дальности (а не одну цель), поэтому топ против колонн в коридорах. Работает сама, без нефти/патронов. Улучшай (E) — урон, скорострельность, дальность и ширина пробоя.",
+        "РЕШЁТКА: электрифицированный решётчатый забор-ловушка. Как колючка — зомби идут СКВОЗЬ (не бьют его), но металлическая сетка бьёт их током: постоянный урон + замедление всем в полосе, плюс раз в ~1с — усиленный РАЗРЯД. Прочнее и длиннее колючки — ставь стенкой поперёк проходов. Работает сама, без нефти. Улучшай (E) — урон тока, разряд, замедление и прочность.",
+        "СТЕНА+КОЛЮЧКА: длинная стена + полоса колючей проволоки в 2 метрах ПЕРЕД ней. Стена держит натиск (HP как у длинной стены), а колючка тормозит и медленно режет зомби ещё на подходе — они увязают перед стеной под твоим огнём. Одна постройка вместо двух, за одну цену. Улучшай (E) — HP стены + урон/замедление колючки.",
+        "СТЕНА+ТУРЕЛЬ: обычная стена со встроенной автотурелью. Стена блокирует и держит удар (толстый HP), а турель сама лупит по ближайшим зомби. Мгновенная укреплённая огневая точка — одна постройка вместо стены и турели по отдельности. Улучшай (E) — HP + урон/скорострельность турели.",
     };
 
     // English translations of BuildDescriptions, in the SAME order (used when Lang.EN).
@@ -151,9 +166,9 @@ public class PlayerController : MonoBehaviour
         "Stairs/ramp: drive or climb up.",
         "Landmine: lies on the ground, a zombie steps on it — explosion. Zombies don't attack it.",
         "Barbed wire: heavily slows zombies walking through it.",
-        "Air strike (super-weapon): runs on OIL — pour in oil from a refinery (E), then it calls strikes on the crowd across the whole map. TARGETING COMPUTER: look at the ground and press G — the air strike will hit the marked sector. No metal needed.",
-        "Tesla coil (super-weapon): runs on OIL — pour in oil from a refinery (E). Zaps nearby zombies with lightning, spends oil from its reserve.",
-        "Artillery (super-weapon): runs on OIL — pour in oil from a refinery (E). Area shells across the whole map, aims at a target.",
+        "Air strike (super-weapon): runs on OIL — pour in oil from a refinery by hand (E) (NOT fuelled by pipes), then it calls strikes on the crowd across the whole map. TARGETING COMPUTER: look at the ground and press G — the air strike will hit the marked sector. No metal needed.",
+        "Tesla coil (super-weapon): runs on OIL — pour in oil from a refinery (E) OR run an OIL PIPE to it — it fuels itself. Zaps nearby zombies with lightning, spends oil from its reserve.",
+        "Artillery (super-weapon): runs on OIL — pour in oil from a refinery (E) OR run an OIL PIPE to it — it fuels itself. Area shells across the whole map, aims at a target.",
         "Corner bridge (L-shape): a turn in the walkway.",
         "T-bridge: a walkway junction.",
         "Cross bridge: a walkway crossroads.",
@@ -164,10 +179,10 @@ public class PlayerController : MonoBehaviour
         "RPG: a cheap rocket turret. Fires area rockets on its own — good against crowds, but fragile and slow to reload.",
         "Vertical ladder: stand up close and climb up/down with W/S. Get onto walls and bridges. Space to hop off.",
         "Freeze gun: every ~16s it emits a wave that freezes ALL zombies on the map for 10 seconds. Cheap, spends no metal.",
-        "Orbital station: a control block, runs on OIL — pour in oil from a refinery (E), no metal needed. When ready a station appears in the sky and cycles 3 attacks: precise lasers with a blast, a burning beam (creeps from zombie to zombie) and a triple prism (3 beams spin around the base). Spends metal from its tank — recharge with E.",
+        "Orbital station: a control block, runs on OIL — pour in oil from a refinery (E) OR run an OIL PIPE to it — it fuels itself, no metal needed. When ready a station appears in the sky and cycles 3 attacks: precise lasers with a blast, a burning beam (creeps from zombie to zombie) and a triple prism (3 beams spin around the base). Spends metal from its tank — recharge with E.",
         "Watchtower (20 m): climb the ladder through the hatch to the platform up top — a great spot to shoot from, zombies can't reach it.",
         "Blades: a spinning rotor slices every zombie nearby several times a second. Works like a turret — on its own, no charging or metal cost. Expensive to build.",
-        "Missile silo: a powerful 'super' turret — works ON ITS OWN, no oil or metal. Hits crowds (3+ zombies) within ~50-70 m: the missile launches, flips over and drops onto the target, and a FAT splash wipes out everyone around (10-16). Missiles never hit the same zombie twice. Expensive to build.",
+        "V-2: a huge ballistic rocket standing VERTICALLY on a launch stand — a powerful LONG-RANGE 'super' turret that works ON ITS OWN, no oil or metal. Hits crowds (3+ zombies) up to ~2000 m away across the map: the rocket lifts off the stand, flies a high ballistic arc, flips over and drops onto the target, and a FAT splash wipes out everyone around (10-16). Missiles never hit the same zombie twice. Expensive to build.",
         "Platform: a huge deck on 4 thick pillars. Climb the ladder up top — a whole floor for turrets and a defensive line, zombies can't reach it.",
         "Oil pipe: hold LMB at a captured refinery and lead it to the base — release and the pipe lays as a chain (15 metal/link). Carries oil to the doser. Zombies break it — protect it.",
         "Oil doser: pumps oil from a connected refinery (through pipes) and hands it to you when you stand nearby. Place it by the base — oil flows without the running around.",
@@ -178,25 +193,40 @@ public class PlayerController : MonoBehaviour
         "Oil pocket: an extra storage tank — while it stands it raises your MAX oil reserve by +365. Place several to stockpile more oil for super-weapons. If it's destroyed/sold, the bonus is gone.",
         "Flamethrower: stationary, sprays a short cone of fire. HUGE damage, but very short range — roasts everyone close, useless at a distance. Works on its own, no cost. Upgrade (E) — damage and radius.",
         "Oil hub: a combiner node AND dispenser. Run pipes to it from SEVERAL refineries/derricks — it pumps oil from ALL of them at once and hands it to you nearby. The more pipes connected — the FASTER it fills (the oil equivalent of the ore vat).",
-        "SAM: a long-range surface-to-air missile launcher with 4 tubes. Fires a SALVO of 4 homing missiles at paratrooper birds — each one is a guaranteed kill (the AA gun only hits by chance and up close). From wave 24 it downs enemy bombers. CAUTION: with a 2% chance it may mistakenly shoot down YOUR OWN air-strike plane — and its crash wipes out EVERYTHING in a huge radius. Upgrade (E) — range and fire rate.",
+        "SAM: a long-range surface-to-air missile launcher with 4 tubes. Fires a SALVO of 4 homing missiles at paratrooper birds — each one is a guaranteed kill (the AA gun only hits by chance and up close). From wave 24 it downs enemy bombers — a downed plane blows up in mid-air (no crashing onto the base). Upgrade (E) — range and fire rate.",
+        "Don drone with a dryn, don! FPV drone (aka 'drun'): a cheap pad (20 metal) — launches a kamikaze drone at the nearest zombie on its own. The drone lifts off, rams the target and detonates in a small blast. Works by itself, no oil or metal — just a reload. SHORT range — holds the line near the base (for long range take the 'Big FPV drone'). Place several for a swarm. Upgrade (E) — faster, wider radius, more damage. ramzan akhmatovich approves.",
+        "BIG FPV DRONE: a heavy delta-wing loitering munition (200 metal) — a late-game piece for total mayhem. Lifts off the pad, climbs to a cruise ~12 m above the ground, flies across half the map to the nearest zombie and DIVES into it with a big blast. Cheap for its power — field a BATTERY of 5-6 pads on a full wallet and carpet-bomb the horde. Works on its own, no oil. Targets DIFFERENT zombies (shared reservation). Upgrade (E) — range up to ~2000 m, blast up to 8 and damage up to 620.",
+        "V-1: the biggest 'drone' — a V-1 flying bomb on a HUGE inclined launch ramp (350 metal). The bomb cruises in LEVEL ~10 m over the ground across half the map into a distant zombie and dives into it with a GIGANTIC blast (radius up to 32, damage up to 4200 — wipes a whole crowd). Long-range (up to 2000 m) and the most powerful, but expensive with a long reload. Targets DIFFERENT zombies (shared reservation). Works on its own, no oil. Upgrade (E) — range, blast radius and damage all grow.",
+        "QUAD TURRET: a heavy FOUR-barrel turret (380 metal) — the top close/mid-range auto-cannon. Fires a FAST 4-barrel BURST, splitting fire across FOUR different zombies at once — it shreds a crowd, not just one target. Thick armour (up to 640 HP) and range up to 40 m. From lvl 2 it also LOBS area rockets. Works on its own, no oil or ammo. Upgrade (E) — damage, fire rate, range and rockets.",
+        "PLASMA TURRET (DLC 'Near Future'): captured rebel plasma-tech. Fires a fast PIERCING plasma bolt — a cyan beam rips through a WHOLE LINE of enemies up to range (not just one target), so it's top against columns in corridors. Works on its own, no oil or ammo. Upgrade (E) — damage, fire rate, range and beam width.",
+        "LATTICE FENCE: an electrified grid-fence trap. Like barbed wire, zombies walk THROUGH it (they don't attack it), but the metal mesh shocks them: constant damage + slow to everyone in the strip, plus a stronger ZAP every ~1s. Tougher and longer than barbed wire — line it across corridors. Works on its own, no oil. Upgrade (E) — shock damage, zap, slow and durability.",
+        "WALL+WIRE: a long wall plus a strip of barbed wire 2 m in FRONT of it. The wall holds the line (long-wall HP), while the wire slows and slowly shreds zombies on the approach — they bog down in front of the wall under your fire. One build instead of two, for one price. Upgrade (E) — wall HP + wire damage/slow.",
+        "WALL+TURRET: a normal wall with a built-in auto-turret. The wall blocks and tanks hits (thick HP), while the turret auto-fires at nearby zombies. An instant fortified firing point — one build instead of a separate wall and turret. Upgrade (E) — HP + turret damage/fire rate.",
     };
 
     // Build-menu sections: each holds the build-type indices shown under that header.
-    static readonly string[] BuildCategories = { "СТРОИТЕЛЬНОЕ", "ОБОРОНА", "ЭКОНОМИКА", "ОСТАЛЬНОЕ" };
-    static readonly string[] BuildCategoriesEN = { "CONSTRUCTION", "DEFENSE", "ECONOMY", "OTHER" };
+    static readonly string[] BuildCategories = { "СТРОЙКА", "ДОБЫЧА", "ЛОГИСТИКА", "ТУРЕЛИ", "ПВО", "ЛОВУШКИ", "ТЯЖЁЛОЕ" };
+    static readonly string[] BuildCategoriesEN = { "CONSTRUCTION", "EXTRACTION", "LOGISTICS", "TURRETS", "AIR DEFENSE", "TRAPS", "HEAVY" };
 
     // Language accessors for the static build arrays — chosen at USE time so switching
     // languages at runtime works (wrapping the array elements with Lang.T would freeze
     // the language at static-init time).
+    // The Dispenser (index 1) is the BASE lifeline — the game spawns it, the player never builds it
+    // (in endless mode it's RELOCATED with СКМ, not freshly built). Guard so no hotkey/menu can place one.
+    static bool IsPlayerBuildable(int type) => type != 1;
+
     static string BName(int i) => Lang.EN ? BuildNamesEN[i] : BuildNames[i];
     static string BDesc(int i) => Lang.EN ? BuildDescriptionsEN[i] : BuildDescriptions[i];
     static string BCat(int i) => Lang.EN ? BuildCategoriesEN[i] : BuildCategories[i];
     static readonly int[][] BuildCategoryItems =
     {
-        new[] { 3, 16, 17, 4, 6, 20, 23, 26, 29, 32, 5 }, // WALL, LONG/TALL WALL, DOOR, STAIRS, LADDER, WATCHTOWER, BIG PLATFORM, OIL DERRICK, DRILL, BRIDGE
-        new[] { 0, 19, 2, 7, 8, 15, 36, 24, 25, 34 }, // SENTRY, RPG, MINE, LANDMINE, BARBED WIRE, AA TURRET, SAM(ПЗРК), BLADES, MISSILE SILO, FLAMETHROWER
-        new[] { 27, 28, 35, 30, 31 },             // ЭКОНОМИКА: OIL PIPE, OIL DOSER, OIL HUB, CONVEYOR, METAL VAT (oil pocket removed from menu)
-        new[] { 9, 10, 11, 21, 22, 18 },          // AIR STRIKE, TESLA, ARTILLERY, FREEZE, ORBITAL, CAR
+        new[] { 3, 16, 17, 4, 6, 20, 23, 26, 5, 43 }, // СТРОЙКА: WALL, LONG/TALL WALL, DOOR, STAIRS, LADDER, WATCHTOWER, BIG PLATFORM, BRIDGE, WALL+WIRE
+        new[] { 29, 32 },                         // ДОБЫЧА: OIL DERRICK, METAL DRILL
+        new[] { 27, 28, 35, 30, 31 },             // ЛОГИСТИКА: OIL PIPE, OIL DOSER, OIL HUB, CONVEYOR, METAL VAT
+        new[] { 0, 40, 41, 19, 37, 24, 34, 10, 21, 44 },  // ТУРЕЛИ: SENTRY, QUAD TURRET, PLASMA TURRET(ДЛС), RPG, FPV DRONE, BLADES, FLAMETHROWER, TESLA, FREEZE, WALL+TURRET
+        new[] { 15, 36 },                         // ПВО: AA TURRET (ЗЕНИТКА), SAM (РЗК)
+        new[] { 2, 7, 8, 42 },                    // ЛОВУШКИ: MINE, LANDMINE, BARBED WIRE, LATTICE FENCE(решётка)
+        new[] { 25, 39, 38, 9, 11, 22, 18 },      // ТЯЖЁЛОЕ: MISSILE SILO, V-1, GERAN-2, AIR STRIKE, ARTILLERY, ORBITAL, CAR
     };
 
     struct GunStats { public string name; public float dmg; public float rate; public int mag; }
@@ -212,6 +242,8 @@ public class PlayerController : MonoBehaviour
 
     void Awake()
     {
+        MaxHealth *= ModRuntime.PlayerHpMult;   // 3.2: mod multipliers
+        MoveSpeed *= ModRuntime.PlayerSpeedMult;
         Health = MaxHealth;
         Metal = Mathf.Min(Metal, MetalMax); // respect the (lower) hardcore cap from the start
         ammo = Guns[0].mag;
@@ -246,6 +278,9 @@ public class PlayerController : MonoBehaviour
     {
         if (!GameRoot.IsPlaying) return; // frozen in menu / pause
 
+        if (GameRoot.Sandbox) { Metal = 999999; Oil = 999999; } // sandbox: bottomless wallet
+        if (GameRoot.ModTest) HandleModTest(); // 3.2: hotkeys to reload/fire node-mod events
+
         SyncGunToWave();
 
         if (GameRoot.BaseLost) // base lifeline destroyed → game over, free the cursor for the screen
@@ -276,8 +311,8 @@ public class PlayerController : MonoBehaviour
         if (qHeld != buildMenuOpen)
         {
             buildMenuOpen = qHeld;
-            Cursor.lockState = buildMenuOpen ? CursorLockMode.None : CursorLockMode.Locked;
-            Cursor.visible = buildMenuOpen;
+            Cursor.lockState = (buildMenuOpen || topBuild) ? CursorLockMode.None : CursorLockMode.Locked;
+            Cursor.visible = buildMenuOpen || topBuild;
             if (buildMenuOpen) layingDrag = false; // cancel any in-progress pipe drag
         }
         if (buildMenuOpen)
@@ -288,8 +323,13 @@ public class PlayerController : MonoBehaviour
             return; // frozen while the menu is held open; clicks handled in OnGUI
         }
 
-        Look();
-        Move();
+        // ---- Top-down logistics build mode (T): overhead camera + free mouse to lay pipes/conveyors ----
+        if (topBuild && (tool != Tool.Build || IsDead || Disarmed)) SetTopBuild(false); // auto-exit if we leave building
+        if (Input.GetKeyDown(KeyCode.T) && (tool == Tool.Build || topBuild)) SetTopBuild(!topBuild);
+        else if (topBuild && Input.GetKeyDown(KeyCode.Escape)) SetTopBuild(false);
+
+        if (topBuild) TopBuildPan(); // WASD pans the overhead view; mouse-look frozen
+        else { Look(); Move(); }
 
         // Disarmed (evac cutscene): keep mouselook + movement, but no weapons/tools/HUD targeting.
         if (Disarmed)
@@ -321,7 +361,7 @@ public class PlayerController : MonoBehaviour
         // special weapons (10+) live past the number row, so they're picked from the Q menu.
         int hotkeys = Mathf.Min(BuildNames.Length, 9);
         for (int k = 0; k < hotkeys; k++)
-            if (Input.GetKeyDown(KeyCode.Alpha1 + k)) { SelectedBuild = k; SetTool(Tool.Build); }
+            if (Input.GetKeyDown(KeyCode.Alpha1 + k) && IsPlayerBuildable(k)) { SelectedBuild = k; SetTool(Tool.Build); }
 
         // Middle mouse button (СКМ) = pick up / relocate a building. First press grabs the one
         // you're looking at; while held it follows your crosshair; press again to drop it there.
@@ -332,6 +372,9 @@ public class PlayerController : MonoBehaviour
             if (Input.GetKeyDown(KeyCode.R)) heldBuild.transform.Rotate(0f, 90f, 0f);
             FollowHeldBuild();
         }
+        // In the build tool, R rotates the pipe/conveyor drag axis by 90° (straight-line laying).
+        else if (tool == Tool.Build && Input.GetKeyDown(KeyCode.R))
+            buildYawStep = (buildYawStep + 1) & 3;
 
         switch (tool)
         {
@@ -339,13 +382,7 @@ public class PlayerController : MonoBehaviour
                 if (Input.GetMouseButton(0)) FireGun();
                 break;
             case Tool.Build:
-                if (IsDragBuild(SelectedBuild))
-                {
-                    // Pipe/conveyor: hold LMB at the source, walk to base, release to lay the whole run.
-                    if (Input.GetMouseButtonDown(0)) BeginDragBuild();
-                    else if (layingDrag && Input.GetMouseButtonUp(0)) EndDragBuild();
-                }
-                else if (Input.GetMouseButtonDown(0)) BuildPrimary();
+                HandleBuildInput();
                 if (Input.GetMouseButtonDown(1)) SellBuild();
                 if (Input.GetKeyDown(KeyCode.X)) DeleteByClass(); // снести весь класс постройки, на которую смотришь
                 break;
@@ -409,10 +446,38 @@ public class PlayerController : MonoBehaviour
 
     void Move()
     {
+        // НОКЛИП (V): полёт сквозь стены — ТОЛЬКО в песочнице. В обычной игре читерить нельзя.
+        // Если ноклип как-то остался включён вне песочницы — принудительно выключаем. 2026-07-14.
+        if (NoClip && !GameRoot.Sandbox) { NoClip = false; cc.enabled = true; }
+        if (Input.GetKeyDown(KeyCode.V))
+        {
+            if (!GameRoot.Sandbox)
+            {
+                Toast(Lang.T("Ноклип только в песочнице", "Noclip is sandbox-only"));
+            }
+            else
+            {
+                NoClip = !NoClip;
+                cc.enabled = !NoClip;   // коллайдер off = проходишь стены; on = обычная физика
+                Toast(Lang.T(NoClip ? "🛸 Ноклип ВКЛ — полёт сквозь стены (W/S лететь, Space вверх, Ctrl вниз, Shift быстрее)" : "Ноклип выкл",
+                             NoClip ? "🛸 Noclip ON — fly through walls (W/S move, Space up, Ctrl down, Shift faster)" : "Noclip OFF"));
+            }
+        }
+        if (NoClip)
+        {
+            float nh = Input.GetAxisRaw("Horizontal");
+            float nv = Input.GetAxisRaw("Vertical");
+            float fly = MoveSpeed * (Input.GetKey(KeyCode.LeftShift) ? 3.5f : 1.6f);
+            Vector3 dir = cam.transform.forward * nv + cam.transform.right * nh; // летим КУДА СМОТРИМ
+            if (Input.GetKey(KeyCode.Space)) dir += Vector3.up;                   // вверх
+            if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.C)) dir += Vector3.down; // вниз
+            if (dir.sqrMagnitude > 1e-4f) transform.position += dir.normalized * fly * Time.deltaTime;
+            vSpeed = 0f;
+            return;
+        }
+
         float h = Input.GetAxisRaw("Horizontal");
         float v = Input.GetAxisRaw("Vertical");
-        Vector3 dir = transform.right * h + transform.forward * v;
-        if (dir.sqrMagnitude > 1f) dir.Normalize();
 
         bool crouch = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.C);
         bool sprint = Input.GetKey(KeyCode.LeftShift) && !crouch;
@@ -441,24 +506,74 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        // Jump with coyote time + an input buffer so a press never gets eaten by the
-        // frame where the controller is still settling on the ground ("works every other time").
+        // ---- BHOP movement (Source-style): momentum + friction on foot, air-strafing airborne ----
+        Vector3 wishdir = transform.right * h + transform.forward * v;
+        wishdir.y = 0f;
+        if (wishdir.sqrMagnitude > 1e-4f) wishdir.Normalize();
+
         bool grounded = cc.isGrounded;
         coyote = grounded ? 0.1f : coyote - Time.deltaTime;
         if (Input.GetKeyDown(KeyCode.Space)) jumpBuffer = 0.1f;
         else jumpBuffer -= Time.deltaTime;
 
-        if (grounded && vSpeed < 0f) vSpeed = -1f; // stick to the ground while settling
-
-        if (jumpBuffer > 0f && coyote > 0f && !crouch)
+        // The Settings "Бхоп" checkbox (default OFF) governs the WHOLE bhop feel: momentum/inertia
+        // AND auto-hop. OFF → plain arcade movement, no speed build-up; ON → Source-style bhop.
+        if (!AutoBhop)
         {
-            vSpeed = JumpSpeed;
-            jumpBuffer = 0f;
-            coyote = 0f; // consume, so one press = one jump
+            bool jumpNow = jumpBuffer > 0f && coyote > 0f && !crouch;
+            hVel = wishdir * speed;                       // instant velocity, NO inertia carried
+            if (jumpNow) { vSpeed = JumpSpeed; jumpBuffer = 0f; coyote = 0f; }
+            else if (grounded && vSpeed < 0f) vSpeed = -1f;
+            vSpeed -= Gravity * Time.deltaTime;
+            cc.Move((hVel + Vector3.up * vSpeed) * Time.deltaTime);
+            return;
+        }
+
+        // Jump. Auto-hop lets HOLDING space re-hop on landing.
+        bool jumpWanted = jumpBuffer > 0f || Input.GetKey(KeyCode.Space);
+        bool doJump = jumpWanted && coyote > 0f && !crouch;
+
+        if (grounded && !doJump)
+        {
+            GroundFriction(Time.deltaTime);
+            AccelToward(wishdir, speed, GroundAccel, Time.deltaTime);
+            if (vSpeed < 0f) vSpeed = -1f; // stick to the ground while settling
+        }
+        else
+        {
+            if (doJump) { vSpeed = JumpSpeed; jumpBuffer = 0f; coyote = 0f; } // launch — NO friction, speed carries
+            AirAccelToward(wishdir, speed, AirAccel, AirCap, Time.deltaTime); // strafe to keep/build speed
         }
 
         vSpeed -= Gravity * Time.deltaTime;
-        cc.Move((dir * speed + Vector3.up * vSpeed) * Time.deltaTime);
+        if (hVel.magnitude > MaxHVel) hVel = hVel.normalized * MaxHVel;       // sane bhop top speed
+        cc.Move((hVel + Vector3.up * vSpeed) * Time.deltaTime);
+    }
+
+    // --- Source-style bhop helpers. hVel = horizontal velocity carried between frames. ---
+    const float Friction = 6f, GroundAccel = 12f, AirAccel = 14f, AirCap = 1.4f, MaxHVel = 24f;
+    Vector3 hVel;
+
+    void GroundFriction(float dt)
+    {
+        float sp = hVel.magnitude;
+        if (sp < 0.1f) { hVel = Vector3.zero; return; }
+        float control = sp < 3f ? 3f : sp;                       // stopspeed = 3
+        hVel *= Mathf.Max(sp - control * Friction * dt, 0f) / sp;
+    }
+
+    void AccelToward(Vector3 wishdir, float wishspeed, float accel, float dt)
+    {
+        float add = wishspeed - Vector3.Dot(hVel, wishdir);
+        if (add <= 0f) return;
+        hVel += wishdir * Mathf.Min(accel * wishspeed * dt, add);
+    }
+
+    void AirAccelToward(Vector3 wishdir, float wishspeed, float accel, float cap, float dt)
+    {
+        float add = Mathf.Min(wishspeed, cap) - Vector3.Dot(hVel, wishdir); // air speed cap is the strafe magic
+        if (add <= 0f) return;
+        hVel += wishdir * Mathf.Min(accel * wishspeed * dt, add);
     }
 
     // True when the player overlaps something climbable: the vertical-ladder buildable, or
@@ -487,7 +602,10 @@ public class PlayerController : MonoBehaviour
 
     bool RaycastNoSelf(float dist, out RaycastHit best)
     {
-        int n = Physics.RaycastNonAlloc(cam.transform.position, cam.transform.forward, _rayHits, dist);
+        Vector3 org, dir;
+        if (topBuild) { var r = cam.ScreenPointToRay(Input.mousePosition); org = r.origin; dir = r.direction; if (dist < 120f) dist = 120f; }
+        else { org = cam.transform.position; dir = cam.transform.forward; }
+        int n = Physics.RaycastNonAlloc(org, dir, _rayHits, dist);
         // Pick the NEAREST hit that isn't the player's own collider (single pass, no sort).
         float bestD = float.MaxValue; bool found = false; best = default;
         for (int i = 0; i < n; i++)
@@ -496,6 +614,50 @@ public class PlayerController : MonoBehaviour
             if (_rayHits[i].distance < bestD) { bestD = _rayHits[i].distance; best = _rayHits[i]; found = true; }
         }
         return found;
+    }
+
+    // ---- Top-down logistics build mode: overhead camera + free mouse to lay pipes/conveyors ----
+    void SetTopBuild(bool on)
+    {
+        if (on == topBuild) return;
+        topBuild = on;
+        layingDrag = false;
+        if (on)
+        {
+            topSavedPos = cam.transform.localPosition;
+            topSavedRot = cam.transform.localEulerAngles;
+            cam.transform.localPosition = new Vector3(0f, 42f, 0f);     // high above the player's feet
+            cam.transform.localEulerAngles = new Vector3(90f, 0f, 0f);  // straight down
+            Cursor.lockState = CursorLockMode.None; Cursor.visible = true;
+            vSpeed = 0f; hVel = Vector3.zero;
+            Toast(Lang.T("Вид СВЕРХУ: мышью веди трубы/конвейеры, R — поворот, WASD — двигать вид, ПРОБЕЛ — прыжок. T/Esc — выйти",
+                         "TOP view: drag pipes/conveyors with the mouse, R to rotate, WASD to pan, SPACE to jump. T/Esc to exit"));
+        }
+        else
+        {
+            cam.transform.localPosition = topSavedPos;
+            cam.transform.localEulerAngles = topSavedRot;
+            Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false;
+        }
+    }
+
+    // WASD pans the overhead view (walk the player around under the top-down camera). Space still jumps.
+    void TopBuildPan()
+    {
+        float h = Input.GetAxisRaw("Horizontal"), v = Input.GetAxisRaw("Vertical");
+        Vector3 fwd = transform.forward; fwd.y = 0f; fwd.Normalize();
+        Vector3 rgt = transform.right;   rgt.y = 0f; rgt.Normalize();
+        Vector3 pan = rgt * h + fwd * v;
+        if (pan.sqrMagnitude > 1f) pan.Normalize();
+
+        // Jumping IS allowed in build mode — full gravity + Space to hop.
+        bool grounded = cc.isGrounded;
+        if (grounded && vSpeed < 0f) vSpeed = -2f;               // stick to the ground between jumps
+        if (grounded && Input.GetKeyDown(KeyCode.Space)) vSpeed = JumpSpeed; // hop
+        vSpeed -= Gravity * Time.deltaTime;
+
+        Vector3 vel = pan * (MoveSpeed * 1.8f) + Vector3.up * vSpeed;
+        cc.Move(vel * Time.deltaTime);
     }
 
     // ---- Gun ----
@@ -564,12 +726,14 @@ public class PlayerController : MonoBehaviour
             else b.Repair(60f);
             return;
         }
-        PlaceOne(SelectedBuild, hit.point, BuildYaw(), BCost(SelectedBuild));
+        Vector3 place = new Vector3(hit.point.x, PlaceY(SelectedBuild, hit.point.x, hit.point.z), hit.point.z);
+        PlaceOne(SelectedBuild, place, BuildYaw(), BCost(SelectedBuild));
     }
 
     // Place a single building (net-aware). Returns true if it went down and metal was spent.
     bool PlaceOne(int type, Vector3 pos, float yaw, int cost)
     {
+        if (!IsPlayerBuildable(type)) return false; // base Dispenser is never player-built
         if (Metal < cost) return false;
         if (NetClient)
         {
@@ -589,16 +753,61 @@ public class PlayerController : MonoBehaviour
     int dragSegs, dragTotalCost;   // live count/cost preview shown while dragging a line
     public const float DragSegment = 3f; // pipe/conveyor segment length (metres)
 
+    // Placement scheme: a QUICK click drops exactly one building; HOLDING LMB past HoldToDrag turns
+    // it into a drag that lays a whole row (only for drag-capable types). No manual rotation.
+    const float HoldToDrag = 0.5f;
+    bool lmbArmed;      // LMB is down, deciding click-vs-drag
+    float lmbHeld;      // how long LMB has been held this press
+
+    // A quick tap: place a single piece at the crosshair. Drag types reuse LayLine's single-shot
+    // branch (wall facing + wall-top snap); everything else goes through BuildPrimary.
+    void HandleBuildInput()
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            lmbArmed = true; lmbHeld = 0f; layingDrag = false;
+            if (RaycastNoSelf(30f, out RaycastHit h0)) dragStart = SnapDragPoint(SelectedBuild, h0.point);
+        }
+        else if (lmbArmed && Input.GetMouseButton(0))
+        {
+            lmbHeld += Time.deltaTime;
+            if (!layingDrag && lmbHeld >= HoldToDrag && IsDragBuild(SelectedBuild))
+                layingDrag = true; // held long enough → become a drag
+        }
+        else if (lmbArmed && Input.GetMouseButtonUp(0))
+        {
+            lmbArmed = false;
+            if (layingDrag) EndDragBuild();          // lay the whole line
+            else PlaceSingleClick();                 // quick tap → one piece
+            layingDrag = false;
+        }
+    }
+
+    void PlaceSingleClick()
+    {
+        if (IsDragBuild(SelectedBuild))
+        {
+            if (RaycastNoSelf(30f, out RaycastHit hit))
+            {
+                Vector3 p = SnapDragPoint(SelectedBuild, hit.point);
+                LayLine(SelectedBuild, p, p); // len<1 → single placement (wall facing + surface snap)
+            }
+        }
+        else BuildPrimary();
+    }
+
     // Drag-built (hold LMB, drag a line, release): pipes/conveyors AND every "СТРОИТЕЛЬНОЕ" +
     // "ОБОРОНА" item — so you can lay whole rows of walls, turrets, mines, etc. in one drag.
-    static readonly System.Collections.Generic.HashSet<int> DragTypes = BuildDragSet();
-    static System.Collections.Generic.HashSet<int> BuildDragSet()
+    // Drag-buildable types (hold LMB, drag a line): walls & construction, extraction rigs, the
+    // defensive turrets/traps/AA, and the pipe/conveyor lines. Listed explicitly so it stays
+    // correct no matter how the build MENU is split into categories.
+    static readonly System.Collections.Generic.HashSet<int> DragTypes = new System.Collections.Generic.HashSet<int>
     {
-        var s = new System.Collections.Generic.HashSet<int> { 27, 30 }; // oil pipe, conveyor (ЭКОНОМИКА)
-        foreach (var i in BuildCategoryItems[0]) s.Add(i); // СТРОИТЕЛЬНОЕ
-        foreach (var i in BuildCategoryItems[1]) s.Add(i); // ОБОРОНА
-        return s;
-    }
+        3, 16, 17, 4, 6, 20, 23, 26, 5,   // walls, door, stairs, ladder, watchtower, platform, bridge
+        29, 32,                            // oil derrick, metal drill
+        0, 19, 2, 7, 8, 15, 36, 24, 25, 34, 37, 38, // sentry, rpg, mine, landmine, wire, AA, SAM, blades, silo, flamethrower, FPV pad, Geran-2
+        27, 30,                            // oil pipe, conveyor
+    };
     static bool IsDragBuild(int type) => DragTypes.Contains(type);
     // Walls, doors & barbed wire run their WIDTH along the drag line (perpendicular facing) so a
     // dragged row forms a continuous barrier; other items face along the line.
@@ -631,9 +840,12 @@ public class PlayerController : MonoBehaviour
         LayLine(SelectedBuild, dragStart, SnapDragPoint(SelectedBuild, hit.point));
     }
 
-    // Drag-build snapping: pull a pipe/conveyor endpoint onto the nearest source or existing
-    // pipe/conveyor within range, so chains connect precisely instead of leaving a gap.
-    const float SnapRange = 14f;
+    // Drag-build snapping: pull a pipe/conveyor endpoint onto the nearest SOURCE (refinery/mine)
+    // within range so a line lands cleanly on it. It deliberately does NOT snap to existing
+    // pipes/conveyors — that used to (a) make a short drag jump 14 m onto a far line and (b) glue a
+    // second line onto the first when running two lines from one source. Networks still auto-connect
+    // by proximity (16 m link), so no snap-to-line is needed.
+    const float SnapRange = 10f;
     Vector3 SnapDragPoint(int type, Vector3 p)
     {
         float bestSq = SnapRange * SnapRange; bool found = false; Vector3 best = p;
@@ -642,45 +854,96 @@ public class PlayerController : MonoBehaviour
             float dx = tp.x - p.x, dz = tp.z - p.z, d = dx * dx + dz * dz;
             if (d < bestSq) { bestSq = d; best = new Vector3(tp.x, p.y, tp.z); found = true; }
         }
-        if (type == 27) // oil pipe → snap to oil sources (НПЗ/вышка/хаб) or existing pipes
+        if (type == 27) // oil pipe → snap to oil sources (НПЗ/вышка/хаб) only
         {
-            foreach (var s in OilSources.All) if (s != null && s.OilTransform != null) Consider(s.OilTransform.position);
-            foreach (var pp in OilPipe.All) if (pp != null) Consider(pp.transform.position);
+            foreach (var os in OilSources.All) if (os != null && os.OilTransform != null) Consider(os.OilTransform.position);
         }
-        else if (type == 30) // conveyor → snap to metal sources (шахта/буровая) or existing conveyors
+        else if (type == 30) // conveyor → snap to metal sources (шахта/буровая) only
         {
-            foreach (var s in MetalSources.All) if (s != null && s.MetalTransform != null) Consider(s.MetalTransform.position);
-            foreach (var c in Conveyor.All) if (c != null) Consider(c.transform.position);
+            foreach (var ms in MetalSources.All) if (ms != null && ms.MetalTransform != null) Consider(ms.MetalTransform.position);
         }
         return found ? best : p;
     }
 
-    // Lay a chain of segments from a→b, evenly spaced and all facing along the line,
-    // spending metal per segment until you run out.
+    // Height to place a dragged piece at (x,z): the TOP of any wall/platform standing there,
+    // otherwise the ground. Lets you drag a row of turrets/wire/etc. along the top of a wall
+    // instead of burying them at ground level through it. Casts straight down and only steps up
+    // onto solid Buildables (never zombies/props), so an empty spot still lands on the ground.
+    float SurfaceY(float x, float z)
+    {
+        float ground = GameBootstrap.Hill(x, z);
+        Vector3 from = new Vector3(x, ground + 40f, z);
+        var hits = Physics.RaycastAll(from, Vector3.down, 60f, ~0, QueryTriggerInteraction.Ignore);
+        float best = ground;
+        foreach (var h in hits)
+        {
+            if (h.point.y <= best + 0.05f) continue;
+            if (h.collider.GetComponentInParent<Buildable>() != null) best = h.point.y; // stand on it
+        }
+        return best;
+    }
+
+    // Placement height: oil pipes (27) & conveyors (30) ALWAYS sit on the ground (never climb onto a
+    // hub/wall/building); everything else may sit on top of walls & platforms via SurfaceY.
+    float PlaceY(int type, float x, float z) => (type == 27 || type == 30) ? GameBootstrap.Hill(x, z) : SurfaceY(x, z);
+
+    // Pipes AND conveyors now lay FREELY along the drag, like walls — any angle/diagonal, no 90° lock.
+    static bool IsPathBuild(int type) => false;
+
+    // Ordered (position, yaw) pieces for a dragged line a→b.
+    List<(Vector3 pos, float yaw)> DragPieces(int type, Vector3 a, Vector3 b)
+    {
+        var list = new List<(Vector3 pos, float yaw)>();
+        float step = DragStep(type);
+        if (IsPathBuild(type))
+        {
+            // Project the endpoint onto a single straight axis so the pipe/belt is never diagonal.
+            // buildYawStep (R) rotates the chosen axis in 90° steps.
+            Vector3 d0 = b - a; d0.y = 0f;
+            float ang = Mathf.Round(Mathf.Atan2(d0.x, d0.z) / (Mathf.PI * 0.5f)) * 90f + buildYawStep * 90f;
+            float rad = ang * Mathf.Deg2Rad;
+            Vector3 axis = new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad));
+            float len = Vector3.Dot(d0, axis);              // signed reach of the drag along that axis
+            if (len < 0f) { axis = -axis; len = -len; }     // ALWAYS lay toward the drag, never backwards
+            AppendLeg(list, a, a + axis * len, step, type, false);
+        }
+        else AppendLeg(list, a, b, step, type, false);
+        return list;
+    }
+
+    void AppendLeg(List<(Vector3 pos, float yaw)> list, Vector3 p0, Vector3 p1, float step, int type, bool skipFirst)
+    {
+        Vector3 d = p1 - p0; d.y = 0f;
+        float len = d.magnitude;
+        if (len < 0.01f) return;
+        Vector3 dir = d / len;
+        float yaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg; // pipe/belt axis is +Z
+        if (IsWallDrag(type)) yaw += 90f;                       // walls: their width runs along the path
+        int count = Mathf.Max(1, Mathf.RoundToInt(len / step));
+        float s = len / count;
+        for (int i = (skipFirst ? 1 : 0); i <= count; i++)
+            list.Add((p0 + dir * (i * s), yaw));
+    }
+
+    // Lay a chain of segments from a→b. Conveyors/pipes turn a corner (L-shape); others go straight.
     void LayLine(int type, Vector3 a, Vector3 b, bool buildState = false)
     {
         int cost = BCost(type);
         Vector3 d = b - a; d.y = 0f;
-        float len = d.magnitude;
-        if (len < 1f) // single click (no real drag): orient it along the way the player is FACING
+        // A click (or a drag shorter than ~¾ of one segment) places EXACTLY ONE piece; you have to
+        // drag at least that far to start laying a row. Keeps a plain click from dropping two.
+        if (d.magnitude < DragStep(type) * 0.75f) // single click: build EXACTLY as the ghost preview shows
         {
-            Vector3 p0 = new Vector3(a.x, GameBootstrap.Hill(a.x, a.z), a.z);
-            float yaw0 = transform.eulerAngles.y;
-            if (IsWallDrag(type)) yaw0 += 90f;
-            PlaceOne(type, p0, yaw0, cost);
+            Vector3 p0 = new Vector3(a.x, PlaceY(type, a.x, a.z), a.z);
+            PlaceOne(type, p0, BuildYaw(), cost); // same yaw as the preview (wide side faces the player)
             return;
         }
-        Vector3 dir = d / len;
-        float yaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg; // pipe axis is +Z
-        if (IsWallDrag(type)) yaw += 90f;                       // walls: their width runs along the path
-        int count = Mathf.Max(1, Mathf.RoundToInt(len / DragStep(type)));
-        float step = len / count;
-        for (int i = 0; i <= count; i++)
+        foreach (var piece in DragPieces(type, a, b))
         {
             if (Metal < cost) break;
-            Vector3 p = a + dir * (i * step);
-            p.y = GameBootstrap.Hill(p.x, p.z);
-            PlaceOne(type, p, yaw, cost);
+            Vector3 p = piece.pos;
+            p.y = PlaceY(type, p.x, p.z);
+            PlaceOne(type, p, piece.yaw, cost);
         }
     }
 
@@ -727,9 +990,11 @@ public class PlayerController : MonoBehaviour
             if (!RaycastNoSelf(30f, out RaycastHit hit)) return;
             var b = hit.collider.GetComponentInParent<Buildable>();
             if (b == null) return;
-            if (b is Dispenser d && d.Critical) { Toast(Lang.T("Раздатчик-базу переносить нельзя", "Can't move the base Dispenser")); return; }
+            // The base lifeline can't be relocated normally — but in ENDLESS it can (it respawns if lost).
+            if (b is Dispenser d && d.Critical && !GameRoot.Infinite) { Toast(Lang.T("Раздатчик-базу переносить нельзя", "Can't move the base Dispenser")); return; }
             if (b.Building) { Toast(Lang.T("Постройка ещё строится", "Building is still under construction")); return; }
             heldBuild = b;
+            b.BeingMoved = true; // freeze its function while carried (no free metal/oil/fire)
             foreach (var c in b.GetComponentsInChildren<Collider>()) if (c != null) c.enabled = false; // let the ground ray pass through
             Toast(Lang.T("Перенос: наведись и нажми СКМ, чтобы поставить", "Move: aim and press MMB to place it"));
         }
@@ -737,6 +1002,7 @@ public class PlayerController : MonoBehaviour
         {
             PlaceHeldAtCrosshair();
             foreach (var c in heldBuild.GetComponentsInChildren<Collider>()) if (c != null) c.enabled = true;
+            heldBuild.BeingMoved = false; // dropped — re-evaluates its connection at the new spot
             Effects.Burst(heldBuild.transform.position + Vector3.up, new Color(0.4f, 1f, 0.5f), 6);
             heldBuild = null;
         }
@@ -961,21 +1227,22 @@ public class PlayerController : MonoBehaviour
         if (dragGhostType != SelectedBuild) { ClearDragGhosts(); dragGhostType = SelectedBuild; } // rebuilt for the right model
 
         b = SnapDragPoint(SelectedBuild, b); // preview the snapped endpoint
-        Vector3 d = b - a; d.y = 0f;
-        float len = d.magnitude;
-        Vector3 dir = len > 0.01f ? d / len : Vector3.forward;
-        float yaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
-        if (IsWallDrag(SelectedBuild)) yaw += 90f;
-        int count = len < 1f ? 0 : Mathf.Max(1, Mathf.RoundToInt(len / DragStep(SelectedBuild)));
-        float step = count > 0 ? len / count : 0f;
-        int need = count + 1;
+        Vector3 dd = b - a; dd.y = 0f;
+        List<(Vector3 pos, float yaw)> pieces;
+        if (dd.magnitude < DragStep(SelectedBuild) * 0.75f) // short = a click: preview exactly ONE
+        {
+            float sy = transform.eulerAngles.y;
+            if (IsWallDrag(SelectedBuild)) sy += 90f;
+            pieces = new List<(Vector3 pos, float yaw)> { (a, sy) };
+        }
+        else pieces = DragPieces(SelectedBuild, a, b); // same L-shape/straight layout as LayLine
 
         int cost = BCost(SelectedBuild);
-        dragSegs = need; dragTotalCost = need * cost;   // live preview for the HUD
-        bool ok = Metal >= need * cost;
+        dragSegs = pieces.Count; dragTotalCost = pieces.Count * cost;   // live preview for the HUD
+        bool ok = Metal >= pieces.Count * cost;
         Color col = ok ? new Color(0.3f, 1f, 0.3f, 0.16f) : new Color(1f, 0.4f, 0.3f, 0.16f);
 
-        for (int i = 0; i < need; i++)
+        for (int i = 0; i < pieces.Count; i++)
         {
             if (i >= dragGhosts.Count)
             {
@@ -986,13 +1253,13 @@ public class PlayerController : MonoBehaviour
             var go = dragGhosts[i];
             if (go == null) { go = Models.BuildVisual(SelectedBuild, 1); GameBootstrap.MakeGhost(go, col); dragGhosts[i] = go; }
             go.SetActive(true);
-            Vector3 p = a + dir * (i * step);
-            p.y = GameBootstrap.Hill(p.x, p.z) + 0.02f;
+            Vector3 p = pieces[i].pos;
+            p.y = PlaceY(SelectedBuild, p.x, p.z) + 0.02f; // pipes stay on ground; others sit on wall tops
             go.transform.position = p;
-            go.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            go.transform.rotation = Quaternion.Euler(0f, pieces[i].yaw, 0f);
             GameBootstrap.SetGhostColor(go, col);
         }
-        for (int i = need; i < dragGhosts.Count; i++) if (dragGhosts[i] != null) dragGhosts[i].SetActive(false);
+        for (int i = pieces.Count; i < dragGhosts.Count; i++) if (dragGhosts[i] != null) dragGhosts[i].SetActive(false);
     }
 
     void HideDragPath()
@@ -1026,7 +1293,9 @@ public class PlayerController : MonoBehaviour
                 if (hb == null || !hb.NeedsRepair) // not aiming to repair an existing structure
                 {
                     show = true;
-                    pos = hit.point + Vector3.up * 0.02f; // terrain or on top of a full-health structure (bridge)
+                    // Snap to the TOP of whatever's under the crosshair (wall/platform/bridge) so a
+                    // single piece sits on the wall instead of stuck in its side; plain terrain = ground.
+                    pos = new Vector3(hit.point.x, PlaceY(SelectedBuild, hit.point.x, hit.point.z) + 0.02f, hit.point.z);
                 }
             }
         }
@@ -1053,13 +1322,28 @@ public class PlayerController : MonoBehaviour
     // ---- Misc ----
     public void Heal(float amount) { if (!IsDead) Health = Mathf.Min(MaxHealth, Health + amount); }
 
+    // 3.2 node-mod test mode: hotkeys to reload the .zmod files and manually FIRE each event, so you
+    // can see your graph's actions trigger without waiting for the real game event.
+    void HandleModTest()
+    {
+        if (Input.GetKeyDown(KeyCode.F5)) { ModRuntime.Load(); ModRuntime.OnGameStart(); Toast(Lang.T($"Моды перезагружены: {ModRuntime.RuleCount} правил", $"Mods reloaded: {ModRuntime.RuleCount} rules")); }
+        if (Input.GetKeyDown(KeyCode.F6))  { ModRuntime.OnGameStart();     Toast("→ GAME_START"); }
+        if (Input.GetKeyDown(KeyCode.F7))  { ModRuntime.OnWaveStart();     Toast("→ WAVE_START"); }
+        if (Input.GetKeyDown(KeyCode.F8))  { ModRuntime.OnWaveClear();     Toast("→ WAVE_CLEAR"); }
+        if (Input.GetKeyDown(KeyCode.F9))  { ModRuntime.OnZombieKilled();  Toast("→ ZOMBIE_KILLED"); }
+        if (Input.GetKeyDown(KeyCode.F10)) { ModRuntime.OnPlayerDamaged(); Toast("→ PLAYER_DAMAGED"); }
+        if (Input.GetKeyDown(KeyCode.F11)) { ModRuntime.OnPlayerDied();    Toast("→ PLAYER_DIED"); }
+        if (Input.GetKeyDown(KeyCode.F12)) { ModRuntime.OnBuildingBuilt(); Toast("→ BUILDING_BUILT"); }
+    }
+
     public static bool GodMode; // debug: player takes no damage
 
     public void TakeDamage(float amount)
     {
-        if (IsDead || GodMode) return;
+        if (IsDead || GodMode || GameRoot.Sandbox) return; // sandbox = immortal
         Health = Mathf.Max(0f, Health - amount);
-        if (IsDead) { deathTime = Time.time; Deaths++; } // counted once per death (early-out above guards re-entry)
+        ModRuntime.OnPlayerDamaged(); // 3.2: fire PLAYER_DAMAGED mod actions
+        if (IsDead) { deathTime = Time.time; Deaths++; ModRuntime.OnPlayerDied(); } // counted once per death (early-out above guards re-entry)
     }
 
     void Respawn()
@@ -1151,6 +1435,7 @@ public class PlayerController : MonoBehaviour
     }
 
     static int _dragId = -1;
+    static Vector2 _dragGrab; // cursor pos where the HUD-element drag started
     // Apply a movable element's saved offset; in layout-edit mode, frame it and drag it.
     Rect Place(int id, Rect baseRect)
     {
@@ -1158,11 +1443,23 @@ public class PlayerController : MonoBehaviour
         Rect r = new Rect(baseRect.x + off.x, baseRect.y + off.y, baseRect.width, baseRect.height);
         if (UISettings.EditLayout)
         {
-            var e = Event.current;
-            Vector2 m = e.mousePosition / UI.Scale;                 // GUI.matrix isn't applied to the event pos
-            if (e.type == EventType.MouseDown && r.Contains(m)) { _dragId = id; e.Use(); }
-            else if (_dragId == id && e.type == EventType.MouseDrag) { UISettings.Offsets[id] += e.delta / UI.Scale; e.Use(); }
-            else if (_dragId == id && e.type == EventType.MouseUp) { _dragId = -1; e.Use(); }
+            // Drag by POLLING Input directly (not IMGUI events) — robust: works regardless of
+            // event dispatch order, e.Use() consumption or MouseDrag events firing. Input.mousePosition
+            // is screen-space with a bottom-left origin, so flip Y and divide by the HUD scale.
+            Vector3 mp = Input.mousePosition;
+            Vector2 m = new Vector2(mp.x, Screen.height - mp.y) / UI.Scale;
+            bool held = Input.GetMouseButton(0);
+            if (held && _dragId == -1 && r.Contains(m)) { _dragId = id; _dragGrab = m; } // grab this element
+            if (_dragId == id)
+            {
+                if (!held) { _dragId = -1; }               // released → drop
+                else
+                {
+                    UISettings.Offsets[id] += m - _dragGrab; // follow the cursor by absolute position
+                    _dragGrab = m;
+                    r = new Rect(baseRect.x + UISettings.Offsets[id].x, baseRect.y + UISettings.Offsets[id].y, baseRect.width, baseRect.height);
+                }
+            }
 
             GUI.color = new Color(0.3f, 1f, 0.5f, 0.9f); // green frame so each element reads as movable
             float t = 2f;
@@ -1287,6 +1584,21 @@ public class PlayerController : MonoBehaviour
             GUI.DrawTexture(new Rect(cx - 2f * ch, cy - 14f * ch, 4f * ch, 28f * ch), Texture2D.whiteTexture);
         }
 
+        // 3.2: node-mod TEST mode — status + hotkey legend so you can fire mod events on demand.
+        if (GameRoot.ModTest && !buildMenuOpen)
+        {
+            var mt = new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold, wordWrap = false };
+            Panel(new Rect(10f, 96f, 520f, 96f));
+            GUI.color = ModRuntime.Active ? new Color(0.5f, 1f, 0.5f) : new Color(1f, 0.6f, 0.4f);
+            GUI.Label(new Rect(20f, 100f, 500f, 22f), Lang.T($"ТЕСТ НОД — моды: {(ModRuntime.Active ? "ВКЛ" : "выкл")} ({ModRuntime.RuleCount} правил)",
+                                                             $"NODE TEST — mods: {(ModRuntime.Active ? "ON" : "off")} ({ModRuntime.RuleCount} rules)"), mt);
+            GUI.color = new Color(0.85f, 0.9f, 0.95f);
+            GUI.Label(new Rect(20f, 124f, 500f, 22f), "F5 " + Lang.T("перезагрузить моды", "reload mods"), mt);
+            GUI.Label(new Rect(20f, 146f, 500f, 22f), "F6 GAME_START  F7 WAVE_START  F8 WAVE_CLEAR  F9 ZOMBIE_KILLED", mt);
+            GUI.Label(new Rect(20f, 168f, 500f, 22f), "F10 PLAYER_DAMAGED  F11 PLAYER_DIED  F12 BUILDING_BUILT", mt);
+            GUI.color = Color.white;
+        }
+
         // Live cost while dragging a build line — updates with the length.
         if (layingDrag && IsDragBuild(SelectedBuild))
         {
@@ -1321,11 +1633,29 @@ public class PlayerController : MonoBehaviour
         Rect hp = Place(0, new Rect(20f, UI.H - 110f, 520f, 48f));
         Bar(hp.x, hp.y, hp.width, hp.height, Health / MaxHealth, new Color(0.2f, 0.8f, 0.25f), Lang.T($"ХП {Mathf.RoundToInt(Health)}", $"HP {Mathf.RoundToInt(Health)}"));
 
+        // Top-down build mode: persistent hint banner across the top of the screen.
+        if (topBuild)
+        {
+            var th = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false };
+            GUI.color = new Color(0.55f, 0.95f, 0.55f);
+            GUI.Label(new Rect(cx - 520f, 14f, 1040f, 26f),
+                Lang.T("СТРОЙКА СВЕРХУ:  ЛКМ — веди линию,  R — поворот,  WASD — двигать вид,  ПРОБЕЛ — прыжок,  T / Esc — выйти",
+                       "TOP-DOWN BUILD:  LMB — drag a line,  R — rotate,  WASD — pan,  SPACE — jump,  T / Esc — exit"), th);
+            GUI.color = Color.white;
+        }
+
         // Bottom-centre metal readout (above the tool line)
         Rect metal = Place(1, new Rect(cx - 170f, UI.H - 92f, 340f, 40f));
         Panel(metal);
         GUI.color = UISettings.Accent;
         GUI.Label(new Rect(metal.x, metal.y + 2f, 340f, 36f), Lang.T($"МЕТАЛЛ: {Metal}", $"METAL: {Metal}"), Ctr);
+        GUI.color = Color.white;
+
+        // Speedometer above the resource readouts (shows your bhop momentum).
+        float spdY = (Refinery.All.Count > 0) ? metal.y - 66f : metal.y - 24f;
+        var spdSt = new GUIStyle(GUI.skin.label) { fontSize = 15, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+        GUI.color = new Color(0.55f, 0.9f, 1f);
+        GUI.Label(new Rect(metal.x, spdY, 340f, 20f), Lang.T($"скорость: {hVel.magnitude:0.0} м/с", $"speed: {hVel.magnitude:0.0} m/s"), spdSt);
         GUI.color = Color.white;
 
         // Oil readout (only once refineries exist on the map — default mode).
@@ -1341,9 +1671,7 @@ public class PlayerController : MonoBehaviour
         // Bottom-center tool line (smaller font + centred so the longer RU text fits)
         string toolLine;
         if (tool == Tool.Gun) toolLine = Lang.T($"[1] ПУШКА {Guns[gunTier].name}   патроны {ammo}/{Guns[gunTier].mag}", $"[1] GUN {Guns[gunTier].name}   ammo {ammo}/{Guns[gunTier].mag}");
-        else if (tool == Tool.Build && IsDragBuild(SelectedBuild)) toolLine = IsWallDrag(SelectedBuild)
-            ? Lang.T($"[2] {BName(SelectedBuild)} ({BCost(SelectedBuild)}/звено)   зажми ЛКМ и веди линию, отпусти — стена цепочкой   ПКМ=продать  X=снести класс  Q=меню", $"[2] {BName(SelectedBuild)} ({BCost(SelectedBuild)}/link)   hold LMB and drag a line, release — wall as a chain   RMB=sell  X=delete class  Q=menu")
-            : Lang.T($"[2] {BName(SelectedBuild)} ({BCost(SelectedBuild)}/звено)   зажми ЛКМ у источника, веди к базе, отпусти   ПКМ=продать  Q=меню", $"[2] {BName(SelectedBuild)} ({BCost(SelectedBuild)}/link)   hold LMB at the source, lead to base, release   RMB=sell  Q=menu");
+        else if (tool == Tool.Build && IsDragBuild(SelectedBuild)) toolLine = Lang.T($"[2] {BName(SelectedBuild)} ({BCost(SelectedBuild)}/звено)   клик = 1 шт   зажми ЛКМ 0.5с и веди = ряд/линия{(IsPathBuild(SelectedBuild) ? "   R=повернуть ось" : "")}   ПКМ=продать  X=снести класс  Q=меню", $"[2] {BName(SelectedBuild)} ({BCost(SelectedBuild)}/link)   click = 1   hold LMB 0.5s and drag = row/line{(IsPathBuild(SelectedBuild) ? "   R=rotate axis" : "")}   RMB=sell  X=delete class  Q=menu");
         else if (tool == Tool.Build) toolLine = Lang.T($"[2] СТРОЙКА {BName(SelectedBuild)} ({BCost(SelectedBuild)})   ЛКМ=ставить  E=улучшить  ПКМ=продать  X=снести класс  Q=меню", $"[2] BUILD {BName(SelectedBuild)} ({BCost(SelectedBuild)})   LMB=place  E=upgrade  RMB=sell  X=delete class  Q=menu");
         else if (tool == Tool.Wrench) toolLine = Lang.T("[3] КЛЮЧ — ближний бой + починка", "[3] WRENCH — melee + repair");
         else toolLine = Lang.T("[4] ЛОПАТА — зажми ЛКМ чтобы копать", "[4] SHOVEL — hold LMB to dig");
@@ -1362,7 +1690,10 @@ public class PlayerController : MonoBehaviour
                 GUI.color = Color.cyan;
                 GUI.Label(new Rect(cx - 400f, 12f, 800f, 28f), Lang.T("ПОДГОТОВКА — стройте базу!", "PREP — build your base!"), Line24);
                 GUI.Label(new Rect(cx - 400f, 42f, 800f, 24f), GameRoot.Infinite ? Lang.T($"след. волна: {gm.WaveNumber + 1}  (бесконечный режим)", $"next wave: {gm.WaveNumber + 1}  (endless mode)") : Lang.T($"след. волна: {gm.WaveNumber + 1}/{gm.EvacWave} волн", $"next wave: {gm.WaveNumber + 1}/{gm.EvacWave} waves"), Sm);
-                GUI.Label(new Rect(cx - 300f, 78f, 600f, 64f), Lang.T($"{Mathf.CeilToInt(gm.PhaseTimeLeft)}с", $"{Mathf.CeilToInt(gm.PhaseTimeLeft)}s"), Big52);
+                if (GameRoot.Sandbox)
+                    GUI.Label(new Rect(cx - 300f, 78f, 600f, 64f), Lang.T("ПЕСОЧНИЦА — J начинает волну", "SANDBOX — J starts a wave"), Line24);
+                else
+                    GUI.Label(new Rect(cx - 300f, 78f, 600f, 64f), Lang.T($"{Mathf.CeilToInt(gm.PhaseTimeLeft)}с", $"{Mathf.CeilToInt(gm.PhaseTimeLeft)}s"), Big52);
 
                 // Pulsing prompts during prep (cached styles — no per-frame GUIStyle alloc).
                 float pulse = 0.6f + 0.4f * Mathf.PingPong(Time.unscaledTime * 1.5f, 1f);
@@ -1376,7 +1707,9 @@ public class PlayerController : MonoBehaviour
                 if (!NetClient)
                 {
                     GUI.color = new Color(1f, 0.3f, 0.3f, pulse);
-                    GUI.Label(new Rect(cx - 380f, 180f, 760f, 28f), Lang.T("если вы готовы — нажмите J, чтобы начать волну", "if you're ready — press J to start the wave"), Sm);
+                    GUI.Label(new Rect(cx - 380f, 180f, 760f, 28f),
+                        GameRoot.Sandbox ? Lang.T("нажмите J, чтобы запустить волну (песочница)", "press J to launch a wave (sandbox)")
+                                         : Lang.T("если вы готовы — нажмите J, чтобы начать волну", "if you're ready — press J to start the wave"), Sm);
                 }
                 if (GameRoot.Hardcore)
                 {
@@ -1639,8 +1972,8 @@ public class PlayerController : MonoBehaviour
 
             // Each category is a header followed by its buttons, wrapping to a new row
             // every perRow items so wide categories don't run off-screen.
-            const int perRow = 5;
-            float bw = 150f, bh = 84f, gap = 12f, headH = 26f, sectGap = 14f;
+            const int perRow = 6;
+            float bw = 138f, bh = 76f, gap = 10f, headH = 24f, sectGap = 10f;
             float gridW = perRow * bw + (perRow - 1) * gap;
             float leftX = cx - gridW * 0.5f;
 

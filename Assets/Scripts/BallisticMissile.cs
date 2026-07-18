@@ -29,33 +29,15 @@ public class BallisticMissile : MonoBehaviour
         if (GameBootstrap.World != null) go.transform.SetParent(GameBootstrap.World);
         go.transform.position = from;
 
-        var body = GameObject.CreatePrimitive(PrimitiveType.Cylinder); // the rocket cylinder
-        Object.Destroy(body.GetComponent<Collider>());
-        body.transform.SetParent(go.transform, false);
-        body.transform.localScale = new Vector3(0.45f, 1.2f, 0.45f);   // upright (length along Y)
-        GameBootstrap.SetColor(body, new Color(0.3f, 0.3f, 0.33f));
-
-        var tipObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);  // warhead nose
-        Object.Destroy(tipObj.GetComponent<Collider>());
-        tipObj.transform.SetParent(go.transform, false);
-        tipObj.transform.localPosition = new Vector3(0f, 1.2f, 0f);
-        tipObj.transform.localScale = Vector3.one * 0.55f;
-        GameBootstrap.SetColor(tipObj, new Color(0.8f, 0.25f, 0.2f));
-
-        var fin = GameObject.CreatePrimitive(PrimitiveType.Sphere);     // exhaust glow at the tail
-        Object.Destroy(fin.GetComponent<Collider>());
-        fin.transform.SetParent(go.transform, false);
-        fin.transform.localPosition = new Vector3(0f, -1.2f, 0f);
-        fin.transform.localScale = Vector3.one * 0.6f;
-        GameBootstrap.SetColor(fin, new Color(1f, 0.7f, 0.2f));
+        Models.BuildVTwoRocket(go.transform); // ФАУ-2 (V-2) rocket model, nose along local +Y
 
         var m = go.AddComponent<BallisticMissile>();
         m.launch = from;
         m.target = target;
         m.blastR = blastR;
         float dist = Vector2.Distance(new Vector2(from.x, from.z), new Vector2(target.x, target.z));
-        m.arcHeight = Mathf.Clamp(dist * 0.45f + 24f, 34f, 80f); // longer shots arc higher
-        m.flightTime = Mathf.Clamp(dist / 34f + 1.2f, 1.8f, 4.5f);
+        m.arcHeight = Mathf.Clamp(dist * 0.45f + 24f, 34f, 140f); // longer shots arc higher (long-range)
+        m.flightTime = Mathf.Clamp(dist / 40f + 1.2f, 1.8f, 7f);
         m.targetZombie = targetZombie;
         if (targetZombie != null) Reserved.Add(targetZombie);
     }

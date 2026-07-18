@@ -7,7 +7,10 @@ using UnityEngine;
 public class Conveyor : Buildable
 {
     public static readonly List<Conveyor> All = new List<Conveyor>();
-    public const float Link = 16f;
+    // 3.1.1: more forgiving connection range (was 4 m). A near-perfect conveyor placement no longer
+    // silently yields NO metal — the vat picks up as soon as a line reaches within ~9 m.
+    public const float Link = 9f;
+    public const float DirectPickup = 9f;
 
     public bool Live { get; private set; }
 
@@ -112,7 +115,9 @@ public class Conveyor : Buildable
         {
             if (s == null || !s.MetalActive || s.MetalTransform == null) continue;
             Vector3 sp = s.MetalTransform.position;
-            bool reach = (sp - pos).sqrMagnitude <= Link * Link;
+            // Direct pickup only when the mine is right next to the vat; otherwise it must reach a
+            // conveyor that's part of the connected network. A distant/unconnected mine = no metal.
+            bool reach = (sp - pos).sqrMagnitude <= DirectPickup * DirectPickup;
             if (!reach)
                 foreach (var c in _visited)
                     if ((c.transform.position - sp).sqrMagnitude <= Link * Link) { reach = true; break; }

@@ -8,9 +8,9 @@ public class MetalVat : Buildable
 {
     const float Radius = 5f;
     const float Tick = 0.5f;
-    const int GiveAmount = 40;     // metal per hand-out
-    const float PullRate = 45f;    // ore/sec drawn from the network into the tank
-    const float TankCap = 400f;
+    const int GiveAmount = 60;     // 3.1.1: metal per hand-out (was 40)
+    const float PullRate = 70f;    // 3.1.1: ore/sec drawn from the network into the tank (was 45)
+    const float TankCap = 600f;    // 3.1.1: bigger tank (was 400) so late-game bursts aren't capped
 
     float stock;
     float nextGive;
@@ -29,12 +29,13 @@ public class MetalVat : Buildable
 
     public bool Supplied { get; private set; }
 
-    // 2.3: from wave 15 on, the vat gets faster every wave (+10%/wave) — pulls & hands out more metal.
+    // 3.1.1: from wave 8 on, the vat ramps up faster every wave (+15%/wave, was +10% from wave 15) —
+    // late-game metal was catastrophically short. Endless mode also doubles income (IncomeMult).
     static float WaveBoost()
     {
         var gm = GameManager.Instance;
-        if (gm != null && gm.WaveNumber > 15) return 1f + (gm.WaveNumber - 15) * 0.1f;
-        return 1f;
+        float wave = (gm != null && gm.WaveNumber > 8) ? 1f + (gm.WaveNumber - 8) * 0.15f : 1f;
+        return wave * GameRoot.IncomeMult;
     }
 
     protected override void BuildableTick()
@@ -55,7 +56,7 @@ public class MetalVat : Buildable
 
         if (Time.time < nextGive) return;
         nextGive = Time.time + Tick;
-        if (stock < 1f) return;
+        if (!Supplied || stock < 1f) return; // only hand out metal while actually wired to a mine
 
         foreach (var p in Object.FindObjectsByType<PlayerController>(FindObjectsSortMode.None))
         {

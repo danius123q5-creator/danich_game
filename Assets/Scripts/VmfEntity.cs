@@ -13,6 +13,10 @@ public class VmfEntity : MonoBehaviour
     public string classname = "";
     public readonly Dictionary<string, string> kv = new Dictionary<string, string>();
     public readonly List<Connection> outputs = new List<Connection>();
+    public Transform moveRoot;   // для движимых брашевых энтити (func_door/movelinear/button) — их СОБСТВЕННАЯ геометрия, которую рантайм двигает
+    public float boundsRadius;   // радиус зоны энтити в Unity-юнитах (для проксимити дверей) — считается импортёром
+    public Vector3 boundsCenter; // центр AABB зоны (Unity) — для точного бокс-теста триггеров
+    public Vector3 boundsHalf;   // полуразмеры AABB зоны (Unity) — игрок внутри если |p-center|<half по всем осям
 
     public string Targetname => Get("targetname");
     public string Get(string key, string def = "") => kv.TryGetValue(key, out var v) ? v : def;

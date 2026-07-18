@@ -66,8 +66,15 @@ public static class Models
             case 34: return BuildFlamethrower(level);
             case 35: return BuildOilHub(level);
             case 36: return BuildSam(level);
+            case 37: return BuildFpvPad(level);
+            case 38: return BuildShahedPad(level);
+            case 39: return BuildVOnePad(level);
             case 18: return BuildCar(level);
             case 19: return BuildRpg(level);
+            case 40: return BuildQuadTurret(level);
+            case 42: return BuildLatticeFence(level);
+            case 43: return BuildWallBarbed(level);
+            case 44: return BuildWallTurret(level);
             default: return BuildProxyMine(level);
         }
     }
@@ -347,27 +354,179 @@ public static class Models
 
     // ПЗРК: a rotating base + a raised launch block holding four missile tubes angled at the sky,
     // each with a red missile nose peeking out. Points +Z (forward) — the Sam rotates the whole rig.
+    // РЗК: a Buk-M3-style TELAR — tracked chassis + turret with a single missile on an inclined
+    // launch rail (a stand), plus a rear radar panel. One missile (not a 4-tube block).
+    // ФАУ-1 pad: a BIG inclined launch ramp with a V-1 buzz bomb sitting on it.
+    public static GameObject BuildVOnePad(int level)
+    {
+        var root = new GameObject("VOnePadModel");
+        var t = root.transform;
+        Color pad = new Color(0.12f, 0.13f, 0.15f);
+        Color rail = new Color(0.30f, 0.31f, 0.34f);
+        Color mark = new Color(0.85f, 0.35f, 0.10f);
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.28f, 0f), new Vector3(5.0f, 0.56f, 7.4f), pad);   // huge base slab
+        for (int i = 0; i < 4; i++)                                                                       // corner posts
+        {
+            float sx = (i & 1) == 0 ? -2.2f : 2.2f;
+            float sz = (i & 2) == 0 ? -3.3f : 3.3f;
+            Prim(PrimitiveType.Cube, t, new Vector3(sx, 0.55f, sz), new Vector3(0.22f, 0.7f, 0.22f), mark);
+        }
+        // the big inclined launch ramp (rises toward +Z ~30°), two parallel rails on trusses
+        var ramp = new GameObject("ramp").transform; ramp.SetParent(t, false);
+        ramp.localPosition = new Vector3(0f, 1.7f, 0f);
+        ramp.localEulerAngles = new Vector3(-30f, 0f, 0f);
+        Prim(PrimitiveType.Cube, ramp, new Vector3(-0.9f, -0.35f, 0f), new Vector3(0.4f, 0.32f, 7.0f), rail);
+        Prim(PrimitiveType.Cube, ramp, new Vector3(0.9f, -0.35f, 0f), new Vector3(0.4f, 0.32f, 7.0f), rail);
+        Prim(PrimitiveType.Cube, ramp, new Vector3(0f, -0.7f, -2.2f), new Vector3(2.2f, 1.1f, 0.45f), rail); // rear trestle
+        // the HUGE V-1 resting on the rails, nose up-forward
+        var v1 = new GameObject("v1").transform; v1.SetParent(ramp, false);
+        v1.localPosition = new Vector3(0f, 0.9f, 0.4f);
+        v1.localScale = Vector3.one * 1.7f;   // огромный друн — dwarfs the ramp
+        BuildVOneBody(v1);
+        return root;
+    }
+
+    // The flying V-1 buzz bomb (built onto the bomb GameObject). Nose = local +Z.
+    public static void BuildVOne(Transform t) { BuildVOneBody(t); }
+
+    static void BuildVOneBody(Transform t)
+    {
+        Color body = new Color(0.46f, 0.48f, 0.50f); // grey airframe
+        Color dark = new Color(0.18f, 0.18f, 0.20f);
+        Color red  = new Color(0.85f, 0.25f, 0.20f); // warhead nose
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0f, 0.1f), new Vector3(0.55f, 1.9f, 0.55f), body, new Vector3(90f, 0f, 0f)); // fuselage (~3.8 long)
+        Prim(PrimitiveType.Sphere, t, new Vector3(0f, 0f, 2.0f), new Vector3(0.55f, 0.55f, 0.7f), red);          // warhead nose
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0f, 0f), new Vector3(3.6f, 0.14f, 0.8f), body);              // stubby straight wings
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.55f, -1.7f), new Vector3(0.14f, 1.1f, 0.7f), body);         // vertical tail fin
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0f, -1.7f), new Vector3(1.6f, 0.14f, 0.7f), body);            // horizontal stabiliser
+        // iconic PULSE-JET tube mounted ON TOP at the rear + a pylon holding it up
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.55f, -1.5f), new Vector3(0.16f, 0.55f, 0.5f), dark);        // pylon
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.9f, -1.3f), new Vector3(0.38f, 1.2f, 0.38f), dark, new Vector3(90f, 0f, 0f)); // jet tube
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.9f, -2.5f), new Vector3(0.46f, 0.16f, 0.46f), dark, new Vector3(90f, 0f, 0f)); // exhaust ring
+        return;
+    }
+
+    // ГЕРАНЬ-2 pad: a launch platform with a resting delta-wing loitering munition.
+    public static GameObject BuildShahedPad(int level)
+    {
+        var root = new GameObject("ShahedPadModel");
+        var t = root.transform;
+        Color pad = new Color(0.13f, 0.14f, 0.16f);
+        Color mark = new Color(0.85f, 0.35f, 0.10f);
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.12f, 0f), new Vector3(2.4f, 0.24f, 2.4f), pad);   // slab
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.25f, 0f), new Vector3(1.6f, 0.04f, 0.18f), mark);  // launch stripe
+        for (int i = 0; i < 4; i++)                                                                       // corner posts
+        {
+            float sx = (i & 1) == 0 ? -1.02f : 1.02f;
+            float sz = (i & 2) == 0 ? -1.02f : 1.02f;
+            Prim(PrimitiveType.Cube, t, new Vector3(sx, 0.34f, sz), new Vector3(0.12f, 0.42f, 0.12f), mark);
+        }
+        // a ramp with the munition sitting on it, nose up
+        var rest = new GameObject("rest").transform; rest.SetParent(t, false);
+        rest.localPosition = new Vector3(0f, 0.55f, -0.1f);
+        rest.localEulerAngles = new Vector3(-12f, 0f, 0f);
+        BuildShahedBody(rest);
+        return root;
+    }
+
+    // The flying delta-wing munition (built onto the drone GameObject itself).
+    public static void BuildShahed(Transform t) { BuildShahedBody(t); }
+
+    static void BuildShahedBody(Transform t)
+    {
+        Color body = new Color(0.74f, 0.71f, 0.60f);  // desert-tan airframe
+        Color dark = new Color(0.20f, 0.20f, 0.20f);
+        Color red  = new Color(0.90f, 0.20f, 0.15f);  // warhead nose
+        Color prop = new Color(0.42f, 0.42f, 0.45f);
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0f, 0.10f), new Vector3(0.24f, 0.22f, 1.5f), body);        // fuselage
+        Prim(PrimitiveType.Sphere, t, new Vector3(0f, 0f, 0.86f), new Vector3(0.24f, 0.22f, 0.34f), red);       // warhead nose
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0f, -0.12f), new Vector3(2.5f, 0.05f, 0.55f), body);        // delta wing (main)
+        Prim(PrimitiveType.Cube, t, new Vector3(0.92f, 0f, -0.34f), new Vector3(0.95f, 0.05f, 0.42f), body, new Vector3(0f, -26f, 0f)); // swept tips
+        Prim(PrimitiveType.Cube, t, new Vector3(-0.92f, 0f, -0.34f), new Vector3(0.95f, 0.05f, 0.42f), body, new Vector3(0f, 26f, 0f));
+        Prim(PrimitiveType.Cube, t, new Vector3(0.16f, 0.14f, -0.66f), new Vector3(0.05f, 0.42f, 0.3f), body, new Vector3(0f, 0f, 34f));  // inverted-V tail
+        Prim(PrimitiveType.Cube, t, new Vector3(-0.16f, 0.14f, -0.66f), new Vector3(0.05f, 0.42f, 0.3f), body, new Vector3(0f, 0f, -34f));
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.02f, -0.78f), new Vector3(0.1f, 0.1f, 0.16f), dark);      // tail motor
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.02f, -0.9f), new Vector3(0.6f, 0.02f, 0.6f), prop, new Vector3(90f, 0f, 0f)); // pusher prop
+    }
+
+    // FPV drone pad: a flat landing pad with an "H" marking, corner posts, and a drone resting on it.
+    public static GameObject BuildFpvPad(int level)
+    {
+        var root = new GameObject("FpvPadModel");
+        var t = root.transform;
+        Color pad = new Color(0.14f, 0.15f, 0.17f);
+        Color mark = new Color(0.9f, 0.7f, 0.1f);
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.12f, 0f), new Vector3(2.0f, 0.24f, 2.0f), pad);   // pad slab
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.25f, 0f), new Vector3(1.3f, 0.04f, 0.16f), mark);  // landing cross
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.25f, 0f), new Vector3(0.16f, 0.04f, 1.3f), mark);
+        for (int i = 0; i < 4; i++)                                                                       // corner posts
+        {
+            float sx = (i & 1) == 0 ? -0.85f : 0.85f;
+            float sz = (i & 2) == 0 ? -0.85f : 0.85f;
+            Prim(PrimitiveType.Cube, t, new Vector3(sx, 0.34f, sz), new Vector3(0.12f, 0.42f, 0.12f), mark);
+        }
+        var rest = new GameObject("rest").transform; rest.SetParent(t, false);                            // a drone sitting on the pad
+        rest.localPosition = new Vector3(0f, 0.42f, 0f);
+        BuildFpvDroneBody(rest);
+        return root;
+    }
+
+    // The flying kamikaze quadcopter (built onto the drone GameObject itself).
+    public static void BuildFpvDrone(Transform t) { BuildFpvDroneBody(t); }
+
+    static void BuildFpvDroneBody(Transform t)
+    {
+        Color body = new Color(0.10f, 0.10f, 0.12f);
+        Color arm  = new Color(0.20f, 0.20f, 0.22f);
+        Color prop = new Color(0.62f, 0.62f, 0.66f);
+        Color led  = new Color(1f, 0.20f, 0.15f);   // red warhead nose
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0f, 0.04f), new Vector3(0.28f, 0.14f, 0.44f), body);   // fuselage
+        Prim(PrimitiveType.Sphere, t, new Vector3(0f, 0.02f, 0.30f), new Vector3(0.17f, 0.13f, 0.20f), led); // charge nose
+        float[] ax = { -0.34f, 0.34f, -0.34f, 0.34f };
+        float[] az = { 0.28f, 0.28f, -0.28f, -0.28f };
+        for (int i = 0; i < 4; i++)
+        {
+            Beam(t, Vector3.zero, new Vector3(ax[i], 0f, az[i]), 0.035f, arm);                              // arm
+            Prim(PrimitiveType.Cube, t, new Vector3(ax[i], 0.02f, az[i]), new Vector3(0.06f, 0.06f, 0.06f), arm); // motor
+            Prim(PrimitiveType.Cylinder, t, new Vector3(ax[i], 0.07f, az[i]), new Vector3(0.36f, 0.01f, 0.36f), prop); // rotor disc
+        }
+    }
+
     public static GameObject BuildSam(int level)
     {
         var root = new GameObject("SamModel");
         var t = root.transform;
         Color body = new Color(0.30f, 0.33f, 0.30f);   // military green-grey
         Color dark = new Color(0.16f, 0.17f, 0.16f);
-        Color tube = new Color(0.22f, 0.24f, 0.22f);
-        Color nose = new Color(0.85f, 0.3f, 0.25f);
-        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.16f, 0f), new Vector3(1.5f, 0.16f, 1.5f), dark);   // turntable base
-        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.55f, 0f), new Vector3(0.7f, 0.7f, 0.7f), body);         // pivot mast
-        // launch block (tilted up ~35°, pointing +Z), holding 2x2 tubes
-        var block = new GameObject("SamBlock").transform; block.SetParent(t, false);
-        block.localPosition = new Vector3(0f, 1.1f, 0.2f);
-        block.localRotation = Quaternion.Euler(-35f, 0f, 0f);
-        Prim(PrimitiveType.Cube, block, Vector3.zero, new Vector3(1.2f, 0.9f, 1.3f), body);                   // block housing
+        Color rail = new Color(0.22f, 0.24f, 0.22f);
+        Color skin = new Color(0.80f, 0.80f, 0.76f);   // pale missile body
+        Color nose = new Color(0.85f, 0.30f, 0.25f);   // red nose
+
+        // --- tracked chassis / stand (подставка) ---
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.24f, 0f), new Vector3(1.7f, 0.44f, 2.3f), dark);        // hull
+        Prim(PrimitiveType.Cube, t, new Vector3(-0.82f, 0.20f, 0f), new Vector3(0.28f, 0.5f, 2.4f), body);     // left track
+        Prim(PrimitiveType.Cube, t, new Vector3( 0.82f, 0.20f, 0f), new Vector3(0.28f, 0.5f, 2.4f), body);     // right track
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.52f, 0f), new Vector3(1.25f, 0.12f, 1.25f), dark);   // turntable ring
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.78f, -0.15f), new Vector3(1.0f, 0.55f, 1.0f), body);     // turret box
+        // rear radar panel (Buk look), tilted back
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 1.25f, -0.62f), new Vector3(0.75f, 0.55f, 0.08f), dark, new Vector3(-22f, 0f, 0f));
+
+        // --- inclined launch rail carrying FOUR missiles (Buk-M2 quad), points up-forward (+Z) ---
+        var arm = new GameObject("SamRail").transform; arm.SetParent(t, false);
+        arm.localPosition = new Vector3(0f, 1.02f, 0.18f);
+        arm.localRotation = Quaternion.Euler(-42f, 0f, 0f);
+        Prim(PrimitiveType.Cube, arm, new Vector3(0f, -0.26f, 0f), new Vector3(1.55f, 0.16f, 2.0f), rail);     // wide rail deck
+        Prim(PrimitiveType.Cube, arm, new Vector3(0f, -0.09f, -0.8f), new Vector3(1.55f, 0.34f, 0.42f), body); // rail cradle
+
+        // four missiles side by side on the rail
+        float[] mx = { -0.51f, -0.17f, 0.17f, 0.51f };
         for (int i = 0; i < 4; i++)
         {
-            float x = (i % 2 == 0) ? -0.32f : 0.32f;
-            float y = (i < 2) ? 0.28f : -0.28f;
-            Prim(PrimitiveType.Cylinder, block, new Vector3(x, y, 0.35f), new Vector3(0.34f, 0.6f, 0.34f), tube, new Vector3(90f, 0f, 0f)); // tube
-            Prim(PrimitiveType.Cylinder, block, new Vector3(x, y, 0.72f), new Vector3(0.22f, 0.12f, 0.22f), nose, new Vector3(90f, 0f, 0f)); // missile nose
+            float x = mx[i];
+            Prim(PrimitiveType.Cylinder, arm, new Vector3(x, 0.05f, 0.10f), new Vector3(0.26f, 0.85f, 0.26f), skin, new Vector3(90f, 0f, 0f)); // body
+            Prim(PrimitiveType.Cylinder, arm, new Vector3(x, 0.05f, 0.98f), new Vector3(0.16f, 0.16f, 0.16f), nose, new Vector3(90f, 0f, 0f)); // nose
+            Prim(PrimitiveType.Cube, arm, new Vector3(x, 0.05f, -0.72f), new Vector3(0.30f, 0.04f, 0.30f), rail);  // tail fins (horiz)
+            Prim(PrimitiveType.Cube, arm, new Vector3(x, 0.05f, -0.72f), new Vector3(0.04f, 0.30f, 0.30f), rail);  // tail fins (vert)
         }
         return root;
     }
@@ -518,6 +677,49 @@ public static class Models
             // rocket pod on top
             Prim(PrimitiveType.Cube, t, new Vector3(0f, 1.28f, 0f), new Vector3(0.5f, 0.26f, 0.42f), new Color(0.5f, 0.2f, 0.2f));
             Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 1.32f, 0.32f), new Vector3(0.1f, 0.22f, 0.1f), Color.gray, new Vector3(90f, 0f, 0f));
+        }
+        return root;
+    }
+
+    // КВАДРО-ТУРЕЛЬ — heavy 4-barrel turret. Wide armoured head on a thick pillar, four long barrels
+    // arranged in a 2×2 block pointing +Z, twin rocket pods on top at lvl 3.
+    public static GameObject BuildQuadTurret(int level)
+    {
+        var root = new GameObject("QuadTurretModel");
+        var t = root.transform;
+        Color armor = level >= 3 ? new Color(0.34f, 0.30f, 0.16f)
+                    : level == 2 ? new Color(0.28f, 0.34f, 0.24f)
+                                 : new Color(0.26f, 0.30f, 0.24f);
+        Color metal = new Color(0.24f, 0.26f, 0.28f);
+        Color dark = new Color(0.14f, 0.14f, 0.16f);
+
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.12f, 0f), new Vector3(1.25f, 0.12f, 1.25f), metal);  // wide base
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.55f, 0f), new Vector3(0.4f, 0.45f, 0.4f), metal);    // thick pillar
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 1.1f, 0f), new Vector3(1.15f, 0.7f, 0.95f), armor);         // armoured head
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 1.5f, -0.1f), new Vector3(0.7f, 0.28f, 0.7f), metal);       // sight housing
+
+        // 4 barrels in a 2×2 block, pointing +Z
+        float bl = 0.62f;              // barrel length
+        float br = 0.11f;              // barrel radius
+        var brot = new Vector3(90f, 0f, 0f);
+        float[] bx = { -0.28f, 0.28f, -0.28f, 0.28f };
+        float[] by = { 1.25f, 1.25f, 0.95f, 0.95f };
+        for (int i = 0; i < 4; i++)
+        {
+            Prim(PrimitiveType.Cylinder, t, new Vector3(bx[i], by[i], 0.55f), new Vector3(br, bl, br), dark, brot);
+            Prim(PrimitiveType.Cylinder, t, new Vector3(bx[i], by[i], 1.12f), new Vector3(br + 0.03f, 0.06f, br + 0.03f), metal, brot); // muzzle brake
+        }
+
+        if (level >= 2)
+        {
+            // rocket pods flanking the head
+            Prim(PrimitiveType.Cube, t, new Vector3(-0.72f, 1.35f, 0f), new Vector3(0.28f, 0.3f, 0.5f), new Color(0.5f, 0.22f, 0.2f));
+            Prim(PrimitiveType.Cube, t, new Vector3(0.72f, 1.35f, 0f), new Vector3(0.28f, 0.3f, 0.5f), new Color(0.5f, 0.22f, 0.2f));
+        }
+        if (level >= 3)
+        {
+            Prim(PrimitiveType.Cylinder, t, new Vector3(-0.72f, 1.4f, 0.28f), new Vector3(0.08f, 0.18f, 0.08f), Color.gray, brot);
+            Prim(PrimitiveType.Cylinder, t, new Vector3(0.72f, 1.4f, 0.28f), new Vector3(0.08f, 0.18f, 0.08f), Color.gray, brot);
         }
         return root;
     }
@@ -788,6 +990,80 @@ public static class Models
         return root;
     }
 
+    // Комбо: длинная стена + колючка в 2 м впереди (по +Z = «перед»).
+    public static GameObject BuildWallBarbed(int level)
+    {
+        var root = new GameObject("WallBarbedModel");
+        var wall = BuildWallLong(level);
+        wall.transform.SetParent(root.transform, false);
+        var wire = BuildBarbedWire(level);
+        wire.transform.SetParent(root.transform, false);
+        wire.transform.localPosition = new Vector3(0f, 0f, 2.0f);   // 2 м перед стеной
+        return root;
+    }
+
+    // Комбо: обычная стена + турель (турель по центру стены).
+    public static GameObject BuildWallTurret(int level)
+    {
+        var root = new GameObject("WallTurretModel");
+        var wall = BuildWall(level);
+        wall.transform.SetParent(root.transform, false);
+        var turret = BuildSentry(level);
+        turret.transform.SetParent(root.transform, false);
+        turret.transform.localPosition = new Vector3(0f, 0f, 0f);   // турель на базе стены
+        return root;
+    }
+
+    public static GameObject BuildLatticeFence(int level)
+    {
+        // Электрифицированный решётчатый забор-ловушка: 2 столба + верх/низ рельсы +
+        // сетка вертикальных прутьев и горизонтальных струн между ними. С уровнем —
+        // гуще сетка и больше синих изоляторов-разрядников (намёк на ток).
+        var root = new GameObject("LatticeFenceModel");
+        var t = root.transform;
+        Color post = new Color(0.30f, 0.31f, 0.34f);
+        Color mesh = new Color(0.52f, 0.54f, 0.58f);
+        Color spark = new Color(0.35f, 0.75f, 1f);
+
+        float span = 2.6f;          // длина вдоль X (в размер коллайдера)
+        float top = 1.6f;           // высота
+        float hx = span * 0.5f;
+
+        // Столбы по краям (+ средний с ур.2).
+        for (int side = -1; side <= 1; side += 2)
+            Prim(PrimitiveType.Cube, t, new Vector3(side * hx, top * 0.5f, 0f), new Vector3(0.14f, top, 0.14f), post);
+        if (level >= 2)
+            Prim(PrimitiveType.Cube, t, new Vector3(0f, top * 0.5f, 0f), new Vector3(0.12f, top, 0.12f), post);
+
+        // Верхняя и нижняя рельсы.
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, top - 0.08f, 0f), new Vector3(span, 0.08f, 0.08f), post);
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.08f, 0f), new Vector3(span, 0.08f, 0.08f), post);
+
+        // Сетка: вертикальные прутья (гуще с уровнем).
+        int verts = 6 + level * 3;
+        for (int i = 0; i <= verts; i++)
+        {
+            float x = -hx + i * span / verts;
+            Prim(PrimitiveType.Cube, t, new Vector3(x, top * 0.5f, 0f), new Vector3(0.03f, top - 0.14f, 0.03f), mesh);
+        }
+        // Горизонтальные струны.
+        int hors = 3 + level;
+        for (int j = 1; j <= hors; j++)
+        {
+            float y = j * top / (hors + 1);
+            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, 0f), new Vector3(span - 0.14f, 0.025f, 0.025f), mesh);
+        }
+
+        // Синие изоляторы-разрядники на верхней рельсе (гуще с уровнем).
+        int sparks = level + 1;
+        for (int k = 0; k < sparks; k++)
+        {
+            float x = sparks > 1 ? -hx * 0.7f + k * (hx * 1.4f) / (sparks - 1) : 0f;
+            Prim(PrimitiveType.Sphere, t, new Vector3(x, top + 0.05f, 0f), new Vector3(0.1f, 0.1f, 0.1f), spark);
+        }
+        return root;
+    }
+
     public static GameObject BuildAirStrike(int level)
     {
         // Radar/beacon mast: pad, striped mast, tilted dish, flashing beacon, antenna.
@@ -861,25 +1137,65 @@ public static class Models
     }
 
     // Ballistic missile silo: a concrete pad, an open launch tube and a rocket nose poking out.
+    // The flying ФАУ-2 (V-2) rocket — nose along local +Y (BallisticMissile orients +Y to the velocity).
+    public static void BuildVTwoRocket(Transform t)
+    {
+        Color white = new Color(0.86f, 0.86f, 0.88f);
+        Color black = new Color(0.10f, 0.10f, 0.12f);
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0f, 0f), new Vector3(0.42f, 1.1f, 0.42f), white);   // main body
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, -0.5f, 0f), new Vector3(0.44f, 0.18f, 0.44f), black);// lower roll band
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.9f, 0f), new Vector3(0.34f, 0.32f, 0.34f), white); // shoulder
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 1.2f, 0f), new Vector3(0.22f, 0.3f, 0.22f), black);  // ogive
+        Prim(PrimitiveType.Sphere,   t, new Vector3(0f, 1.55f, 0f), new Vector3(0.2f, 0.5f, 0.2f), black);   // pointed nose
+        for (int i = 0; i < 4; i++)                                                                           // 4 tail fins
+        {
+            float a = i * 90f, rad = a * Mathf.Deg2Rad;
+            Prim(PrimitiveType.Cube, t, new Vector3(Mathf.Sin(rad) * 0.42f, -0.85f, Mathf.Cos(rad) * 0.42f),
+                 new Vector3(0.07f, 0.7f, 0.55f), (i % 2 == 0) ? black : white, new Vector3(0f, a, 0f));
+        }
+        Prim(PrimitiveType.Sphere, t, new Vector3(0f, -1.2f, 0f), new Vector3(0.34f, 0.34f, 0.34f), new Color(1f, 0.7f, 0.2f)); // exhaust glow
+    }
+
+    // ФАУ-2 (V-2): a HUGE ballistic rocket standing VERTICALLY on a launch stand.
     public static GameObject BuildMissileSilo(int level)
     {
-        var root = new GameObject("MissileSiloModel");
+        var root = new GameObject("VTwoModel");
         var t = root.transform;
-        Color pad = new Color(0.28f, 0.29f, 0.31f);
-        Color tube = new Color(0.20f, 0.22f, 0.25f);
-        Color rim = new Color(0.5f, 0.5f, 0.15f);
-        Color rocket = new Color(0.75f, 0.75f, 0.8f);
-        Color nose = new Color(0.75f, 0.25f, 0.2f);
+        Color pad   = new Color(0.24f, 0.25f, 0.27f);
+        Color steel = new Color(0.18f, 0.19f, 0.22f);
+        Color white = new Color(0.86f, 0.86f, 0.88f);
+        Color black = new Color(0.10f, 0.10f, 0.12f);
+        Color rim   = new Color(0.55f, 0.5f, 0.12f);
 
-        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.18f, 0f), new Vector3(1.7f, 0.36f, 1.7f), pad);        // concrete pad
-        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 1.0f, 0f), new Vector3(1.1f, 1.0f, 1.1f), tube);     // launch tube
-        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 2.0f, 0f), new Vector3(1.18f, 0.08f, 1.18f), rim);   // warning rim
-        // the missile sitting in the tube, nose just clearing the rim
-        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 1.7f, 0f), new Vector3(0.5f, 0.8f, 0.5f), rocket);   // missile body
-        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 2.55f, 0f), new Vector3(0.46f, 0.28f, 0.46f), nose); // nose cone
-        // hazard stripes on the pad corners
-        Prim(PrimitiveType.Cube, t, new Vector3(0.7f, 0.37f, 0.7f), new Vector3(0.3f, 0.04f, 0.3f), rim);
-        Prim(PrimitiveType.Cube, t, new Vector3(-0.7f, 0.37f, -0.7f), new Vector3(0.3f, 0.04f, 0.3f), rim);
+        // ---- launch stand ----
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.16f, 0f), new Vector3(3.0f, 0.32f, 3.0f), pad);        // concrete pad
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.7f, 0f), new Vector3(1.9f, 0.35f, 1.9f), steel);   // launch table ring
+        for (int i = 0; i < 4; i++)                                                                           // four legs + hazard studs
+        {
+            float sx = (i & 1) == 0 ? -1.15f : 1.15f;
+            float sz = (i & 2) == 0 ? -1.15f : 1.15f;
+            Prim(PrimitiveType.Cube, t, new Vector3(sx, 0.55f, sz), new Vector3(0.22f, 0.9f, 0.22f), steel);
+            Prim(PrimitiveType.Cube, t, new Vector3(sx, 0.34f, sz), new Vector3(0.34f, 0.06f, 0.34f), rim);
+        }
+
+        // ---- the V-2 rocket, standing vertical (nose = +Y) ----
+        float baseY = 1.0f;
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, baseY + 2.6f, 0f), new Vector3(1.25f, 2.6f, 1.25f), white);  // main body (tall)
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, baseY + 1.4f, 0f), new Vector3(1.27f, 0.35f, 1.27f), black); // lower roll band
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, baseY + 5.0f, 0f), new Vector3(1.05f, 0.55f, 1.05f), white); // shoulder taper 1
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, baseY + 5.9f, 0f), new Vector3(0.78f, 0.5f, 0.78f), black);  // ogive 2 (black quadrant look)
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, baseY + 6.6f, 0f), new Vector3(0.5f, 0.45f, 0.5f), white);   // ogive 3
+        Prim(PrimitiveType.Sphere,   t, new Vector3(0f, baseY + 7.3f, 0f), new Vector3(0.42f, 0.9f, 0.42f), black);  // pointed nose tip
+
+        // ---- four big tail fins (cruciform) at the base ----
+        for (int i = 0; i < 4; i++)
+        {
+            float a = i * 90f;
+            float rad = a * Mathf.Deg2Rad;
+            float fx = Mathf.Sin(rad) * 1.15f, fz = Mathf.Cos(rad) * 1.15f;
+            Prim(PrimitiveType.Cube, t, new Vector3(fx, baseY + 0.9f, fz), new Vector3(0.16f, 1.9f, 1.5f),
+                 (i % 2 == 0) ? black : white, new Vector3(0f, a, 0f));
+        }
         return root;
     }
 

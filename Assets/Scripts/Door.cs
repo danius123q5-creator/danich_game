@@ -33,9 +33,9 @@ public class Door : Buildable
     {
         switch (Mathf.Clamp(Level, 1, 3))
         {
-            case 1: MaxHealth = 250f; break;
-            case 2: MaxHealth = 400f; break;
-            default: MaxHealth = 650f; break;
+            case 1: MaxHealth = 500f; break;   // 3.1.1: doors tankier (was 250/400/650)
+            case 2: MaxHealth = 800f; break;
+            default: MaxHealth = 1200f; break;
         }
         Health = MaxHealth;
     }
