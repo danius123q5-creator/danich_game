@@ -220,10 +220,10 @@ public class PlayerController : MonoBehaviour
     static string BCat(int i) => Lang.EN ? BuildCategoriesEN[i] : BuildCategories[i];
     static readonly int[][] BuildCategoryItems =
     {
-        new[] { 3, 16, 17, 4, 6, 20, 23, 26, 5, 43 }, // СТРОЙКА: WALL, LONG/TALL WALL, DOOR, STAIRS, LADDER, WATCHTOWER, BIG PLATFORM, BRIDGE, WALL+WIRE
+        new[] { 3, 16, 17, 4, 6, 20, 23, 26, 5, 43, 44 }, // СТРОЙКА: WALL, LONG/TALL WALL, DOOR, STAIRS, LADDER, WATCHTOWER, BIG PLATFORM, BRIDGE, WALL+WIRE, WALL+TURRET
         new[] { 29, 32 },                         // ДОБЫЧА: OIL DERRICK, METAL DRILL
         new[] { 27, 28, 35, 30, 31 },             // ЛОГИСТИКА: OIL PIPE, OIL DOSER, OIL HUB, CONVEYOR, METAL VAT
-        new[] { 0, 40, 41, 19, 37, 24, 34, 10, 21, 44 },  // ТУРЕЛИ: SENTRY, QUAD TURRET, PLASMA TURRET(ДЛС), RPG, FPV DRONE, BLADES, FLAMETHROWER, TESLA, FREEZE, WALL+TURRET
+        new[] { 0, 40, 41, 19, 37, 24, 34, 10, 21 },  // ТУРЕЛИ: SENTRY, QUAD TURRET, PLASMA TURRET(ДЛС), RPG, FPV DRONE, BLADES, FLAMETHROWER, TESLA, FREEZE
         new[] { 15, 36 },                         // ПВО: AA TURRET (ЗЕНИТКА), SAM (РЗК)
         new[] { 2, 7, 8, 42 },                    // ЛОВУШКИ: MINE, LANDMINE, BARBED WIRE, LATTICE FENCE(решётка)
         new[] { 25, 39, 38, 9, 11, 22, 18 },      // ТЯЖЁЛОЕ: MISSILE SILO, V-1, GERAN-2, AIR STRIKE, ARTILLERY, ORBITAL, CAR

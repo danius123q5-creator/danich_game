@@ -951,7 +951,7 @@ public static class Models
         return root;
     }
 
-    public static GameObject BuildBarbedWire(int level)
+    public static GameObject BuildBarbedWire(int level, float span = 2.0f)
     {
         // Coiled barbed wire: crossed wooden stakes at each end, horizontal
         // strands between them, and little angled "barb" cubes along each strand.
@@ -962,7 +962,7 @@ public static class Models
         Color wire = new Color(0.58f, 0.58f, 0.62f);
         Color barb = new Color(0.72f, 0.70f, 0.64f);
 
-        float span = 2.0f;                 // length along local X
+        // span — length along local X (param): standalone coil = 2.0, wall-combo = 4.4.
         int strands = 1 + level;           // 2..4 horizontal wires
         float top = 0.55f + 0.16f * level; // overall height
 
@@ -975,7 +975,8 @@ public static class Models
         }
 
         // Horizontal strands (cylinders laid along X) with barbs.
-        const int barbsPer = 5;
+        // Barbs scale with length so a long wall-wire isn't sparsely spiked.
+        int barbsPer = Mathf.Max(5, Mathf.RoundToInt(span * 2.5f));
         for (int s = 0; s < strands; s++)
         {
             float y = strands > 1 ? 0.25f + s * (top - 0.25f) / (strands - 1) : top * 0.6f;
@@ -996,7 +997,7 @@ public static class Models
         var root = new GameObject("WallBarbedModel");
         var wall = BuildWallLong(level);
         wall.transform.SetParent(root.transform, false);
-        var wire = BuildBarbedWire(level);
+        var wire = BuildBarbedWire(level, 4.4f);                    // колючка НА ВСЮ длину длинной стены
         wire.transform.SetParent(root.transform, false);
         wire.transform.localPosition = new Vector3(0f, 0f, 2.0f);   // 2 м перед стеной
         return root;
