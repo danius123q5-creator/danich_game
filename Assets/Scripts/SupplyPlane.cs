@@ -116,7 +116,15 @@ public class SupplyPlane : MonoBehaviour
             Vector3 a = transform.position; a.y = 0f;
             Vector3 t = target.transform.position; t.y = 0f;
             float dsq = (a - t).sqrMagnitude;
-            if (traveled > 40f && dsq > lastDistSq) { dropped = true; SupplyCrate.Drop(transform.position, target); }
+            if (traveled > 40f && dsq > lastDistSq)
+            {
+                dropped = true;
+                // Ящик падает точно в 6 м от игрока (по горизонтали) — далеко бегать не надо.
+                Vector3 pp = target.transform.position;
+                Vector2 off = Random.insideUnitCircle.normalized * 6f;
+                Vector3 dropPos = new Vector3(pp.x + off.x, transform.position.y, pp.z + off.y);
+                SupplyCrate.Drop(dropPos, target);
+            }
             lastDistSq = dsq;
         }
 
