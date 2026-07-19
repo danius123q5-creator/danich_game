@@ -163,9 +163,22 @@ public class GameManager : MonoBehaviour
         // Cheaper/earlier than the bomber raids — the ЗЕНИТКА shoots them down.
         if (WaveNumber >= 12 && WaveNumber % 4 == 0) SpawnDroneRaid();
 
-        // Снабжение: с 37-й волны кукурузник (Ан-2) пролетает над игроком и сбрасывает
-        // на парашюте жирный ящик с нефтью и металлом — помощь в позднем аду.
-        if (WaveNumber >= 37) SupplyPlane.SpawnOver(player);
+        // Снабжение: с 37-й волны кукурузники (Ан-2) пролетают над игроком и сбрасывают
+        // на парашюте жирные ящики с нефтью и металлом — помощь в позднем аду. Чем глубже
+        // волна, тем больше бортов: 37→1, 43→2, 47→3, 50→4, 54→5.
+        int supplyPlanes = SupplyPlaneCount(WaveNumber);
+        for (int i = 0; i < supplyPlanes; i++) SupplyPlane.SpawnOver(player);
+    }
+
+    // Сколько бортов снабжения в этой волне (ступенчато растёт к финалу).
+    static int SupplyPlaneCount(int w)
+    {
+        if (w >= 54) return 5;
+        if (w >= 50) return 4;
+        if (w >= 47) return 3;
+        if (w >= 43) return 2;
+        if (w >= 37) return 1;
+        return 0;
     }
 
     Vector3 BaseCentre() => GameBootstrap.HasBaseSpawn ? GameBootstrap.BaseSpawn
