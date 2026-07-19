@@ -162,6 +162,10 @@ public class GameManager : MonoBehaviour
         // Enemy kamikaze DRONE raids: from wave 12, every 4th wave, a swarm dives on your buildings.
         // Cheaper/earlier than the bomber raids — the ЗЕНИТКА shoots them down.
         if (WaveNumber >= 12 && WaveNumber % 4 == 0) SpawnDroneRaid();
+
+        // Снабжение: с 37-й волны кукурузник (Ан-2) пролетает над игроком и сбрасывает
+        // на парашюте жирный ящик с нефтью и металлом — помощь в позднем аду.
+        if (WaveNumber >= 37) SupplyPlane.SpawnOver(player);
     }
 
     Vector3 BaseCentre() => GameBootstrap.HasBaseSpawn ? GameBootstrap.BaseSpawn
