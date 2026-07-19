@@ -3,10 +3,12 @@ using UnityEngine;
 
 /// <summary>Walks toward the nearest player; melee or ranged attack depending on Kind.
 /// Normal (melee), Pistol (ranged hitscan), Tank (huge HP, slow, hard melee),
-/// Grenadier (lobs explosive grenades), Runner (fast, fragile, rushes in melee).</summary>
+/// Grenadier (lobs explosive grenades), Runner (fast, fragile, rushes in melee),
+/// Bloater (slow gas-bag: bursts a toxic cloud on death), Screamer (hangs back and
+/// summons packs of normals), Brute (rare late-game mini-boss: massive HP, smashes walls).</summary>
 public class Zombie : MonoBehaviour
 {
-    public enum Kind { Normal, Pistol, Tank, Grenadier, Runner }
+    public enum Kind { Normal, Pistol, Tank, Grenadier, Runner, Bloater, Screamer, Brute }
 
     public float MaxHealth = 110f; // 60 base + 50 (wave 1)
     public float MoveSpeed = 4f;
@@ -129,6 +131,22 @@ public class Zombie : MonoBehaviour
                 MoveSpeed = baseSpd + 5f;                  // very fast (sprints past the normal cap)
                 AttackDamage = 14f;
                 AttackCooldown = 0.8f;                     // quick, harrying hits
+                break;
+            case Kind.Bloater:
+                MaxHealth = baseHP * 1.6f; MoveSpeed = baseSpd * 0.55f; // slow, bloated sack of gas
+                AttackDamage = 16f;
+                break;
+            case Kind.Screamer:
+                MaxHealth = baseHP * 0.6f; MoveSpeed = baseSpd * 0.9f;  // fragile — kill it fast
+                AttackDamage = 8f;
+                // Reuse the ranged "hold at distance and act on cooldown" logic to keep its
+                // distance and SUMMON (see FireRanged → SummonPack) instead of shooting.
+                ranged = true; shootRange = 20f; rangedCooldown = 7f; rangedDamage = 0f;
+                break;
+            case Kind.Brute:
+                MaxHealth = baseHP * 8f; MoveSpeed = baseSpd * 0.6f;    // mini-boss wall of HP
+                AttackDamage = 45f;                        // caves in walls and players alike
+                AttackCooldown = 1.2f;
                 break;
             default: // Normal
                 MaxHealth = baseHP; MoveSpeed = baseSpd;
@@ -363,11 +381,50 @@ public class Zombie : MonoBehaviour
             Effects.GunShot(from);
             if (!player.IsDead) player.TakeDamage(rangedDamage);
         }
+        else if (kind == Kind.Screamer)
+        {
+            SummonPack();
+        }
         else // Grenadier
         {
             Effects.GunShot(from);
             Grenade.Launch(from, player.transform.position);
         }
+    }
+
+    /// <summary>Screamer: shriek and spawn a small pack of normal zombies at its feet.
+    /// Capped by MaxAlive so a lingering screamer can never flood the scene.</summary>
+    void SummonPack()
+    {
+        var gm = GameManager.Instance;
+        int cap = gm != null ? gm.MaxAlive : 120;
+        if (Zombie.All.Count >= cap) return;
+        Effects.Burst(transform.position + Vector3.up * 1.4f, new Color(0.75f, 0.3f, 1f), 24); // scream pop
+        for (int i = 0; i < 3 && Zombie.All.Count < cap; i++)
+        {
+            Vector2 off = Random.insideUnitCircle * 3f;
+            Vector3 p = transform.position + new Vector3(off.x, 0f, off.y);
+            p.y = GameBootstrap.Hill(p.x, p.z) + 1f;
+            Zombie.Create(p, Kind.Normal);
+        }
+    }
+
+    /// <summary>Bloater: on death, rupture into a toxic cloud that hurts the player and
+    /// nearby buildings. Host-side only (matches the melee/ranged damage model).</summary>
+    void GasBurst()
+    {
+        Vector3 c = transform.position + Vector3.up * 1f;
+        Effects.AirBlast(c, 6f);                                   // shockwave
+        Effects.Burst(c, new Color(0.5f, 1f, 0.3f), 40);          // green toxic haze
+        const float radius = 6f, dmg = 28f;
+        float rSq = radius * radius;
+        if (player != null && !player.IsDead &&
+            (player.transform.position - transform.position).sqrMagnitude < rSq)
+            player.TakeDamage(dmg);
+        foreach (var b in Buildable.All)
+            if (b != null && !b.IsTrap &&
+                (b.transform.position - transform.position).sqrMagnitude < rSq)
+                b.TakeDamage(dmg);
     }
 
     void FaceTowards(Vector3 worldPos)
@@ -443,6 +500,9 @@ public class Zombie : MonoBehaviour
         Kind.Pistol => new Color(1f, 0.9f, 0.35f),     // yellow
         Kind.Grenadier => new Color(1f, 0.6f, 0.2f),   // orange
         Kind.Runner => new Color(1f, 0.55f, 0.3f),     // orange (runner)
+        Kind.Bloater => new Color(0.5f, 1f, 0.3f),     // toxic green
+        Kind.Screamer => new Color(0.75f, 0.3f, 1f),   // purple
+        Kind.Brute => new Color(1f, 0.3f, 0.2f),       // deep red
         _ => new Color(0.5f, 1f, 0.45f),               // green (normal)
     };
 
@@ -462,6 +522,7 @@ public class Zombie : MonoBehaviour
         if (health <= 0f)
         {
             dead = true;
+            if (kind == Kind.Bloater) GasBurst(); // rupture BEFORE the object is torn down
             Effects.Vaporize(transform.position + Vector3.up * 1f, VaporizeTint()); // stylized death pop
             if (GameManager.Instance != null) GameManager.Instance.OnZombieKilled(player);
             Destroy(gameObject);

@@ -116,7 +116,8 @@ public class GameManager : MonoBehaviour
         if (zombiesToSpawn > 0 && aliveCount < MaxAlive && Time.time >= nextSpawn)
         {
             nextSpawn = Time.time + SpawnInterval;
-            int batch = Mathf.Min(5, Mathf.Min(zombiesToSpawn, MaxAlive - aliveCount)); // spawn in bursts
+            int burst = WaveNumber >= 25 ? 8 : 5; // deeper waves feed the horde in bigger gulps
+            int batch = Mathf.Min(burst, Mathf.Min(zombiesToSpawn, MaxAlive - aliveCount));
             for (int i = 0; i < batch; i++) { SpawnZombie(); aliveCount++; }
         }
 
@@ -141,7 +142,16 @@ public class GameManager : MonoBehaviour
         WaveNumber++;
         ModRuntime.OnWaveStart(); // 3.2: fire WAVE_START mod actions
         if (WaveNumber >= EvacWave && !GameRoot.Infinite) { EndgameCinematic.Begin(); return; } // evac finale (skipped in endless mode)
-        zombiesToSpawn = BaseZombies + WaveNumber * PerWave;
+
+        // Horde size: linear early, then a quadratic LATE-GAME SURGE past wave 20 so the deep
+        // waves feel like a flood, not a trickle. e.g. w20≈126, w35≈281, w55≈636.
+        int count = BaseZombies + WaveNumber * PerWave;
+        if (WaveNumber > 20) count += (WaveNumber - 20) * (WaveNumber - 20) / 4;
+        zombiesToSpawn = count;
+
+        // Raise the on-screen cap in the late game too — otherwise the bigger queue just
+        // drains through the same 120-alive bottleneck and you never SEE the surge.
+        MaxAlive = Mathf.Clamp(120 + Mathf.Max(0, WaveNumber - 15) * 5, 120, 220);
         IsPrep = false;
         nextBird = Time.time + BirdEvery();
 
@@ -271,11 +281,17 @@ public class GameManager : MonoBehaviour
     // Mix of zombie kinds, with the dangerous ones unlocking on later waves.
     Zombie.Kind PickKind()
     {
+        // Mini-boss BRUTE: rare, late-game only, slightly more common the deeper you push.
+        if (WaveNumber >= 15 && Random.value < Mathf.Min(0.06f, 0.015f + (WaveNumber - 15) * 0.002f))
+            return Zombie.Kind.Brute;
+
         float r = Random.value;
-        if (WaveNumber >= 3 && r < 0.15f) return Zombie.Kind.Runner;    // ~15% from wave 3 (fast rushers)
-        if (WaveNumber >= 4 && r < 0.27f) return Zombie.Kind.Grenadier; // ~12%
-        if (WaveNumber >= 3 && r < 0.42f) return Zombie.Kind.Tank;      // ~15%
-        if (WaveNumber >= 2 && r < 0.62f) return Zombie.Kind.Pistol;    // ~20%
+        if (WaveNumber >= 8 && r < 0.10f) return Zombie.Kind.Screamer;  // ~10% summoners (kill first)
+        if (WaveNumber >= 6 && r < 0.22f) return Zombie.Kind.Bloater;   // ~12% toxic gas-bags
+        if (WaveNumber >= 3 && r < 0.35f) return Zombie.Kind.Runner;    // ~13% fast rushers
+        if (WaveNumber >= 4 && r < 0.46f) return Zombie.Kind.Grenadier; // ~11%
+        if (WaveNumber >= 3 && r < 0.60f) return Zombie.Kind.Tank;      // ~14%
+        if (WaveNumber >= 2 && r < 0.78f) return Zombie.Kind.Pistol;    // ~18%
         return Zombie.Kind.Normal;
     }
 

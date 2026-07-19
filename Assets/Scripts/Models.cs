@@ -1238,7 +1238,7 @@ public static class Models
     }
 
     // Per-kind shared materials for the Quaternius CC0 zombie model (palette-textured).
-    static readonly Material[] _zMats = new Material[5];
+    static readonly Material[] _zMats = new Material[8];
     static bool _zModelFailed;
 
     /// <summary>Zombie visual: a Quaternius CC0 model when available, else the procedural
@@ -1252,7 +1252,7 @@ public static class Models
 
     static Material ZombieMat(int kind)
     {
-        kind = Mathf.Clamp(kind, 0, 4);
+        kind = Mathf.Clamp(kind, 0, 7);
         if (_zMats[kind] != null) return _zMats[kind];
         var sh = Shader.Find("Universal Render Pipeline/Lit");
         var tex = Resources.Load<Texture2D>("Zombies/ZombieTexture");
@@ -1271,10 +1271,14 @@ public static class Models
         2 => new Color(1f, 0.8f, 0.78f),   // tank — slightly bloodied
         3 => new Color(1f, 0.95f, 0.82f),  // grenadier
         4 => new Color(1f, 0.55f, 0.4f),   // runner — orange-red
+        5 => new Color(0.55f, 0.95f, 0.5f),// bloater — sickly green
+        6 => new Color(0.8f, 0.55f, 1f),   // screamer — pale purple
+        7 => new Color(0.95f, 0.5f, 0.45f),// brute — angry red
         _ => Color.white,                   // normal/pistol — texture as-is
     };
 
-    static float ZombieScaleMul(int kind) => kind == 2 ? 1.5f : kind == 4 ? 0.82f : 1f; // tank bigger, runner leaner
+    // tank bigger, brute huge, bloater bloated, runner leaner
+    static float ZombieScaleMul(int kind) => kind == 7 ? 2.3f : kind == 2 ? 1.5f : kind == 5 ? 1.35f : kind == 4 ? 0.82f : 1f;
 
     static GameObject TryBuildZombieModel(int kind)
     {
@@ -1308,6 +1312,9 @@ public static class Models
             case 2: skin = new Color(0.46f, 0.42f, 0.22f); dark = new Color(0.28f, 0.26f, 0.14f); break; // tank
             case 3: skin = new Color(0.50f, 0.45f, 0.24f); dark = new Color(0.30f, 0.26f, 0.15f); break; // grenadier
             case 4: skin = new Color(0.70f, 0.35f, 0.18f); dark = new Color(0.40f, 0.20f, 0.12f); break; // runner (orange)
+            case 5: skin = new Color(0.35f, 0.55f, 0.22f); dark = new Color(0.20f, 0.32f, 0.13f); break; // bloater (green)
+            case 6: skin = new Color(0.48f, 0.36f, 0.60f); dark = new Color(0.28f, 0.22f, 0.38f); break; // screamer (purple)
+            case 7: skin = new Color(0.52f, 0.30f, 0.24f); dark = new Color(0.32f, 0.18f, 0.15f); break; // brute (red)
             default: skin = new Color(0.40f, 0.55f, 0.25f); dark = new Color(0.24f, 0.30f, 0.16f); break; // normal
         }
 
@@ -1331,7 +1338,9 @@ public static class Models
             Prim(PrimitiveType.Cylinder, t, new Vector3(0.32f, 1.72f, 0.75f), new Vector3(0.17f, 0.1f, 0.17f), new Color(0.22f, 0.22f, 0.2f), new Vector3(75f, 0f, 0f)); // muzzle
         }
 
-        if (kind == 2) root.transform.localScale = Vector3.one * 1.35f; // tank: bigger and bulkier
+        if (kind == 7) root.transform.localScale = Vector3.one * 2.0f;  // brute: towering mini-boss
+        else if (kind == 2) root.transform.localScale = Vector3.one * 1.35f; // tank: bigger and bulkier
+        else if (kind == 5) root.transform.localScale = Vector3.one * 1.3f;  // bloater: swollen
         else if (kind == 4) root.transform.localScale = Vector3.one * 0.82f; // runner: smaller and leaner
         return root;
     }
