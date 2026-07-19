@@ -287,7 +287,7 @@ public class GameManager : MonoBehaviour
 
         float r = Random.value;
         if (WaveNumber >= 8 && r < 0.10f) return Zombie.Kind.Screamer;  // ~10% summoners (kill first)
-        if (WaveNumber >= 6 && r < 0.22f) return Zombie.Kind.Bloater;   // ~12% toxic gas-bags
+        if (WaveNumber >= 12 && r < 0.22f) return Zombie.Kind.Bloater;  // ~12% toxic gas-bags
         if (WaveNumber >= 3 && r < 0.35f) return Zombie.Kind.Runner;    // ~13% fast rushers
         if (WaveNumber >= 4 && r < 0.46f) return Zombie.Kind.Grenadier; // ~11%
         if (WaveNumber >= 3 && r < 0.60f) return Zombie.Kind.Tank;      // ~14%
