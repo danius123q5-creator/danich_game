@@ -13,12 +13,27 @@ using UnityEngine;
 /// </summary>
 public class AllyPawn : MonoBehaviour
 {
-    public const int MaxCount = 12;
     public const int MaxTier  = 5;
     public const int UnlockWave = 30; // работяги — для лейт-гейма, не для читерского старта
 
     // Разблокированы только с 30-й волны (иначе спам пешек в начале ломает баланс).
     public static bool Unlocked => GameManager.Instance != null && GameManager.Instance.WaveNumber >= UnlockWave;
+
+    // Максимум пешек растёт по волнам: 30→3, 35→4, 40→6, 45→8, 49→10, 50→12.
+    public static int MaxCount
+    {
+        get
+        {
+            int w = GameManager.Instance != null ? GameManager.Instance.WaveNumber : 0;
+            if (w >= 50) return 12;
+            if (w >= 49) return 10;
+            if (w >= 45) return 8;
+            if (w >= 40) return 6;
+            if (w >= 35) return 4;
+            if (w >= 30) return 3;
+            return 0;
+        }
+    }
 
     // Общий уровень отряда — качается за металл, применяется сразу ко всем пешкам.
     public static int Tier { get; private set; } = 1;
