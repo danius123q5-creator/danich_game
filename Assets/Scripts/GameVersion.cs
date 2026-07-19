@@ -13,10 +13,10 @@
 /// against the latest release on GitHub.</summary>
 public static class GameVersion
 {
-    public const string Current = "3.5";
+    public const string Current = "3.6";
 
     /// <summary>Codename for this release (shown in credits/notes).</summary>
-    public static string Codename => Lang.T("Страшные страшности", "Scary Scaries");
+    public static string Codename => Lang.T("Бригада", "The Crew");
 
     /// <summary>Copyright line shown in menus/credits. The game is distributed under an
     /// End-User License Agreement (see the EULA screen in Settings).</summary>

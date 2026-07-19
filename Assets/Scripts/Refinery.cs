@@ -166,10 +166,12 @@ public class Refinery : MonoBehaviour, IOilSource
 
         bool playerInZone = player != null && !player.IsDead &&
                             (player.transform.position - p).sqrMagnitude <= Zone * Zone;
+        // Работяги-пешки тоже держат точку: пешка в зоне засчитывается как захватчик.
+        bool friendlyInZone = playerInZone || AllyPawn.AnyInZone(p, Zone);
 
         if (!Captured)
         {
-            if (playerInZone && zc == 0)
+            if (friendlyInZone && zc == 0)
             {
                 Capture += dt;
                 if (Capture >= CaptureTime)

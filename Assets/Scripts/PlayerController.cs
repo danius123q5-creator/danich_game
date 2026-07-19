@@ -79,6 +79,7 @@ public class PlayerController : MonoBehaviour
     int previewType = -1;
     Buildable aimed;
     bool buildMenuOpen;
+    bool pawnMenuOpen;   // меню работяг-пешек (открывается по P)
     bool builtSomething; // once true, the "press Q to build" prep hint stops showing
     Car vehicle; // non-null while driving a car
 
@@ -323,6 +324,22 @@ public class PlayerController : MonoBehaviour
             return; // frozen while the menu is held open; clicks handled in OnGUI
         }
 
+        // Меню работяг-пешек (P): переключается, курсор свободен, игрок заморожен (кнопки в OnGUI).
+        if (Input.GetKeyDown(KeyCode.P) && !GameRoot.IsPvp)
+        {
+            pawnMenuOpen = !pawnMenuOpen;
+            Cursor.lockState = pawnMenuOpen ? CursorLockMode.None : CursorLockMode.Locked;
+            Cursor.visible = pawnMenuOpen;
+        }
+        if (pawnMenuOpen)
+        {
+            if (Input.GetKeyDown(KeyCode.Escape)) { pawnMenuOpen = false; Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; }
+            if (preview != null) preview.SetActive(false);
+            if (rangeSphere != null) rangeSphere.SetActive(false);
+            SetAimed(null);
+            return; // frozen while the pawn menu is open; buttons handled in OnGUI
+        }
+
         // ---- Top-down logistics build mode (T): overhead camera + free mouse to lay pipes/conveyors ----
         if (topBuild && (tool != Tool.Build || IsDead || Disarmed)) SetTopBuild(false); // auto-exit if we leave building
         if (Input.GetKeyDown(KeyCode.T) && (tool == Tool.Build || topBuild)) SetTopBuild(!topBuild);
@@ -398,6 +415,30 @@ public class PlayerController : MonoBehaviour
 
         AnimateViewmodel();
         UpdatePreview();
+    }
+
+    // P-меню → нанять работягу (цена растёт с числом пешек). Доступно только с 30-й волны.
+    void RecruitPawn()
+    {
+        if (!AllyPawn.Unlocked) { Toast(Lang.T($"Работяги доступны с {AllyPawn.UnlockWave}-й волны", $"Workers unlock at wave {AllyPawn.UnlockWave}")); return; }
+        if (AllyPawn.Count >= AllyPawn.MaxCount) { Toast(Lang.T("Отряд работяг полон", "Worker squad is full")); return; }
+        int cost = AllyPawn.RecruitCost();
+        if (Metal < cost) { Toast(Lang.T($"Нужно {cost} металла на работягу", $"Need {cost} metal for a worker")); return; }
+        AddMetal(-cost);
+        AllyPawn.Spawn(this);
+        Toast(Lang.T($"Работяга нанят (−{cost} мет.) · всего {AllyPawn.Count}", $"Worker hired (−{cost} metal) · {AllyPawn.Count} total"));
+    }
+
+    // P-меню → качать весь отряд работяг (цена растёт с уровнем). Только с 30-й волны.
+    void UpgradePawnSquad()
+    {
+        if (!AllyPawn.Unlocked) { Toast(Lang.T($"Работяги доступны с {AllyPawn.UnlockWave}-й волны", $"Workers unlock at wave {AllyPawn.UnlockWave}")); return; }
+        if (AllyPawn.Tier >= AllyPawn.MaxTier) { Toast(Lang.T("Отряд прокачан до максимума", "Squad fully upgraded")); return; }
+        int cost = AllyPawn.UpgradeCost();
+        if (Metal < cost) { Toast(Lang.T($"Нужно {cost} металла на прокачку отряда", $"Need {cost} metal to upgrade the squad")); return; }
+        AddMetal(-cost);
+        AllyPawn.UpgradeTier();
+        Toast(Lang.T($"Отряд работяг качнут до ур.{AllyPawn.Tier} (−{cost} мет.)", $"Worker squad upgraded to tier {AllyPawn.Tier} (−{cost} metal)"));
     }
 
     void SyncGunToWave()
@@ -1711,6 +1752,12 @@ public class PlayerController : MonoBehaviour
                         GameRoot.Sandbox ? Lang.T("нажмите J, чтобы запустить волну (песочница)", "press J to launch a wave (sandbox)")
                                          : Lang.T("если вы готовы — нажмите J, чтобы начать волну", "if you're ready — press J to start the wave"), Sm);
                 }
+
+                // Работяги-пешки: подсказка (меню по P, разблокировка с 30-й волны).
+                GUI.color = new Color(0.5f, 0.9f, 1f, pulse);
+                GUI.Label(new Rect(cx - 400f, 238f, 800f, 26f), AllyPawn.Unlocked
+                    ? Lang.T($"P — меню работяг (пешек {AllyPawn.Count}/{AllyPawn.MaxCount}, ур.{AllyPawn.Tier})", $"P — worker menu (pawns {AllyPawn.Count}/{AllyPawn.MaxCount}, tier {AllyPawn.Tier})")
+                    : Lang.T($"работяги — с {AllyPawn.UnlockWave}-й волны (меню P)", $"workers — from wave {AllyPawn.UnlockWave} (P menu)"), Sm);
                 if (GameRoot.Hardcore)
                 {
                     GUI.color = new Color(1f, 0.7f, 0.3f, pulse);
@@ -2048,5 +2095,64 @@ public class PlayerController : MonoBehaviour
                 GUI.Label(new Rect(dx + 14f, dy + 34f, dw - 28f, dh - 40f), BDesc(hoverItem), dBody);
             }
         }
+
+        if (pawnMenuOpen && !IsDead) DrawPawnMenu();
+    }
+
+    // Меню работяг-пешек (по P): найм и прокачка кнопками.
+    void DrawPawnMenu()
+    {
+        float cx = UI.W * 0.5f, cy = UI.H * 0.5f;
+        GUI.color = new Color(0f, 0f, 0f, 0.6f);
+        GUI.DrawTexture(new Rect(0f, 0f, UI.W, UI.H), Texture2D.whiteTexture);
+
+        float pw = 620f, ph = 380f;
+        var panel = new Rect(cx - pw * 0.5f, cy - ph * 0.5f, pw, ph);
+        GUI.color = new Color(0.09f, 0.11f, 0.15f, 0.96f);
+        GUI.DrawTexture(panel, Texture2D.whiteTexture);
+        GUI.color = Color.white;
+
+        var title = new GUIStyle(GUI.skin.label) { fontSize = 26, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+        var info  = new GUIStyle(GUI.skin.label) { fontSize = 15, alignment = TextAnchor.UpperCenter, wordWrap = true };
+        var btn   = new GUIStyle(GUI.skin.button){ fontSize = 17, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = true };
+
+        GUI.Label(new Rect(panel.x, panel.y + 14f, pw, 34f), Lang.T("РАБОТЯГИ", "WORKERS"), title);
+
+        bool unlocked = AllyPawn.Unlocked;
+        GUI.Label(new Rect(panel.x + 24f, panel.y + 54f, pw - 48f, 120f), Lang.T(
+            $"Отряд: {AllyPawn.Count}/{AllyPawn.MaxCount} · уровень {AllyPawn.Tier}/{AllyPawn.MaxTier}\n\nЧинят и качают постройки, строят кольцо турелей у базы, захватывают НПЗ и носят тебе металл/нефть. Гибнут рядом с зомби.",
+            $"Squad: {AllyPawn.Count}/{AllyPawn.MaxCount} · tier {AllyPawn.Tier}/{AllyPawn.MaxTier}\n\nThey repair & upgrade buildings, ring the base with turrets, capture refineries and haul metal/oil to you. They die near zombies."), info);
+
+        if (!unlocked)
+        {
+            GUI.color = new Color(1f, 0.6f, 0.35f);
+            GUI.Label(new Rect(panel.x, panel.y + 182f, pw, 30f),
+                Lang.T($"Разблокируются на {AllyPawn.UnlockWave}-й волне (лейт-гейм)", $"Unlock at wave {AllyPawn.UnlockWave} (late game)"),
+                new GUIStyle(GUI.skin.label) { fontSize = 17, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter });
+            GUI.color = Color.white;
+        }
+
+        float bw = 260f, bh = 70f, gap = 20f;
+        float bx = cx - bw - gap * 0.5f, bx2 = cx + gap * 0.5f, by = panel.y + ph - bh - 66f;
+
+        int rc = AllyPawn.RecruitCost();
+        bool canHire = unlocked && AllyPawn.Count < AllyPawn.MaxCount && Metal >= rc;
+        GUI.backgroundColor = canHire ? new Color(0.35f, 0.65f, 0.4f) : new Color(0.42f, 0.36f, 0.36f);
+        string hireLabel = AllyPawn.Count >= AllyPawn.MaxCount ? Lang.T("Отряд полон", "Squad full")
+                         : Lang.T($"Нанять работягу\n{rc} мет.", $"Hire worker\n{rc} metal");
+        if (GUI.Button(new Rect(bx, by, bw, bh), hireLabel, btn)) RecruitPawn();
+
+        int uc = AllyPawn.UpgradeCost();
+        GUI.backgroundColor = (unlocked && AllyPawn.Tier < AllyPawn.MaxTier && Metal >= uc) ? new Color(0.4f, 0.55f, 0.8f) : new Color(0.42f, 0.36f, 0.36f);
+        string upLabel = AllyPawn.Tier >= AllyPawn.MaxTier ? Lang.T("Отряд макс.", "Squad maxed")
+                       : Lang.T($"Качать отряд → ур.{AllyPawn.Tier + 1}\n{uc} мет.", $"Upgrade squad → tier {AllyPawn.Tier + 1}\n{uc} metal");
+        if (GUI.Button(new Rect(bx2, by, bw, bh), upLabel, btn)) UpgradePawnSquad();
+
+        GUI.backgroundColor = Color.white;
+        if (GUI.Button(new Rect(cx - 90f, panel.y + ph - 44f, 180f, 32f), Lang.T("Закрыть (P)", "Close (P)"), GUI.skin.button))
+        {
+            pawnMenuOpen = false; Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false;
+        }
+        GUI.color = Color.white;
     }
 }
