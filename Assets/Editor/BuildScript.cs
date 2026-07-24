@@ -33,6 +33,41 @@ public static class BuildScript
             EditorApplication.Exit(1);
     }
 
+    /// <summary>3.7: standalone MODEL VIEWER build. Same project, but baked with the product name
+    /// "ZombieShooterModelViewer" so GameBootstrap.Boot launches the viewer instead of the game.
+    /// Outputs a separate exe to Build/ModelViewer/ (shipped as its own release asset).</summary>
+    public static void BuildModelViewer()
+    {
+        string[] scenes = EditorBuildSettings.scenes
+            .Where(s => s.enabled)
+            .Select(s => s.path)
+            .ToArray();
+        if (scenes.Length == 0)
+            scenes = new[] { "Assets/Scenes/SampleScene.unity" };
+
+        string prevName = PlayerSettings.productName;
+        try
+        {
+            PlayerSettings.productName = "ZombieShooterModelViewer"; // read at runtime by Boot()
+            var opts = new BuildPlayerOptions
+            {
+                scenes = scenes,
+                locationPathName = "Build/ModelViewer/ZombieShooterModelViewer.exe",
+                target = BuildTarget.StandaloneWindows64,
+                options = BuildOptions.None,
+            };
+            var report = BuildPipeline.BuildPlayer(opts);
+            var summary = report.summary;
+            Debug.Log($"BUILD RESULT: {summary.result}  size={summary.totalSize} bytes  errors={summary.totalErrors}");
+            if (summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
+                EditorApplication.Exit(1);
+        }
+        finally
+        {
+            PlayerSettings.productName = prevName; // never leave the project renamed
+        }
+    }
+
     /// <summary>WebGL ("инвалид эдишн") build for Yandex Games / itch.io — single-player only
     /// (networking is hidden in browser since WebGL has no UDP). Outputs to Build/WebGL/.</summary>
     public static void BuildWebGL()

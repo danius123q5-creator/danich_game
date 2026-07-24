@@ -29,6 +29,14 @@ public static class GameBootstrap
         foreach (var c in Object.FindObjectsByType<Camera>(FindObjectsSortMode.None)) Object.Destroy(c.gameObject);
         foreach (var a in Object.FindObjectsByType<AudioListener>(FindObjectsSortMode.None)) Object.Destroy(a);
 
+        // 3.7: the standalone MODEL-VIEWER build (BuildScript.BuildModelViewer bakes this product
+        // name) boots straight into the viewer instead of the game — same code, its own .exe.
+        if (Application.productName == "ZombieShooterModelViewer")
+        {
+            new GameObject("ModelViewerApp").AddComponent<ModelViewerApp>();
+            return;
+        }
+
         new GameObject("GameRoot").AddComponent<GameRoot>(); // shows the main menu
     }
 
