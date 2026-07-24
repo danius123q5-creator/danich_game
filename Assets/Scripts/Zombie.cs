@@ -506,7 +506,9 @@ public class Zombie : MonoBehaviour
         _ => new Color(0.5f, 1f, 0.45f),               // green (normal)
     };
 
-    public void TakeDamage(float amount)
+    // `by` (2.7): who dealt the killing blow — used by the killfeed. Optional so every existing
+    // caller compiles unchanged; unattributed kills show up as a generic "defense" line.
+    public void TakeDamage(float amount, string by = null)
     {
         // On a co-op client the host owns this zombie — report the hit instead of applying
         // it locally (so weapons, turrets and mines all stay in sync, with no flicker).
@@ -524,6 +526,8 @@ public class Zombie : MonoBehaviour
             dead = true;
             if (kind == Kind.Bloater) GasBurst(); // rupture BEFORE the object is torn down
             Effects.Vaporize(transform.position + Vector3.up * 1f, VaporizeTint()); // stylized death pop
+            Killfeed.Add(by, kind); // 2.7: GMod-style killfeed
+            QuestSystem.OnKill(kind, by, transform.position, player); // 3.7: daily-quest kill tracking
             if (GameManager.Instance != null) GameManager.Instance.OnZombieKilled(player);
             Destroy(gameObject);
         }

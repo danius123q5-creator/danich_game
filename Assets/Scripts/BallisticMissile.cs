@@ -74,7 +74,7 @@ public class BallisticMissile : MonoBehaviour
         float rSq = blastR * blastR;
         foreach (var z in Zombie.All)
             if (z != null && (z.transform.position - transform.position).sqrMagnitude < rSq)
-                z.TakeDamage(99999f); // everything in the blast dies
+                z.TakeDamage(99999f, Lang.T("фау-2", "V-2")); // everything in the blast dies
 
         Release();
         Destroy(gameObject);

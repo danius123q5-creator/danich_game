@@ -72,9 +72,12 @@ public static class Models
             case 18: return BuildCar(level);
             case 19: return BuildRpg(level);
             case 40: return BuildQuadTurret(level);
+            case 41: return BuildPlasmaTurret(level); // 2.7: раньше не было → плазма рисовалась миной
             case 42: return BuildLatticeFence(level);
             case 43: return BuildWallBarbed(level);
             case 44: return BuildWallTurret(level);
+            case 45: return BuildOreHub(level);
+            case 46: return BuildZipLine(level);
             default: return BuildProxyMine(level);
         }
     }
@@ -196,12 +199,36 @@ public static class Models
         Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.25f, 0f), new Vector3(2.4f, 0.5f, 5.2f), dark);          // base skid
         Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.9f, -1.9f), new Vector3(1.2f, 0.9f, 1.2f), steel);       // gearbox/motor
 
-        // A-frame Sampson post (two legs meeting ~3 m up)
-        var legL = Prim(PrimitiveType.Cube, t, new Vector3(-0.7f, 1.7f, 0.2f), new Vector3(0.22f, 3.2f, 0.22f), steel);
-        legL.transform.localRotation = Quaternion.Euler(0f, 0f, 12f);
-        var legR = Prim(PrimitiveType.Cube, t, new Vector3(0.7f, 1.7f, 0.2f), new Vector3(0.22f, 3.2f, 0.22f), steel);
-        legR.transform.localRotation = Quaternion.Euler(0f, 0f, -12f);
-        Prim(PrimitiveType.Cube, t, new Vector3(0f, 3.15f, 0.2f), new Vector3(0.5f, 0.3f, 0.5f), steel);       // bearing block (pivot)
+        // ── Sampson post: a proper braced 4-leg A-frame (крестовины) instead of two bare legs ──
+        float pz = 0.2f;                 // Sampson-post plane (matches the Beam pivot at z=0.2)
+        float ty = 3.15f;                // apex / bearing height
+        Vector3 flB = new Vector3(-0.8f, 0.45f, pz + 0.55f), frB = new Vector3(0.8f, 0.45f, pz + 0.55f);   // front feet
+        Vector3 blB = new Vector3(-0.8f, 0.45f, pz - 0.55f), brB = new Vector3(0.8f, 0.45f, pz - 0.55f);   // back feet
+        Vector3 apexF = new Vector3(0f, ty, pz + 0.32f), apexB = new Vector3(0f, ty, pz - 0.32f);          // two apexes
+        // four legs meeting at the apexes
+        Beam(t, flB, apexF, 0.20f, steel); Beam(t, frB, apexF, 0.20f, steel);
+        Beam(t, blB, apexB, 0.20f, steel); Beam(t, brB, apexB, 0.20f, steel);
+        // X cross-braces on the front and back faces (the "крестовины")
+        Vector3 flU = new Vector3(-0.28f, 2.55f, pz + 0.42f), frU = new Vector3(0.28f, 2.55f, pz + 0.42f);
+        Vector3 blU = new Vector3(-0.28f, 2.55f, pz - 0.42f), brU = new Vector3(0.28f, 2.55f, pz - 0.42f);
+        Beam(t, flB, frU, 0.09f, dark); Beam(t, frB, flU, 0.09f, dark);   // front X
+        Beam(t, blB, brU, 0.09f, dark); Beam(t, brB, blU, 0.09f, dark);   // back X
+        // horizontal ties knitting the two A-frames into a rigid tower
+        Beam(t, flB, blB, 0.09f, dark); Beam(t, frB, brB, 0.09f, dark);                 // foot ties
+        Beam(t, new Vector3(-0.42f, 1.9f, pz + 0.48f), new Vector3(0.42f, 1.9f, pz + 0.48f), 0.09f, dark); // front waist tie
+        Beam(t, new Vector3(-0.42f, 1.9f, pz - 0.48f), new Vector3(0.42f, 1.9f, pz - 0.48f), 0.09f, dark); // back waist tie
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 3.15f, 0.2f), new Vector3(0.5f, 0.34f, 0.9f), steel);       // bearing block (pivot)
+
+        // ── maintenance ladder up the back + a small railed service platform ──
+        float lz = pz - 0.62f;
+        Prim(PrimitiveType.Cube, t, new Vector3(-0.3f, 1.55f, lz), new Vector3(0.07f, 3.0f, 0.07f), paint);     // ladder rail L
+        Prim(PrimitiveType.Cube, t, new Vector3(0.3f, 1.55f, lz), new Vector3(0.07f, 3.0f, 0.07f), paint);      // ladder rail R
+        for (float y = 0.5f; y < 3.0f; y += 0.45f)
+            Prim(PrimitiveType.Cube, t, new Vector3(0f, y, lz), new Vector3(0.66f, 0.06f, 0.08f), paint);       // rungs
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 2.72f, pz - 0.55f), new Vector3(1.7f, 0.08f, 0.9f), steel);  // catwalk deck
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 3.05f, pz - 0.95f), new Vector3(1.7f, 0.55f, 0.06f), paint); // rail back
+        Prim(PrimitiveType.Cube, t, new Vector3(-0.82f, 3.05f, pz - 0.55f), new Vector3(0.06f, 0.55f, 0.85f), paint); // rail L
+        Prim(PrimitiveType.Cube, t, new Vector3(0.82f, 3.05f, pz - 0.55f), new Vector3(0.06f, 0.55f, 0.85f), paint);  // rail R
 
         // Walking beam pivot — OilDerrick rotates this node so the beam rocks.
         var beamGO = new GameObject("Beam");
@@ -553,6 +580,52 @@ public static class Models
         return root;
     }
 
+    // Ore hub: metal twin of the oil hub — a heavy collection bin with 4 conveyor inlet chutes and a
+    // steel-blue band, plus a small hopper on top. Conveyors plug into the side chutes.
+    public static GameObject BuildOreHub(int level)
+    {
+        var root = new GameObject("OreHubModel");
+        var t = root.transform;
+        Color body = new Color(0.20f, 0.21f, 0.24f);
+        Color band = new Color(0.45f, 0.62f, 0.85f);   // steel-blue (metal), vs the oil hub's orange
+        Color steel = new Color(0.34f, 0.35f, 0.38f);
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.14f, 0f), new Vector3(2.3f, 0.28f, 2.3f), steel);      // base pad
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.95f, 0f), new Vector3(1.7f, 1.35f, 1.7f), body);       // collection bin
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 1.0f, 0f), new Vector3(1.78f, 0.22f, 1.78f), band);      // blue band
+        // ore hopper on top (open box narrowing up)
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 1.85f, 0f), new Vector3(1.0f, 0.5f, 1.0f), steel);
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 2.18f, 0f), new Vector3(0.6f, 0.2f, 0.6f), band);
+        for (int i = 0; i < 4; i++)                                                                          // 4 inlet chutes (conveyor plugs)
+        {
+            float a = i * 90f, rad = a * Mathf.Deg2Rad;
+            Prim(PrimitiveType.Cube, t, new Vector3(Mathf.Cos(rad) * 1.1f, 0.55f, Mathf.Sin(rad) * 1.1f),
+                 new Vector3(0.5f, 0.28f, 0.5f), steel, new Vector3(0f, a, 0f));
+        }
+        Prim(PrimitiveType.Cube, t, new Vector3(0.9f, 1.25f, 0f), new Vector3(0.1f, 0.4f, 0.2f), band);      // gauge
+        return root;
+    }
+
+    // Zip-line anchor: a lean-back A-post with a cable spool near the top. The traversal cable itself
+    // is drawn at runtime by the ZipLine component (it can't know its partner tower here).
+    public static GameObject BuildZipLine(int level)
+    {
+        var root = new GameObject("ZipLineModel");
+        var t = root.transform;
+        Color steel = new Color(0.36f, 0.37f, 0.40f);
+        Color dark = new Color(0.20f, 0.21f, 0.23f);
+        Color cap = new Color(0.85f, 0.75f, 0.25f);   // hi-vis yellow spool
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 0.14f, 0f), new Vector3(1.0f, 0.28f, 1.0f), dark);       // base plate
+        // two splayed legs meeting near the top (A-post)
+        var legL = Prim(PrimitiveType.Cube, t, new Vector3(-0.3f, 1.05f, 0f), new Vector3(0.16f, 2.1f, 0.16f), steel);
+        legL.transform.localRotation = Quaternion.Euler(0f, 0f, 8f);
+        var legR = Prim(PrimitiveType.Cube, t, new Vector3(0.3f, 1.05f, 0f), new Vector3(0.16f, 2.1f, 0.16f), steel);
+        legR.transform.localRotation = Quaternion.Euler(0f, 0f, -8f);
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 1.3f, 0f), new Vector3(0.7f, 0.12f, 0.12f), dark);       // cross tie
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 2.05f, 0f), new Vector3(0.4f, 0.18f, 0.4f), cap, new Vector3(0f, 0f, 90f)); // cable spool
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 2.05f, 0.0f), new Vector3(0.16f, 0.16f, 0.5f), steel);   // spool axle housing
+        return root;
+    }
+
     // Stationary flamethrower: base + a forward-pointing nozzle over a fuel tank, with a pilot flame.
     public static GameObject BuildFlamethrower(int level)
     {
@@ -724,6 +797,42 @@ public static class Models
         return root;
     }
 
+    // 2.7: ПЛАЗМА-ТУРЕЛЬ (тип 41). Раньше case 41 отсутствовал в switch → рисовалась миной.
+    // Приземистая база + пилон + светящийся плазма-эмиттер (циан) с катушками и длинным стволом.
+    public static GameObject BuildPlasmaTurret(int level)
+    {
+        var root = new GameObject("PlasmaTurretModel");
+        var t = root.transform;
+        Color metal  = new Color(0.20f, 0.22f, 0.26f);
+        Color dark   = new Color(0.12f, 0.12f, 0.15f);
+        Color plasma = level >= 3 ? new Color(0.5f, 1f, 0.9f)
+                     : level == 2 ? new Color(0.4f, 0.9f, 1f)
+                                  : new Color(0.45f, 0.8f, 1f);
+
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.12f, 0f), new Vector3(1.2f, 0.12f, 1.2f), metal);   // wide base
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 0.5f, 0f), new Vector3(0.42f, 0.4f, 0.42f), dark);     // pillar
+        Prim(PrimitiveType.Cube, t, new Vector3(0f, 1.0f, 0f), new Vector3(0.95f, 0.6f, 0.85f), metal);        // head housing
+
+        // Glowing plasma core (sphere) + energy coils around the barrel base
+        Prim(PrimitiveType.Sphere, t, new Vector3(0f, 1.15f, 0.1f), new Vector3(0.42f, 0.42f, 0.42f), plasma);
+        var brot = new Vector3(90f, 0f, 0f);
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 1.15f, 0.75f), new Vector3(0.13f, 0.5f, 0.13f), dark, brot);   // barrel
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 1.15f, 0.55f), new Vector3(0.2f, 0.05f, 0.2f), plasma, brot);  // coil ring 1
+        Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 1.15f, 0.9f), new Vector3(0.17f, 0.05f, 0.17f), plasma, brot); // coil ring 2 (muzzle glow)
+
+        if (level >= 2)
+        {
+            // side capacitor pods glowing faintly
+            Prim(PrimitiveType.Cube, t, new Vector3(-0.62f, 1.15f, 0f), new Vector3(0.2f, 0.4f, 0.5f), dark);
+            Prim(PrimitiveType.Cube, t, new Vector3(0.62f, 1.15f, 0f), new Vector3(0.2f, 0.4f, 0.5f), dark);
+            Prim(PrimitiveType.Sphere, t, new Vector3(-0.62f, 1.4f, 0f), new Vector3(0.14f, 0.14f, 0.14f), plasma);
+            Prim(PrimitiveType.Sphere, t, new Vector3(0.62f, 1.4f, 0f), new Vector3(0.14f, 0.14f, 0.14f), plasma);
+        }
+        if (level >= 3)
+            Prim(PrimitiveType.Cylinder, t, new Vector3(0f, 1.55f, 0.1f), new Vector3(0.06f, 0.22f, 0.06f), plasma); // antenna spark
+        return root;
+    }
+
     public static GameObject BuildDispenser(int level)
     {
         var root = new GameObject("DispenserModel");
@@ -808,7 +917,7 @@ public static class Models
         Color stone = level >= 3 ? new Color(0.45f, 0.46f, 0.5f) : new Color(0.5f, 0.5f, 0.52f);
         Color post = new Color(0.4f, 0.4f, 0.42f);
         float thick = 0.32f + 0.12f * level;
-        float h = 2.6f + 0.2f * level;
+        float h = 4.2f + 0.3f * level; // 2.7: «высокая стена» ещё выше (было 2.6+0.2·level) — коллайдер синхронён в Buildable.AddColliders (case 17)
 
         Prim(PrimitiveType.Cube, t, new Vector3(0f, h * 0.5f, 0f), new Vector3(2.2f, h, thick), stone);                 // tall slab
         Prim(PrimitiveType.Cube, t, new Vector3(-1.0f, h * 0.5f, 0f), new Vector3(0.32f, h + 0.2f, thick + 0.1f), post); // posts

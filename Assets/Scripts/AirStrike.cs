@@ -114,7 +114,7 @@ public class AirStrike : Buildable
             var zs = Zombie.All;
             foreach (var z in zs)
                 if (z != null && (z.transform.position - p).sqrMagnitude < rSq)
-                    z.TakeDamage(bd);
+                    z.TakeDamage(bd, Lang.T("авиаудар", "airstrike"));
         });
     }
 }

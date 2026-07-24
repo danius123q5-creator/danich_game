@@ -5,8 +5,8 @@ using UnityEngine;
 /// (within conveyor range) and a metal vat draws ore straight from your own rig — no mine capture.</summary>
 public class MetalDrill : Buildable, IMetalSource
 {
-    const float Cap = 300f;   // pool capacity
-    const float Rate = 7f;    // ore/sec drilled
+    const float Cap = 1500f;  // pool capacity — буфер под 6+ чанов (было 300)
+    const float Rate = 60f;   // ore/sec drilled — держит 6+ чанов (каждый тянет до 70/с из пула; было 7)
 
     float pool;
     Transform bit;            // the spinning drill bit

@@ -18,7 +18,7 @@ public class GameManager : MonoBehaviour
     public float SpawnRadius = 40f;
     public int BaseZombies = 6;
     public int PerWave = 6;
-    public int EvacWave => GameRoot.Hardcore ? 61 : 55; // reaching this wave triggers the evacuation (hardcore goes longer)
+    public int EvacWave => GameRoot.Hardcore ? 66 : 60; // 2.7: эвакуация на 60 волне (было 55; хардкор 66, было 61)
     public float BirdInterval = 13f; // a bird fly-over (drops a zombie) every so often during a wave
     float nextBird;
 
@@ -29,6 +29,15 @@ public class GameManager : MonoBehaviour
     public bool IsPrep { get; private set; } = true;
     public float PhaseTimeLeft { get; private set; }
     public int ZombiesLeft => zombiesToSpawn + aliveCount;
+
+    // 2.7: после 10 волны шахта/НПЗ дают больше ресурсов — линейный бонус +5%/волна, кап +150%.
+    // (w10=×1.0, w20=×1.5, w40=×2.5). Комбинируется с IncomeMult (беск. режим).
+    public static float ResourceWaveMult()
+    {
+        var gm = Instance;
+        int w = gm != null ? gm.WaveNumber : 0;
+        return 1f + Mathf.Min(1.5f, Mathf.Max(0, w - 10) * 0.05f);
+    }
 
     int zombiesToSpawn;
     int aliveCount;
@@ -78,6 +87,9 @@ public class GameManager : MonoBehaviour
         // Source of truth: how many zombies actually exist right now.
         aliveCount = Zombie.All.Count;
 
+        // 2.7: достижения — проверяем прогресс по волне / килам / постройкам.
+        Achievements.Tick(WaveNumber, player.Score, Buildable.All.Count);
+
         // Base lifeline safety net: once the base exists, if EVERY dispenser is gone for a moment
         // (destroyed — the critical one included), the game is lost. A short grace avoids a false
         // defeat while relocating the base. Suppressed during the evac finale.
@@ -115,8 +127,9 @@ public class GameManager : MonoBehaviour
 
         if (zombiesToSpawn > 0 && aliveCount < MaxAlive && Time.time >= nextSpawn)
         {
-            nextSpawn = Time.time + SpawnInterval;
-            int burst = WaveNumber >= 25 ? 8 : 5; // deeper waves feed the horde in bigger gulps
+            // 2.7: после 36 волны спавним ЗАМЕТНО активнее — вдвое чаще и куда большими пачками.
+            nextSpawn = Time.time + (WaveNumber >= 36 ? SpawnInterval * 0.5f : SpawnInterval);
+            int burst = WaveNumber >= 36 ? 16 : WaveNumber >= 25 ? 8 : 5; // deeper waves feed the horde in bigger gulps
             int batch = Mathf.Min(burst, Mathf.Min(zombiesToSpawn, MaxAlive - aliveCount));
             for (int i = 0; i < batch; i++) { SpawnZombie(); aliveCount++; }
         }
@@ -141,6 +154,7 @@ public class GameManager : MonoBehaviour
     {
         WaveNumber++;
         ModRuntime.OnWaveStart(); // 3.2: fire WAVE_START mod actions
+        QuestSystem.OnWaveReached(WaveNumber); // 3.7: daily "survive to wave N" progress
         if (WaveNumber >= EvacWave && !GameRoot.Infinite) { EndgameCinematic.Begin(); return; } // evac finale (skipped in endless mode)
 
         // Horde size: linear early, then a quadratic LATE-GAME SURGE past wave 20 so the deep
@@ -151,7 +165,9 @@ public class GameManager : MonoBehaviour
 
         // Raise the on-screen cap in the late game too — otherwise the bigger queue just
         // drains through the same 120-alive bottleneck and you never SEE the surge.
-        MaxAlive = Mathf.Clamp(120 + Mathf.Max(0, WaveNumber - 15) * 5, 120, 220);
+        // 2.7: после 36 волны поднимаем потолок живых до 340 (было 220) — чтобы surge реально давил.
+        int aliveCap = WaveNumber >= 36 ? 340 : 220;
+        MaxAlive = Mathf.Clamp(120 + Mathf.Max(0, WaveNumber - 15) * 5, 120, aliveCap);
         IsPrep = false;
         nextBird = Time.time + BirdEvery();
 
@@ -282,12 +298,15 @@ public class GameManager : MonoBehaviour
         Vector3 pp = player.transform.position;
         Vector3 pos = pp;
         bool wantFar = Random.value < 0.6f;
+        // 2.7: с новой волной спавн отодвигается ДАЛЬШЕ — минимальное кольцо растёт с волной
+        // (близко на ранних, далеко на поздних). 50 м на старте → до 170 м к поздней игре.
+        float minRing = Mathf.Min(170f, 50f + WaveNumber * 3.2f);
         for (int t = 0; t < 16; t++)
         {
             var cand = new Vector3(Random.Range(-half, half), 0f, Random.Range(-half, half));
             pos = cand;
             float dist = Vector3.Distance(cand, pp);
-            if (dist < 50f) continue;                 // never right on top of the player
+            if (dist < minRing) continue;             // never inside the wave's growing spawn ring
             if (wantFar ? dist > 220f : dist < 260f) break; // far pass wants distant points; near pass anything mid
         }
         pos.y = GameBootstrap.Hill(pos.x, pos.z) + 1f;

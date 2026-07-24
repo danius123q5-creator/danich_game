@@ -117,7 +117,7 @@ public class QuadTurret : Buildable
         float sy = (barrel < 2) ? 1.25f : 0.95f;
         Vector3 start = transform.position + transform.right * sx + Vector3.up * sy + transform.forward * 0.55f;
         Effects.Tracer(start, z.transform.position + Vector3.up * 0.4f);
-        z.TakeDamage(damage);
+        z.TakeDamage(damage, Lang.T("квадро-турель", "quad turret"));
     }
 
     void RocketAt(Zombie z)

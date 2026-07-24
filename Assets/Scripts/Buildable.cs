@@ -136,7 +136,7 @@ public class Buildable : MonoBehaviour
         {
             case 3: case 4: AddBox(new Vector3(0f, 0.85f, 0f), new Vector3(2.2f, 1.7f, 0.45f)); break; // wall / door
             case 16: AddBox(new Vector3(0f, 0.85f, 0f), new Vector3(4.4f, 1.7f, 0.5f)); break;        // long wall
-            case 17: AddBox(new Vector3(0f, 1.5f, 0f), new Vector3(2.2f, 3.0f, 0.5f)); break;         // tall wall
+            case 17: AddBox(new Vector3(0f, 2.4f, 0f), new Vector3(2.2f, 4.8f, 0.5f)); break;         // tall wall (2.7: выше — синхр. с Models.BuildWallTall h)
             case 5: AddBox(new Vector3(0f, 2.0f, 0f), new Vector3(2.6f, 0.4f, 3.4f)); break;           // straight bridge deck (walkable)
             case 7: AddBox(new Vector3(0f, 0.12f, 0f), new Vector3(1.2f, 0.24f, 1.2f)); break;         // flat landmine (step over it)
             case 8: AddBox(new Vector3(0f, 0.45f, 0f), new Vector3(2.4f, 0.9f, 0.7f), true); break;    // barbed wire (trigger: walk through)
@@ -201,6 +201,8 @@ public class Buildable : MonoBehaviour
             case 42: AddBox(new Vector3(0f, 0.8f, 0f), new Vector3(2.6f, 1.6f, 0.5f), true); break; // решётка-ловушка (trigger: зомби идут сквозь)
             case 43: AddBox(new Vector3(0f, 0.85f, 0f), new Vector3(4.4f, 1.7f, 0.5f)); break;  // стена+колючка (длинная стена, сплошная)
             case 44: AddBox(new Vector3(0f, 0.85f, 0f), new Vector3(2.2f, 1.7f, 0.45f)); break; // стена+турель (стена, сплошная)
+            case 45: AddBox(new Vector3(0f, 0.9f, 0f), new Vector3(1.9f, 1.8f, 1.9f)); break;  // ore hub (руда-хаб)
+            case 46: AddBox(new Vector3(0f, 1.1f, 0f), new Vector3(1.0f, 2.2f, 1.0f)); break;  // zip-line anchor post
             default: AddBox(new Vector3(0f, 0.6f, 0f), new Vector3(1.0f, 1.2f, 1.0f)); break;
         }
     }
@@ -249,6 +251,8 @@ public class Buildable : MonoBehaviour
             case 42: return root.AddComponent<LatticeFence>(); // решётка-ловушка
             case 43: return root.AddComponent<WallBarbed>();   // стена+колючка
             case 44: return root.AddComponent<WallTurret>();   // стена+турель
+            case 45: return root.AddComponent<OreHub>();       // руда-хаб (metal twin of oil hub)
+            case 46: return root.AddComponent<ZipLine>();      // зип-лайн (спуск с башен по тросу)
             case 16: case 17: return root.AddComponent<Wall>(); // long / tall wall behave like a wall
             default: return root.AddComponent<ProxyMine>();
         }
@@ -360,9 +364,16 @@ public class Buildable : MonoBehaviour
     // pipe from an НПЗ/вышка/хаб to within ~16 m of the weapon and it fuels itself, hands-free.
     const float OilChargeRate = 40f; // oil/sec pumped in through the pipe (scales with pipe count)
     float oilChargeFrac;
+
+    // 2.7: настройка «авто-пополнение супер-пушек от нефтетрубы». ПО БАЗЕ ВЫКЛ — супер-оружие
+    // (oil-reserve: авиаудар/силос/фау/шахед/орбитал) не сосёт нефть из трубы, пока игрок не включит
+    // в настройках. Хранится в PlayerPrefs "auto_super_oil". Меняется из GameRoot (экран настроек).
+    public static bool AutoOilFuelSuper = false;
+    static bool _superFuelLoaded;
     void ChargeFromOilNetwork()
     {
-        if (!ReserveIsOil || !AutoOilFuel) return;
+        if (!_superFuelLoaded) { AutoOilFuelSuper = PlayerPrefs.GetInt("auto_super_oil", 0) == 1; _superFuelLoaded = true; }
+        if (!ReserveIsOil || !AutoOilFuel || !AutoOilFuelSuper) return;
         bool needFund = OilPaid < OilRequired;
         bool needReserve = UsesReserve && Reserve < ReserveMax;
         if (!needFund && !needReserve) return;
@@ -394,9 +405,10 @@ public class Buildable : MonoBehaviour
 
     protected virtual void ApplyLevel() { Health = MaxHealth; }
 
-    // 3.1.1: every building auto-upgrades one level every 3 WAVES (wave-based, not a real-time timer),
+    // 3.1.1: every building auto-upgrades one level every N WAVES (wave-based, not a real-time timer),
     // so a base you've walked away from keeps getting tougher at a steady, wave-paced rate.
-    const int AutoUpgradeEveryWaves = 3;
+    // 2.7: кулдаун автоулучшения 3→6 волн (реже — чтобы прокачка не была слишком быстрой).
+    const int AutoUpgradeEveryWaves = 6;
     void AutoUpgradeOverTime()
     {
         if (!GameRoot.AutoUpgrade || !CanUpgrade || IsFunding) return;
@@ -487,6 +499,7 @@ public class Buildable : MonoBehaviour
             Level++;
             ApplyLevel();                       // new level heals to full
             Effects.Upgrade(transform.position + Vector3.up * 0.7f);
+            if (!IsPuppet && Team == 0) QuestSystem.OnUpgrade(); // 3.7: daily "upgrade N levels" quest
         }
         return true;
     }

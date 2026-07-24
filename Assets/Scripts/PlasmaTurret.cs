@@ -73,7 +73,7 @@ public class PlasmaTurret : Buildable
             Vector3 perp = to - dir * t;                      // поперечное отклонение от луча
             if (perp.sqrMagnitude <= hwSq)
             {
-                z.TakeDamage(damage);
+                z.TakeDamage(damage, Lang.T("плазма", "plasma"));
                 Effects.Burst(z.transform.position + Vector3.up * 1f, new Color(0.6f, 1f, 1f), 4);
             }
         }

@@ -185,7 +185,7 @@ public class Refinery : MonoBehaviour, IOilSource
         }
         else
         {
-            Oil = Mathf.Min(OilCap, Oil + OilRate * GameRoot.IncomeMult * dt); // pipe keeps dripping (2× in endless)
+            Oil = Mathf.Min(OilCap, Oil + OilRate * GameRoot.IncomeMult * GameManager.ResourceWaveMult() * dt); // pipe keeps dripping (2× endless + 2.7 поздний бонус после 10 волны)
 
             if (zc > 0) Control -= DrainPerZombie * Mathf.Min(zc, 6) * dt;
             else Control = Mathf.Min(ControlMax, Control + ControlRegen * dt);

@@ -198,7 +198,9 @@ public static class Effects
     /// zombie vaporising into light. Purely cosmetic — safe to call then destroy the zombie.</summary>
     public static void Vaporize(Vector3 pos, Color tint)
     {
-        for (int i = 0; i < 16; i++)
+        if (!View.Visible(pos)) return;      // off-screen death sparks are never seen — skip them
+        int sparks = Scaled(16);             // fewer death sparks on late waves (this fires per kill)
+        for (int i = 0; i < sparks; i++)
         {
             var g = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             Object.Destroy(g.GetComponent<Collider>());
@@ -220,9 +222,26 @@ public static class Effects
         if (m.HasProperty("_EmissionColor")) m.SetColor("_EmissionColor", c * intensity);
     }
 
+    // 3.7: late-game cosmetic-particle throttle. On late waves hundreds of zombies die/explode per
+    // minute; spawning FULL spark/smoke bursts each time churns the GC and tanks the framerate. This
+    // scales burst COUNTS down as the wave climbs (the effect still shows — just fewer spheres), a
+    // safe deterministic perf win that doesn't touch gameplay. 1.0 → 0.4 between wave 18 and ~48.
+    public static float FxScale
+    {
+        get
+        {
+            var gm = GameManager.Instance;
+            int w = gm != null ? gm.WaveNumber : 0;
+            if (w <= 18) return 1f;
+            return Mathf.Clamp(1f - (w - 18) * 0.02f, 0.4f, 1f);
+        }
+    }
+    static int Scaled(int n) => Mathf.Max(1, Mathf.RoundToInt(n * FxScale));
+
     public static void Burst(Vector3 pos, Color c, int count)
     {
         if (!View.Visible(pos)) return; // off-screen sparks/smoke are never seen — don't spawn them
+        count = Scaled(count);          // fewer sparks on late waves (perf)
         for (int i = 0; i < count; i++)
         {
             var g = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -307,7 +326,7 @@ public static class Effects
 
     static void SmokePlume(Vector3 pos, float radius)
     {
-        int n = 10;
+        int n = Scaled(10);   // fewer smoke puffs on late waves (perf)
         for (int i = 0; i < n; i++)
         {
             var g = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -548,6 +567,7 @@ public class Bomber : MonoBehaviour
     public void CrashDown()
     {
         if (this == null) return;
+        QuestSystem.OnAirKill(); // 3.7: daily "down 3 drones/planes" quest
         Effects.Explosion(transform.position);
         Effects.AirBlast(transform.position, 12f);
         Effects.FlashLight(transform.position, 8f, 36f, new Color(1f, 0.6f, 0.25f));

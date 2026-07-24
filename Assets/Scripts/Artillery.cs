@@ -70,7 +70,7 @@ public class Artillery : Buildable
 
         float rSq = blastRadius * blastRadius;
         foreach (var z in Zombie.All)
-            if ((z.transform.position - loc).sqrMagnitude < rSq) z.TakeDamage(blastDamage);
+            if ((z.transform.position - loc).sqrMagnitude < rSq) z.TakeDamage(blastDamage, Lang.T("артиллерия", "artillery"));
     }
 
     Zombie NearestInRange()

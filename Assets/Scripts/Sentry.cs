@@ -108,7 +108,7 @@ public class Sentry : Buildable
         if (z == null) return;
         Vector3 start = transform.position + Vector3.up * 0.6f;
         Effects.Tracer(start, z.transform.position + Vector3.up * 0.4f); // visible shot
-        z.TakeDamage(damage);
+        z.TakeDamage(damage, Lang.T("турель", "turret"));
     }
 
     void RocketAt(Zombie z)

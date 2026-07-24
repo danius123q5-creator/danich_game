@@ -175,7 +175,7 @@ public class OreMine : MonoBehaviour, IMetalSource
         }
         else
         {
-            Ore = Mathf.Min(OreCap, Ore + OreRate * GameRoot.IncomeMult * dt); // 2× in endless mode
+            Ore = Mathf.Min(OreCap, Ore + OreRate * GameRoot.IncomeMult * GameManager.ResourceWaveMult() * dt); // 2× endless + 2.7 поздний бонус после 10 волны
             if (zc > 0) Control -= DrainPerZombie * Mathf.Min(zc, 6) * dt;
             else Control = Mathf.Min(ControlMax, Control + ControlRegen * dt);
             if (Control <= 0f) { Captured = false; Control = 0f; Capture = 0f; Effects.AirBlast(p + Vector3.up * 1f, 8f); }

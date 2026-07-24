@@ -61,6 +61,14 @@ public class SupplyCrate : MonoBehaviour
         mark.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
         GameBootstrap.SetColor(mark, new Color(0.2f, 1f, 0.4f));
 
+        // 2.7: ЛУЧ ВВЕРХ — яркий зелёный столб света от ящика в небо, видно издалека.
+        var beam = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        Destroy(beam.GetComponent<Collider>());
+        beam.transform.SetParent(transform, false);
+        beam.transform.localScale = new Vector3(0.22f, 18f, 0.22f); // радиус тонкий, высота ~36 м (cylinder = 2·scale.y)
+        beam.transform.localPosition = new Vector3(0f, 18f, 0f);     // от земли вверх
+        GameBootstrap.SetColor(beam, new Color(0.3f, 1f, 0.5f));
+
         // парашют (пропадёт при приземлении)
         chute = new GameObject("Chute").transform;
         chute.SetParent(transform, false);
@@ -112,6 +120,7 @@ public class SupplyCrate : MonoBehaviour
     {
         target.AddMetal(MetalReward);
         target.AddOil(OilReward);
+        QuestSystem.OnSupplyCrate(); // 3.7: daily "grab a supply crate" quest
         Effects.Upgrade(transform.position + Vector3.up * 0.7f);                       // динь + искры
         Effects.Burst(transform.position + Vector3.up * 0.7f, new Color(0.2f, 1f, 0.4f), 26);
         Destroy(gameObject);

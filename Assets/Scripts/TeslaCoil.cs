@@ -50,7 +50,7 @@ public class TeslaCoil : Buildable
             if ((z.transform.position - transform.position).sqrMagnitude > rSq) continue;
             if (!SpendMetal(zapCost)) break; // out of metal — stop arcing
             Effects.Tracer(c, z.transform.position + Vector3.up * 1f);
-            z.TakeDamage(damage);
+            z.TakeDamage(damage, Lang.T("тесла", "tesla"));
             if (++zapped >= maxTargets) break;
         }
         if (zapped > 0) Effects.Zap(c);

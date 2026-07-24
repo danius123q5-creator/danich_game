@@ -45,7 +45,8 @@ public class GameRoot : MonoBehaviour
     LanManager lan;
     string joinIp = "127.0.0.1";
     bool inModes;   // showing the Modes sub-screen instead of the main menu
-    bool inNewGame; // showing the New Game type picker (Обычный / Хардкор / Бесконечный)
+    bool inNewGame; // showing the New Game flow (step 1: mode, step 2: difficulty)
+    bool inDifficulty; // 3.7: New Game is now two-step — pick MODE first, then this shows the difficulty picker
     bool inSettings;        // showing the Settings (UI customization) screen
     bool inSaves;           // showing the .gdf saves (load) screen
     readonly Dictionary<int, Texture2D> thumbCache = new Dictionary<int, Texture2D>();
@@ -596,7 +597,7 @@ public class GameRoot : MonoBehaviour
             }
         }
         y += 58f;
-        if (GUI.Button(new Rect(x, y, bw, bh), Lang.T("Новая игра", "New Game"), btn)) inNewGame = true;
+        if (GUI.Button(new Rect(x, y, bw, bh), Lang.T("Новая игра", "New Game"), btn)) { inNewGame = true; inDifficulty = false; }
         y += 58f;
         if (GUI.Button(new Rect(x, y, bw, bh), Lang.T("Сохранения", "Saves"), btn)) inSaves = true;
         y += 58f;
@@ -648,17 +649,16 @@ public class GameRoot : MonoBehaviour
         GUI.color = Color.white;
     }
 
-    // ---- New Game screen: pick the game type (normal / hardcore / endless) ----
+    // ---- New Game: TWO steps (3.7). Step 1 = pick the MODE, step 2 = pick the DIFFICULTY. ----
+    // Previously mode and difficulty were mashed into one flat list; now you choose HOW you play
+    // first (standard defense / sandbox / node-test), then — for standard defense — the difficulty.
     void DrawNewGameMenu()
     {
         float cx = UI.W * 0.5f, cy = UI.H * 0.5f;
         var title = new GUIStyle(GUI.skin.label) { fontSize = 44, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-        GUI.color = new Color(0.6f, 0.9f, 0.5f);
-        GUI.Label(new Rect(cx - 360f, cy - 360f, 720f, 64f), Lang.T("НОВАЯ ИГРА", "NEW GAME"), title);
-        GUI.color = Color.white;
-
         var btn = new GUIStyle(GUI.skin.button) { fontSize = 22, fontStyle = FontStyle.Bold };
         var lab = new GUIStyle(GUI.skin.label) { fontSize = 13, fontStyle = FontStyle.Bold, alignment = TextAnchor.UpperCenter, wordWrap = true };
+        var small = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold };
         float bw = 440f, bh = 50f, capH = 40f, gap = 14f, x = cx - bw * 0.5f, y = cy - 250f;
 
         void StartType(bool hardcore, bool infinite, bool sandbox = false, bool modTest = false)
@@ -666,9 +666,10 @@ public class GameRoot : MonoBehaviour
             CurrentMode = Mode.Offline; Hardcore = hardcore;
             Sandbox = sandbox || modTest; ModTest = modTest; Infinite = infinite || Sandbox;
             PlayerPrefs.DeleteKey("save_exists"); PlayerPrefs.DeleteKey("save_builds");
-            inNewGame = false; StartGame(false);
+            inNewGame = false; inDifficulty = false; StartGame(false);
         }
 
+        // Row that STARTS the game immediately (used by the difficulty step + sandbox/test modes).
         void Row(string name, string desc, bool hc, bool inf, bool sb = false, bool mt = false)
         {
             if (GUI.Button(new Rect(x, y, bw, bh), name, btn)) StartType(hc, inf, sb, mt);
@@ -678,14 +679,39 @@ public class GameRoot : MonoBehaviour
             y += bh + capH + gap;
         }
 
-        Row(Lang.T("Обычный", "Normal"), Lang.T("стандартная оборона до эвакуации (волна 55)", "standard defense until evacuation (wave 55)"), false, false);
-        Row(Lang.T("Хардкор", "Hardcore"), Lang.T("смерть = заново с 1-й волны, постройки дороже, раздатчик отдаёт лишь накопленное", "death = restart from wave 1, pricier builds, the dispenser only gives what's been accumulated"), true, false);
-        Row(Lang.T("Бесконечный", "Endless"), Lang.T("всё как в обычном, но финала нет — волны идут бесконечно; металл/нефть капают в 2× быстрее", "same as normal, but no finale — endless waves; metal/oil income is 2× faster"), false, true);
-        Row(Lang.T("Песочница", "Sandbox"), Lang.T("бесконечный металл, бессмертие, волны стартуют только по кнопке J — проверяй базу", "infinite metal, immortal, waves start only when you press J — test your base"), false, false, true);
-        Row(Lang.T("Тест нод (моды)", "Node test (mods)"), Lang.T("песочница + горячие клавиши: F5 перезагрузить моды, F6-F12 запускать события мода", "sandbox + hotkeys: F5 reload mods, F6-F12 fire mod events"), false, false, false, true);
+        if (!inDifficulty)
+        {
+            // ── STEP 1: pick the MODE ──
+            GUI.color = new Color(0.6f, 0.9f, 0.5f);
+            GUI.Label(new Rect(cx - 360f, cy - 360f, 720f, 64f), Lang.T("НОВАЯ ИГРА — РЕЖИМ", "NEW GAME — MODE"), title);
+            GUI.color = Color.white;
 
-        var small = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold };
-        if (GUI.Button(new Rect(x, y + 6f, bw, 40f), Lang.T("Назад", "Back"), small)) inNewGame = false;
+            // Standard defense → advance to the difficulty step (does NOT start yet).
+            if (GUI.Button(new Rect(x, y, bw, bh), Lang.T("Оборона", "Defense"), btn)) inDifficulty = true;
+            GUI.color = new Color(0.78f, 0.83f, 0.78f);
+            GUI.Label(new Rect(x + 6f, y + bh + 2f, bw - 12f, capH),
+                Lang.T("классическая оборона базы — дальше выбор сложности", "classic base defense — pick difficulty next"), lab);
+            GUI.color = Color.white;
+            y += bh + capH + gap;
+
+            Row(Lang.T("Песочница", "Sandbox"), Lang.T("бесконечный металл, бессмертие, волны стартуют только по кнопке J — проверяй базу", "infinite metal, immortal, waves start only when you press J — test your base"), false, false, true);
+            Row(Lang.T("Тест нод (моды)", "Node test (mods)"), Lang.T("песочница + горячие клавиши: F5 перезагрузить моды, F6-F12 запускать события мода", "sandbox + hotkeys: F5 reload mods, F6-F12 fire mod events"), false, false, false, true);
+
+            if (GUI.Button(new Rect(x, y + 6f, bw, 40f), Lang.T("Назад", "Back"), small)) inNewGame = false;
+        }
+        else
+        {
+            // ── STEP 2: pick the DIFFICULTY (only for the standard defense mode) ──
+            GUI.color = new Color(0.9f, 0.85f, 0.5f);
+            GUI.Label(new Rect(cx - 360f, cy - 360f, 720f, 64f), Lang.T("СЛОЖНОСТЬ", "DIFFICULTY"), title);
+            GUI.color = Color.white;
+
+            Row(Lang.T("Обычный", "Normal"), Lang.T("стандартная оборона до эвакуации (волна 60)", "standard defense until evacuation (wave 60)"), false, false);
+            Row(Lang.T("Хардкор", "Hardcore"), Lang.T("смерть = заново с 1-й волны, постройки дороже, раздатчик отдаёт лишь накопленное", "death = restart from wave 1, pricier builds, the dispenser only gives what's been accumulated"), true, false);
+            Row(Lang.T("Бесконечный", "Endless"), Lang.T("всё как в обычном, но финала нет — волны идут бесконечно; металл/нефть капают в 2× быстрее", "same as normal, but no finale — endless waves; metal/oil income is 2× faster"), false, true);
+
+            if (GUI.Button(new Rect(x, y + 6f, bw, 40f), Lang.T("Назад", "Back"), small)) inDifficulty = false;
+        }
     }
 
     // ---- Modes screen: pick offline / online co-op / PvP, choose a map, host or join ----
@@ -918,6 +944,19 @@ public class GameRoot : MonoBehaviour
         GUI.DrawTexture(new Rect(x + bw - 78f, y, 36f, 28f), Texture2D.whiteTexture);
         GUI.color = Color.white;
         y += 56f;
+
+        // 2.7: авто-пополнение супер-пушек от нефтетрубы (по базе ВЫКЛ). Вкл → авиаудар/силос/фау/
+        // шахед/орбитал сами сосут нефть из подведённой трубы; выкл → только вручную (экономит нефть).
+        bool superOil = PlayerPrefs.GetInt("auto_super_oil", 0) == 1;
+        string soTxt = superOil ? Lang.T("ВКЛ", "ON") : Lang.T("выкл", "off");
+        if (GUI.Button(new Rect(x, y, bw, 40f), Lang.T($"Авто-пополнение супер-пушек от трубы: {soTxt}", $"Auto-fuel super-weapons from pipe: {soTxt}"), small))
+        {
+            superOil = !superOil;
+            PlayerPrefs.SetInt("auto_super_oil", superOil ? 1 : 0);
+            PlayerPrefs.Save();
+            Buildable.AutoOilFuelSuper = superOil;
+        }
+        y += 52f;
 
         // Move HUD elements — only meaningful in-game (the HUD must be on screen to drag it).
         if (settingsFromPause)

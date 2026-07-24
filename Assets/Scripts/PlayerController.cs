@@ -82,6 +82,8 @@ public class PlayerController : MonoBehaviour
     bool pawnMenuOpen;   // меню работяг-пешек (открывается по P)
     bool builtSomething; // once true, the "press Q to build" prep hint stops showing
     Car vehicle; // non-null while driving a car
+    bool ziplining;      // true while riding a zip-line cable down from a tower
+    Vector3 zipTop, zipBot; float zipT; // cable endpoints + 0..1 progress down it
 
     enum Tool { Gun, Build, Wrench, Shovel }
     Tool tool = Tool.Gun;
@@ -101,9 +103,9 @@ public class PlayerController : MonoBehaviour
     float gunHeat;         // 0..1 muzzle heat glow, decays each frame
     GameObject gunMuzzle;  // barrel tip — glows red-hot when firing
 
-    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ", "СМОТР. БАШНЯ", "ЛЕЗВИЯ", "ФАУ-2", "ПЛАТФОРМА", "ТРУБА НЕФТИ", "ДОЗАТОР НЕФТИ", "НЕФТ. ВЫШКА", "КОНВЕЙЕР", "ЧАН РУДЫ", "БУРОВАЯ", "НЕФТ. КАРМАН", "ОГНЕМЁТ", "НЕФТ. ХАБ", "РЗК", "FPV-ДРОН", "БОЛЬШОЙ ФПВ-ДРУН", "ФАУ-1", "КВАДРО-ТУРЕЛЬ", "ПЛАЗМА-ТУРЕЛЬ", "РЕШЁТКА", "СТЕНА+КОЛЮЧКА", "СТЕНА+ТУРЕЛЬ" };
-    static readonly string[] BuildNamesEN = { "TURRET", "DISPENSER", "TRIPWIRE", "WALL", "DOOR", "BRIDGE", "STAIRS", "LANDMINE", "BARBED WIRE", "AIR STRIKE", "TESLA", "ARTILLERY", "BRIDGE-CORNER", "BRIDGE-T", "BRIDGE-CROSS", "AA GUN", "LONG WALL", "TALL WALL", "CAR", "RPG", "VERT. LADDER", "FREEZE GUN", "ORB. STATION", "WATCHTOWER", "BLADES", "V-2", "PLATFORM", "OIL PIPE", "OIL DOSER", "OIL DERRICK", "CONVEYOR", "ORE VAT", "DRILL", "OIL POCKET", "FLAMETHROWER", "OIL HUB", "SAM", "FPV DRONE", "BIG FPV DRONE", "V-1", "QUAD TURRET", "PLASMA TURRET", "LATTICE FENCE", "WALL+WIRE", "WALL+TURRET" };
-    static readonly int[] BuildCosts = { 90, 100, 60, 25, 40, 35, 30, 8, 10, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200, 90, 450, 550, 220, 15, 150, 870, 15, 200, 820, 200, 220, 180, 250, 20, 200, 350, 380, 300, 35, 55, 115 };
+    static readonly string[] BuildNames = { "ТУРЕЛЬ", "РАЗДАТЧИК", "РАСТЯЖКА", "СТЕНА", "ДВЕРЬ", "МОСТ", "ЛЕСТНИЦА", "ФУГАС", "КОЛЮЧКА", "АВИАУДАР", "ТЕСЛА", "АРТИЛЛЕРИЯ", "МОСТ-УГОЛ", "МОСТ-Т", "МОСТ-КРЕСТ", "ЗЕНИТКА", "ДЛ. СТЕНА", "ВЫС. СТЕНА", "МАШИНА", "РПГ", "ВЕРТ. ЛЕСТНИЦА", "СТОП-ПУШКА", "ОРБ. СТАНЦИЯ", "СМОТР. БАШНЯ", "ЛЕЗВИЯ", "ФАУ-2", "ПЛАТФОРМА", "ТРУБА НЕФТИ", "ДОЗАТОР НЕФТИ", "НЕФТ. ВЫШКА", "КОНВЕЙЕР", "ЧАН РУДЫ", "БУРОВАЯ", "НЕФТ. КАРМАН", "ОГНЕМЁТ", "НЕФТ. ХАБ", "РЗК", "FPV-ДРОН", "БОЛЬШОЙ ФПВ-ДРУН", "ФАУ-1", "КВАДРО-ТУРЕЛЬ", "ПЛАЗМА-ТУРЕЛЬ", "РЕШЁТКА", "СТЕНА+КОЛЮЧКА", "СТЕНА+ТУРЕЛЬ", "РУДА-ХАБ", "ЗИП-ЛАЙН" };
+    static readonly string[] BuildNamesEN = { "TURRET", "DISPENSER", "TRIPWIRE", "WALL", "DOOR", "BRIDGE", "STAIRS", "LANDMINE", "BARBED WIRE", "AIR STRIKE", "TESLA", "ARTILLERY", "BRIDGE-CORNER", "BRIDGE-T", "BRIDGE-CROSS", "AA GUN", "LONG WALL", "TALL WALL", "CAR", "RPG", "VERT. LADDER", "FREEZE GUN", "ORB. STATION", "WATCHTOWER", "BLADES", "V-2", "PLATFORM", "OIL PIPE", "OIL DOSER", "OIL DERRICK", "CONVEYOR", "ORE VAT", "DRILL", "OIL POCKET", "FLAMETHROWER", "OIL HUB", "SAM", "FPV DRONE", "BIG FPV DRONE", "V-1", "QUAD TURRET", "PLASMA TURRET", "LATTICE FENCE", "WALL+WIRE", "WALL+TURRET", "ORE HUB", "ZIPLINE" };
+    static readonly int[] BuildCosts = { 90, 100, 60, 25, 40, 35, 30, 8, 10, 250, 200, 250, 40, 45, 50, 120, 45, 35, 150, 40, 30, 136, 200, 90, 450, 550, 220, 15, 150, 870, 15, 200, 820, 200, 220, 180, 250, 20, 200, 350, 380, 300, 35, 55, 115, 250, 200 };
 
     // Short "what it is / how it works" blurb per build type — shown in the Q menu on hover.
     static readonly string[] BuildDescriptions =
@@ -153,6 +155,8 @@ public class PlayerController : MonoBehaviour
         "РЕШЁТКА: электрифицированный решётчатый забор-ловушка. Как колючка — зомби идут СКВОЗЬ (не бьют его), но металлическая сетка бьёт их током: постоянный урон + замедление всем в полосе, плюс раз в ~1с — усиленный РАЗРЯД. Прочнее и длиннее колючки — ставь стенкой поперёк проходов. Работает сама, без нефти. Улучшай (E) — урон тока, разряд, замедление и прочность.",
         "СТЕНА+КОЛЮЧКА: длинная стена + полоса колючей проволоки в 2 метрах ПЕРЕД ней. Стена держит натиск (HP как у длинной стены), а колючка тормозит и медленно режет зомби ещё на подходе — они увязают перед стеной под твоим огнём. Одна постройка вместо двух, за одну цену. Улучшай (E) — HP стены + урон/замедление колючки.",
         "СТЕНА+ТУРЕЛЬ: обычная стена со встроенной автотурелью. Стена блокирует и держит удар (толстый HP), а турель сама лупит по ближайшим зомби. Мгновенная укреплённая огневая точка — одна постройка вместо стены и турели по отдельности. Улучшай (E) — HP + урон/скорострельность турели.",
+        "РУДА-ХАБ: узел-сумматор И раздатчик металла. Протяни к нему КОНВЕЙЕРЫ от НЕСКОЛЬКИХ шахт/буровых — он тянет руду со ВСЕХ сразу в один бак и сам выдаёт тебе металл рядом. Чем больше конвейеров подключено — тем БЫСТРЕЕ наливает (металлический аналог нефтяного хаба). Ставь один хаб на кучу шахт вместо чана на каждую.",
+        "ЗИП-ЛАЙН: якорь с тросом (200 мет.). Ставь его на землю рядом со СМОТРОВОЙ БАШНЕЙ или ПЛАТФОРМОЙ — трос автоматически натягивается от вышки к якорю. Забравшись наверх, посмотри на трос и нажми E — съедешь по нему вниз с ветерком, быстро уходя от орды. Дёшево спуститься с высокой точки, не слезая по лестнице.",
     };
 
     // English translations of BuildDescriptions, in the SAME order (used when Lang.EN).
@@ -203,6 +207,8 @@ public class PlayerController : MonoBehaviour
         "LATTICE FENCE: an electrified grid-fence trap. Like barbed wire, zombies walk THROUGH it (they don't attack it), but the metal mesh shocks them: constant damage + slow to everyone in the strip, plus a stronger ZAP every ~1s. Tougher and longer than barbed wire — line it across corridors. Works on its own, no oil. Upgrade (E) — shock damage, zap, slow and durability.",
         "WALL+WIRE: a long wall plus a strip of barbed wire 2 m in FRONT of it. The wall holds the line (long-wall HP), while the wire slows and slowly shreds zombies on the approach — they bog down in front of the wall under your fire. One build instead of two, for one price. Upgrade (E) — wall HP + wire damage/slow.",
         "WALL+TURRET: a normal wall with a built-in auto-turret. The wall blocks and tanks hits (thick HP), while the turret auto-fires at nearby zombies. An instant fortified firing point — one build instead of a separate wall and turret. Upgrade (E) — HP + turret damage/fire rate.",
+        "ORE HUB: a combiner node AND metal dispenser. Run CONVEYORS to it from SEVERAL mines/drills — it pulls ore from ALL of them at once into one tank and hands metal to you nearby. The more conveyors connected — the FASTER it fills (the metal equivalent of the oil hub). One hub for many mines instead of a vat per mine.",
+        "ZIPLINE: a cable anchor (200 metal). Place it on the ground next to a WATCHTOWER or PLATFORM — the cable auto-strings from the tower down to the anchor. Once up top, look at the cable and press E — you ride it down fast, escaping the horde in a hurry. A cheap way down from a high perch without climbing back down the ladder.",
     };
 
     // Build-menu sections: each holds the build-type indices shown under that header.
@@ -221,9 +227,9 @@ public class PlayerController : MonoBehaviour
     static string BCat(int i) => Lang.EN ? BuildCategoriesEN[i] : BuildCategories[i];
     static readonly int[][] BuildCategoryItems =
     {
-        new[] { 3, 16, 17, 4, 6, 20, 23, 26, 5, 43, 44 }, // СТРОЙКА: WALL, LONG/TALL WALL, DOOR, STAIRS, LADDER, WATCHTOWER, BIG PLATFORM, BRIDGE, WALL+WIRE, WALL+TURRET
+        new[] { 3, 16, 17, 4, 6, 20, 23, 26, 5, 46, 43, 44 }, // СТРОЙКА: WALL, LONG/TALL WALL, DOOR, STAIRS, LADDER, WATCHTOWER, BIG PLATFORM, BRIDGE, ZIPLINE, WALL+WIRE, WALL+TURRET
         new[] { 29, 32 },                         // ДОБЫЧА: OIL DERRICK, METAL DRILL
-        new[] { 27, 28, 35, 30, 31 },             // ЛОГИСТИКА: OIL PIPE, OIL DOSER, OIL HUB, CONVEYOR, METAL VAT
+        new[] { 27, 28, 35, 30, 31, 45 },         // ЛОГИСТИКА: OIL PIPE, OIL DOSER, OIL HUB, CONVEYOR, METAL VAT, ORE HUB
         new[] { 0, 40, 41, 19, 37, 24, 34, 10, 21 },  // ТУРЕЛИ: SENTRY, QUAD TURRET, PLASMA TURRET(ДЛС), RPG, FPV DRONE, BLADES, FLAMETHROWER, TESLA, FREEZE
         new[] { 15, 36 },                         // ПВО: AA TURRET (ЗЕНИТКА), SAM (РЗК)
         new[] { 2, 7, 8, 42 },                    // ЛОВУШКИ: MINE, LANDMINE, BARBED WIRE, LATTICE FENCE(решётка)
@@ -279,6 +285,12 @@ public class PlayerController : MonoBehaviour
     {
         if (!GameRoot.IsPlaying) return; // frozen in menu / pause
 
+        // 3.7: daily quests — toggle the log (L), pay out any earned rewards, surface completion toasts.
+        if (Input.GetKeyDown(KeyCode.L)) QuestSystem.LogOpen = !QuestSystem.LogOpen;
+        if (QuestSystem.PendingMetal > 0) { int m = QuestSystem.PendingMetal; QuestSystem.PendingMetal = 0; AddMetal(m); }
+        if (QuestSystem.PendingOil > 0) { int o = QuestSystem.PendingOil; QuestSystem.PendingOil = 0; AddOil(o); }
+        if (QuestSystem.Notices.Count > 0) Toast(QuestSystem.Notices.Dequeue());
+
         if (GameRoot.Sandbox) { Metal = 999999; Oil = 999999; } // sandbox: bottomless wallet
         if (GameRoot.ModTest) HandleModTest(); // 3.2: hotkeys to reload/fire node-mod events
 
@@ -286,6 +298,7 @@ public class PlayerController : MonoBehaviour
 
         if (GameRoot.BaseLost) // base lifeline destroyed → game over, free the cursor for the screen
         {
+            if (ziplining) DismountZip();
             if (vehicle != null) ExitVehicle();
             if (preview != null) preview.SetActive(false);
             SetAimed(null);
@@ -296,6 +309,7 @@ public class PlayerController : MonoBehaviour
 
         if (IsDead)
         {
+            if (ziplining) DismountZip();       // drop off the cable if killed mid-ride
             if (vehicle != null) ExitVehicle(); // eject if killed while driving
             if (preview != null) preview.SetActive(false);
             SetAimed(null);
@@ -306,6 +320,9 @@ public class PlayerController : MonoBehaviour
 
         // Driving a car takes over input/camera until you get out.
         if (vehicle != null) { DriveVehicle(); return; }
+
+        // Riding a zip-line takes over movement until you reach the bottom or hop off.
+        if (ziplining) { RideZip(); return; }
 
         // Hold Q for the build menu (GMod spawn-menu style): open while held, close on release.
         bool qHeld = Input.GetKey(KeyCode.Q);
@@ -426,6 +443,7 @@ public class PlayerController : MonoBehaviour
         if (Metal < cost) { Toast(Lang.T($"Нужно {cost} металла на работягу", $"Need {cost} metal for a worker")); return; }
         AddMetal(-cost);
         AllyPawn.Spawn(this);
+        QuestSystem.OnHireWorker(); // 3.7: daily "hire workers" quest
         Toast(Lang.T($"Работяга нанят (−{cost} мет.) · всего {AllyPawn.Count}", $"Worker hired (−{cost} metal) · {AllyPawn.Count} total"));
     }
 
@@ -588,11 +606,12 @@ public class PlayerController : MonoBehaviour
 
         vSpeed -= Gravity * Time.deltaTime;
         if (hVel.magnitude > MaxHVel) hVel = hVel.normalized * MaxHVel;       // sane bhop top speed
+        QuestSystem.OnBhop(hVel.magnitude);                                    // 3.7: daily "reach 50 m/s" quest
         cc.Move((hVel + Vector3.up * vSpeed) * Time.deltaTime);
     }
 
     // --- Source-style bhop helpers. hVel = horizontal velocity carried between frames. ---
-    const float Friction = 6f, GroundAccel = 12f, AirAccel = 14f, AirCap = 1.4f, MaxHVel = 24f;
+    const float Friction = 6f, GroundAccel = 12f, AirAccel = 14f, AirCap = 1.4f, MaxHVel = 100f; // 2.7: макс бхоп 100 м/с (было 24)
     Vector3 hVel;
 
     void GroundFriction(float dt)
@@ -715,7 +734,7 @@ public class PlayerController : MonoBehaviour
         {
             end = hit.point;
             var z = hit.collider.GetComponentInParent<Zombie>();
-            if (z != null) z.TakeDamage(g.dmg);
+            if (z != null) z.TakeDamage(g.dmg, Lang.T("ВЫ", "YOU"));
             else HitPlayer(hit, g.dmg); // PvP: shoot enemy players
         }
         Effects.Tracer(start + cam.transform.forward * 0.8f, end); // visible trail
@@ -748,8 +767,8 @@ public class PlayerController : MonoBehaviour
 
     public void AddAmmo(int n) { ammo = Mathf.Min(Guns[gunTier].mag, ammo + n); }
 
-    public void AddMetal(int delta) { Metal = Mathf.Clamp(Metal + delta, 0, MetalMax); }
-    public void AddOil(int delta) { Oil = Mathf.Clamp(Oil + delta, 0, OilMax); }
+    public void AddMetal(int delta) { Metal = Mathf.Clamp(Metal + delta, 0, MetalMax); if (delta > 0) QuestSystem.OnEarnMetal(delta); }
+    public void AddOil(int delta) { Oil = Mathf.Clamp(Oil + delta, 0, OilMax); if (delta > 0) QuestSystem.OnEarnOil(delta); }
 
     // ---- Build tool ----
     // Co-op: on a client, buildings are owned by the host. We spend our own metal locally
@@ -779,11 +798,11 @@ public class PlayerController : MonoBehaviour
         if (NetClient)
         {
             LanManager.Instance.SendBuildPlace(type, pos, yaw);
-            AddMetal(-cost); builtSomething = true; return true;
+            AddMetal(-cost); builtSomething = true; QuestSystem.OnBuild(type, topBuild); return true;
         }
         if (Buildable.Create(type, pos, Quaternion.Euler(0f, yaw, 0f), this) != null)
         {
-            AddMetal(-cost); builtSomething = true; return true;
+            AddMetal(-cost); builtSomething = true; QuestSystem.OnBuild(type, topBuild); return true;
         }
         return false;
     }
@@ -849,7 +868,9 @@ public class PlayerController : MonoBehaviour
         0, 19, 2, 7, 8, 15, 36, 24, 25, 34, 37, 38, // sentry, rpg, mine, landmine, wire, AA, SAM, blades, silo, flamethrower, FPV pad, Geran-2
         27, 30,                            // oil pipe, conveyor
     };
-    static bool IsDragBuild(int type) => DragTypes.Contains(type);
+    // 2.7: «каждый объект строить драгом» — драг разрешён ДЛЯ ВСЕГО, что игрок вообще может
+    // строить (кроме раздатчика-базы). DragTypes выше оставлен для справки о ширина-фейсинге.
+    static bool IsDragBuild(int type) => IsPlayerBuildable(type);
     // Walls, doors & barbed wire run their WIDTH along the drag line (perpendicular facing) so a
     // dragged row forms a continuous barrier; other items face along the line.
     static bool IsWallDrag(int type) => type == 3 || type == 16 || type == 17 || type == 4 || type == 8;
@@ -1097,6 +1118,8 @@ public class PlayerController : MonoBehaviour
 
     void Interact()
     {
+        // Zip-line: standing near a strung cable's top anchor, E mounts you for the ride down.
+        if (ZipLine.TryBoard(this)) return;
         if (!RaycastNoSelf(8f, out RaycastHit hit)) return;
         // Draw oil from a captured refinery's barrel (E).
         var refinery = hit.collider.GetComponentInParent<Refinery>();
@@ -1165,6 +1188,44 @@ public class PlayerController : MonoBehaviour
             if (NetClient) LanManager.Instance.SendBuildAction(b.NetId, 3, 80);
             else b.Repair(80f);
         }
+    }
+
+    // ---- Zip-line ----
+    /// <summary>Mount the player onto a zip-line cable (called by ZipLine.TryBoard). The player then
+    /// slides from 'top' down to 'bottom' fast, mouse-look still free, until they hop off (F/Space/E)
+    /// or reach the end.</summary>
+    public void BoardZip(Vector3 top, Vector3 bottom)
+    {
+        if (ziplining) return;
+        ziplining = true;
+        zipTop = top; zipBot = bottom; zipT = 0f;
+        cc.enabled = false;               // we drive the position directly while riding
+        hVel = Vector3.zero; vSpeed = 0f;
+        if (preview != null) preview.SetActive(false);
+        if (rangeSphere != null) rangeSphere.SetActive(false);
+        SetAimed(null);
+        Toast(Lang.T("🛗 Спуск по тросу — F/Space/E спрыгнуть", "🛗 Zipping down — F/Space/E to drop off"));
+    }
+
+    void RideZip()
+    {
+        Look(); // mouse-look stays live during the ride
+
+        float len = Mathf.Max(1f, Vector3.Distance(zipTop, zipBot));
+        zipT += (ZipLine.RideSpeed * Time.deltaTime) / len;
+        // Hang ~1.1 m below the cable (like gripping a trolley) as we slide toward the bottom.
+        transform.position = Vector3.Lerp(zipTop, zipBot, Mathf.Clamp01(zipT)) + Vector3.down * 1.1f;
+
+        if (zipT >= 1f || Input.GetKeyDown(KeyCode.F) || Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.E))
+            DismountZip();
+    }
+
+    void DismountZip()
+    {
+        if (!ziplining) return;
+        ziplining = false;
+        cc.enabled = true;
+        hVel = Vector3.zero; vSpeed = 0f; // let gravity settle us onto the ground at the bottom
     }
 
     // ---- Car ----
@@ -1241,7 +1302,7 @@ public class PlayerController : MonoBehaviour
         if (RaycastNoSelf(3.5f, out RaycastHit hit))
         {
             var z = hit.collider.GetComponentInParent<Zombie>();
-            if (z != null) { z.TakeDamage(40f); return; }
+            if (z != null) { z.TakeDamage(40f, Lang.T("ВЫ", "YOU")); return; }
             if (HitPlayer(hit, 45f)) return; // PvP melee
             var b = hit.collider.GetComponentInParent<Buildable>();
             if (b != null && b.NeedsRepair) b.Repair(100f);
@@ -1610,11 +1671,88 @@ public class PlayerController : MonoBehaviour
         GUI.color = Color.white;
     }
 
+    // 2.7: зелёные стрелки над союзными пешками — сразу видно, где свои в толпе.
+    void DrawAllyPawns()
+    {
+        if (cam == null) return;
+        var st = new GUIStyle(GUI.skin.label) { fontSize = 22, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+        GUI.color = new Color(0.35f, 1f, 0.45f);
+        foreach (var a in AllyPawn.All)
+        {
+            if (a == null) continue;
+            Vector3 sp = cam.WorldToScreenPoint(a.transform.position + Vector3.up * 2.6f);
+            if (sp.z <= 0.5f || sp.z > 120f) continue;
+            float gx = sp.x / UI.Scale, gy = (Screen.height - sp.y) / UI.Scale;
+            GUI.Label(new Rect(gx - 20f, gy - 22f, 40f, 24f), "▼", st); // ▼
+        }
+        GUI.color = Color.white;
+    }
+
+    // 2.7: МИНИ-КАРТА (правый-нижний угол, север сверху). Точки: зомби(красн), постройки(циан),
+    // пешки(зел), НПЗ/шахты(жёлт), игрок(бел, центр). Радиус обзора RadM метров.
+    public static bool ShowMinimap = true;
+    static Texture2D _dot;
+    void MmDot(Rect box, Vector3 center, float scale, Vector3 wp, Color c, float sz)
+    {
+        float dx = (wp.x - center.x) * scale;
+        float dz = (wp.z - center.z) * scale;
+        float mx = box.x + box.width * 0.5f + dx;
+        float my = box.y + box.height * 0.5f - dz; // +Z (север) вверх
+        if (mx < box.x || mx > box.xMax || my < box.y || my > box.yMax) return;
+        GUI.color = c;
+        GUI.DrawTexture(new Rect(mx - sz * 0.5f, my - sz * 0.5f, sz, sz), _dot);
+    }
+    void DrawMinimap()
+    {
+        if (_dot == null) _dot = Texture2D.whiteTexture;
+        const float RadM = 130f;               // сколько метров показываем от центра до края
+        float size = 190f;
+        Rect box = new Rect(UI.W - size - 14f, UI.H - size - 14f, size, size);
+        float scale = (size * 0.5f) / RadM;    // px на метр
+        Vector3 c = transform.position;
+
+        GUI.color = new Color(0f, 0f, 0f, 0.55f); GUI.DrawTexture(box, _dot);         // фон
+        GUI.color = new Color(0.4f, 0.9f, 0.5f, 0.5f);                                 // рамка
+        GUI.DrawTexture(new Rect(box.x, box.y, box.width, 2f), _dot);
+        GUI.DrawTexture(new Rect(box.x, box.yMax - 2f, box.width, 2f), _dot);
+        GUI.DrawTexture(new Rect(box.x, box.y, 2f, box.height), _dot);
+        GUI.DrawTexture(new Rect(box.xMax - 2f, box.y, 2f, box.height), _dot);
+
+        foreach (var b in Buildable.All)  if (b != null) MmDot(box, c, scale, b.transform.position, new Color(0.35f, 0.8f, 1f), 3f);
+        foreach (var rf in Refinery.All)  if (rf != null) MmDot(box, c, scale, rf.transform.position, new Color(1f, 0.85f, 0.3f), 4f);
+        foreach (var mn in OreMine.All)   if (mn != null) MmDot(box, c, scale, mn.transform.position, new Color(1f, 0.85f, 0.3f), 4f);
+        foreach (var a in AllyPawn.All)   if (a != null) MmDot(box, c, scale, a.transform.position, new Color(0.35f, 1f, 0.45f), 3f);
+        foreach (var z in Zombie.All)     if (z != null) MmDot(box, c, scale, z.transform.position, new Color(1f, 0.3f, 0.3f), 3f);
+
+        GUI.color = Color.white;               // игрок в центре
+        GUI.DrawTexture(new Rect(box.x + size * 0.5f - 2.5f, box.y + size * 0.5f - 2.5f, 5f, 5f), _dot);
+        GUI.color = Color.white;
+    }
+
+    // 2.7: FPS-счётчик (левый-верхний угол). Сглаживаем dt, чтобы цифра не дёргалась.
+    public static bool ShowFps = true;
+    float _fpsSmooth = 60f;
+
     void OnGUI()
     {
         UI.Begin(); // scale the whole HUD to the screen resolution
         float cx = UI.W * 0.5f;
         float cy = UI.H * 0.5f;
+
+        // FPS-счётчик — тонкий, в левом-верхнем углу. Обновляем оценку только на кадре отрисовки.
+        if (ShowFps)
+        {
+            if (Event.current.type == EventType.Repaint)
+            {
+                float dt = Time.unscaledDeltaTime;
+                if (dt > 0f) _fpsSmooth = Mathf.Lerp(_fpsSmooth, 1f / dt, 0.1f);
+            }
+            int fps = Mathf.RoundToInt(_fpsSmooth);
+            var fpsSt = new GUIStyle(GUI.skin.label) { fontSize = 15, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft };
+            GUI.color = fps >= 55 ? new Color(0.5f, 1f, 0.5f) : fps >= 30 ? new Color(1f, 0.9f, 0.4f) : new Color(1f, 0.5f, 0.4f);
+            GUI.Label(new Rect(12f, 6f, 120f, 22f), $"{fps} FPS", fpsSt);
+            GUI.color = Color.white;
+        }
 
         // Crosshair — size from settings (0 = hidden).
         float ch = UISettings.Crosshair;
@@ -1624,6 +1762,9 @@ public class PlayerController : MonoBehaviour
             GUI.DrawTexture(new Rect(cx - 14f * ch, cy - 2f * ch, 28f * ch, 4f * ch), Texture2D.whiteTexture);
             GUI.DrawTexture(new Rect(cx - 2f * ch, cy - 14f * ch, 4f * ch, 28f * ch), Texture2D.whiteTexture);
         }
+
+        // 3.7: daily-quest log overlay (toggle with L), hidden while the build menu is held open.
+        if (QuestSystem.LogOpen && !buildMenuOpen) QuestSystem.DrawLog(UI.W, UI.H);
 
         // 3.2: node-mod TEST mode — status + hotkey legend so you can fire mod events on demand.
         if (GameRoot.ModTest && !buildMenuOpen)
@@ -1657,6 +1798,12 @@ public class PlayerController : MonoBehaviour
         if (Refinery.All.Count > 0 && !buildMenuOpen) DrawRefineries();
         // Mines (ШАХТА): same floating status for the metal source points.
         if (OreMine.All.Count > 0 && !buildMenuOpen) DrawMines();
+        // 2.7: зелёные стрелки над союзными пешками.
+        if (AllyPawn.All.Count > 0 && !buildMenuOpen) DrawAllyPawns();
+        // 2.7: мини-карта (правый-нижний угол).
+        if (ShowMinimap && !buildMenuOpen && !topBuild) DrawMinimap();
+        // 2.7: тосты достижений (по центру-сверху).
+        Achievements.DrawToast();
 
         // Top-left stats panel (kills only — metal moved to bottom-centre)
         // Kills counter — top-right corner (movable).
@@ -1669,6 +1816,9 @@ public class PlayerController : MonoBehaviour
         Panel(deaths);
         GUI.color = new Color(1f, 0.45f, 0.45f); GUI.Label(new Rect(deaths.x + 12f, deaths.y + 5f, 360f, 28f), Lang.T($"СМЕРТЕЙ: {Deaths}", $"DEATHS: {Deaths}"), LblRight);
         GUI.color = Color.white;
+
+        // 2.7: killfeed — running list of recent kills under the kills/deaths panels.
+        if (!buildMenuOpen) Killfeed.Draw();
 
         // Bottom-left player HP bar (raised + enlarged; movable)
         Rect hp = Place(0, new Rect(20f, UI.H - 110f, 520f, 48f));
@@ -1716,7 +1866,7 @@ public class PlayerController : MonoBehaviour
         else if (tool == Tool.Build) toolLine = Lang.T($"[2] СТРОЙКА {BName(SelectedBuild)} ({BCost(SelectedBuild)})   ЛКМ=ставить  E=улучшить  ПКМ=продать  X=снести класс  Q=меню", $"[2] BUILD {BName(SelectedBuild)} ({BCost(SelectedBuild)})   LMB=place  E=upgrade  RMB=sell  X=delete class  Q=menu");
         else if (tool == Tool.Wrench) toolLine = Lang.T("[3] КЛЮЧ — ближний бой + починка", "[3] WRENCH — melee + repair");
         else toolLine = Lang.T("[4] ЛОПАТА — зажми ЛКМ чтобы копать", "[4] SHOVEL — hold LMB to dig");
-        toolLine += Lang.T("     колесо=оружие   СКМ=перенести постройку", "     wheel=weapon   MMB=move building");
+        toolLine += Lang.T("     колесо=оружие   СКМ=перенести постройку   L=задания", "     wheel=weapon   MMB=move building   L=quests");
         Rect toolR = Place(3, new Rect(8f, UI.H - 44f, UI.W - 16f, 34f));
         Panel(toolR);
         GUI.color = Color.white; GUI.Label(new Rect(toolR.x, toolR.y + 1f, toolR.width, 30f), toolLine, Tool16);

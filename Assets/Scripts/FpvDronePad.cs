@@ -147,7 +147,7 @@ public class FpvDrone : MonoBehaviour
         float rSq = blastR * blastR;
         foreach (var z in Zombie.All)
             if (z != null && (z.transform.position - transform.position).sqrMagnitude < rSq)
-                z.TakeDamage(dmg);
+                z.TakeDamage(dmg, Lang.T("друн", "drone"));
         Destroy(gameObject);
     }
 }

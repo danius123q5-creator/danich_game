@@ -13,7 +13,7 @@
 /// against the latest release on GitHub.</summary>
 public static class GameVersion
 {
-    public const string Current = "3.6";
+    public const string Current = "3.7";
 
     /// <summary>Codename for this release (shown in credits/notes).</summary>
     public static string Codename => Lang.T("Бригада", "The Crew");

@@ -63,7 +63,47 @@ public class MenuBackground : MonoBehaviour
             BuildTree(p);
         }
 
+        BuildIndustry();
+
         for (int i = 0; i < 30; i++) SpawnWalker();
+    }
+
+    // 3.7: a little resource-industry corner in the vista — oil derrick + metal drill (mine) feeding a
+    // vat and hubs through a conveyor run and an oil pipe run. Purely cosmetic (visual-only Models.*).
+    void BuildIndustry()
+    {
+        Vector3 derrick = new Vector3(-3f, 0f, 16f);
+        Vector3 drill = new Vector3(5f, 0f, 19f);
+        Vector3 vat = new Vector3(10f, 0f, 14f);
+        Vector3 oreHub = new Vector3(12f, 0f, 17.5f);
+        Vector3 oilHub = new Vector3(1f, 0f, 20.5f);
+
+        Place(Models.BuildOilDerrick(1), derrick, 20f);
+        Place(Models.BuildMetalDrill(1), drill, -25f);
+        Place(Models.BuildMetalVat(1), vat, 0f);
+        Place(Models.BuildOreHub(1), oreHub, 0f);
+        Place(Models.BuildOilHub(1), oilHub, 0f);
+        Place(Models.BuildZipLine(1), new Vector3(15f, 0f, 12f), 0f);
+
+        // Conveyor run: drill → vat (a chain of segments along the line).
+        LayRun(drill, vat, 1.6f, (p, yaw) => Place(Models.BuildConveyor(1), p, yaw));
+        // Oil pipe run: derrick → oil hub.
+        LayRun(derrick, oilHub, 1.8f, (p, yaw) => Place(Models.BuildOilPipe(1), p, yaw));
+    }
+
+    // Lay a row of cosmetic segments from a→b, one every 'step' units, each facing along the line.
+    void LayRun(Vector3 a, Vector3 b, float step, System.Action<Vector3, float> place)
+    {
+        Vector3 d = b - a; d.y = 0f;
+        float len = d.magnitude;
+        if (len < 0.01f) return;
+        float yaw = Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg;
+        int n = Mathf.Max(1, Mathf.RoundToInt(len / step));
+        for (int i = 1; i < n; i++)
+        {
+            Vector3 p = a + d.normalized * (i * step);
+            place(p, yaw);
+        }
     }
 
     // A real rolling-terrain patch built from the game's Hill() heightfield — this is the "real map".

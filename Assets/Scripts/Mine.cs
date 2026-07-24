@@ -89,7 +89,7 @@ public class Mine : Buildable
                 if ((z.transform.position - p).magnitude < blastRadius)
                 {
                     Effects.Explosion(z.transform.position + Vector3.up * 0.6f); // the zombie pops
-                    z.TakeDamage(999999f);                                       // mines kill instantly
+                    z.TakeDamage(999999f, Lang.T("мина", "mine"));               // mines kill instantly
                 }
             }
         }
