@@ -16,7 +16,7 @@ public static class GameVersion
     public const string Current = "3.7";
 
     /// <summary>Codename for this release (shown in credits/notes).</summary>
-    public static string Codename => Lang.T("Бригада", "The Crew");
+    public static string Codename => Lang.T("Ежедневный труд трудный", "Daily Grind");
 
     /// <summary>Copyright line shown in menus/credits. The game is distributed under an
     /// End-User License Agreement (see the EULA screen in Settings).</summary>

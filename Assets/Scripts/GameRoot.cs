@@ -47,6 +47,8 @@ public class GameRoot : MonoBehaviour
     bool inModes;   // showing the Modes sub-screen instead of the main menu
     bool inNewGame; // showing the New Game flow (step 1: mode, step 2: difficulty)
     bool inDifficulty; // 3.7: New Game is now two-step — pick MODE first, then this shows the difficulty picker
+    bool inViewer;      // 3.7: showing the model viewer (turntable of every buildable model)
+    ModelViewer viewer; // live while inViewer
     bool inSettings;        // showing the Settings (UI customization) screen
     bool inSaves;           // showing the .gdf saves (load) screen
     readonly Dictionary<int, Texture2D> thumbCache = new Dictionary<int, Texture2D>();
@@ -491,6 +493,7 @@ public class GameRoot : MonoBehaviour
     {
         UI.Begin(); // scale menus/splash to the screen resolution
         if (splashActive) { DrawSplash(); return; }
+        if (inViewer) { if (viewer == null || viewer.DrawGUI()) CloseViewer(); return; } // model viewer overlay
         if (UISettings.EditLayout) { DrawLayoutEdit(); return; } // HUD visible + draggable; menus hidden
         if (inSettings) { DrawSettingsMenu(); Eula.Draw(); return; } // EULA overlay draws on top
         if (State == GState.Menu) { if (inSaves) DrawSavesMenu(); else if (inNewGame) DrawNewGameMenu(); else if (inModes) DrawModesMenu(); else DrawMainMenu(); }
@@ -610,6 +613,8 @@ public class GameRoot : MonoBehaviour
         y += 58f;
         if (GUI.Button(new Rect(x, y, bw, bh), Lang.T("Настройки", "Settings"), btn)) { settingsFromPause = false; inSettings = true; }
         y += 58f;
+        if (GUI.Button(new Rect(x, y, bw, bh), Lang.T("Модели", "Model Viewer"), btn)) OpenViewer();
+        y += 58f;
         // Desktop: quit. WebGL ("еблан эдишн"): no quit in a browser — link to the full PC build on GitHub.
         if (NetSupported)
         {
@@ -647,6 +652,25 @@ public class GameRoot : MonoBehaviour
         var cpr = new GUIStyle(GUI.skin.label) { fontSize = 12, alignment = TextAnchor.MiddleCenter };
         GUI.Label(new Rect(0f, UI.H - 24f, UI.W, 20f), GameVersion.Copyright, cpr);
         GUI.color = Color.white;
+    }
+
+    // ---- Model viewer: a turntable of every buildable model, launched from the main menu ----
+    void OpenViewer()
+    {
+        if (viewer != null) return;
+        if (menuBg != null) menuBg.gameObject.SetActive(false); // hide the diorama behind the studio
+        var go = new GameObject("ModelViewer");
+        go.transform.SetParent(transform, false);
+        viewer = go.AddComponent<ModelViewer>();
+        viewer.Init(menuCam);
+        inViewer = true;
+    }
+
+    void CloseViewer()
+    {
+        inViewer = false;
+        if (viewer != null) { viewer.Cleanup(); viewer = null; } // restores the menu camera
+        if (menuBg != null) menuBg.gameObject.SetActive(true);    // bring the diorama back
     }
 
     // ---- New Game: TWO steps (3.7). Step 1 = pick the MODE, step 2 = pick the DIFFICULTY. ----
