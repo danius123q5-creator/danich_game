@@ -1,0 +1,31 @@
+{
+  "version": "5.5.1",
+  "system": "Windows x64",
+  "managed_assembly_sha256": "bf18bfc1853392741bf16fa07af52800bf77eefde949f09fc6b021b9d27f7351",
+  "assets_sha256": {
+    "EngineerDefense_5.5.1_Windows_x64.zip": "08a79603de909b7bec75bf45a49f16bfbf8c80dc8cd5703ccb85709df68acb3b",
+    "EngineerDefenseSetup_5.5.1.exe": "0ce83c9fc0f676067b9dd50381fc3ca029888c5f7502ae4828b815101a297061",
+    "EngineerDefenseMapEditorSetup_5.5.1.exe": "974e8c1a118a8c4c1591ea195de57b00c1ef55e80759906956fe58f61ac67550",
+    "ReleaseNotes_5.5.1.txt": "8e76998e92dccdbb308e089a386d8944536a4b88b03d27d28f584497b7859179",
+    "ZombieShooterSetup_5.5.1.exe": "0ce83c9fc0f676067b9dd50381fc3ca029888c5f7502ae4828b815101a297061",
+    "ZombieShooterLauncher.exe": "356268947293da837d082e674098dd50364eaaa1d11f6795547709e669cf167a",
+    "ZombieShooterLauncher.exe.sha256": "8f20ce21c6d1cf76f791ba9a234a9a05d3b90f7c605c60ecc2efbd07205d049a",
+    "EngineerDefense_5.5.1_Game_Windows_x64.exe": "328a420ac01f5674b6d5f9998bc7732990a7674404ec2bc5d6d70afd5af89cd7"
+  },
+  "changes": [
+    "traveler_first_night_balance",
+    "physical_cover_for_zombie_attacks",
+    "traveler_weapon_models_and_wheel",
+    "traveler_hud_and_settlements"
+  ],
+  "verified": [
+    "game_installer_sha256_and_save_preservation",
+    "editor_installer_sha256_and_save_preservation",
+    "traveler",
+    "traveler-first-night",
+    "driver-start",
+    "broken-bridge",
+    "night-wave",
+    "installed_editor_gui"
+  ]
+}
