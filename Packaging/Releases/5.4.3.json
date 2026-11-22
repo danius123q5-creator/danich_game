@@ -1,0 +1,26 @@
+{
+  "version": "5.4.3",
+  "system": "Windows x64",
+  "managed_assembly_sha256": "246e72effc5ac7b38d22d472e3312296771a194540add76516ebcbf040c7b293",
+  "assets_sha256": {
+    "EngineerDefense_5.4.3_Windows_x64.zip": "48746f491d44df0399c641af4431abc42c499794b200ddf1ffdd0d469e92361e",
+    "EngineerDefenseSetup_5.4.3.exe": "342c243dd920120c81cd79c7215d2bc1ca14cada34e78aba7cb5fd0f527c8730",
+    "EngineerDefenseMapEditorSetup_5.4.3.exe": "78d11ba136c577e8f12e0e08277e8a53b5eac20c3ec29c20223c98fe23102074",
+    "ReleaseNotes_5.4.3.txt": "21cc6d20033c8666cf304b21347654c8e8804fd39f57141dc3a3bb26c0d86585",
+    "ZombieShooterSetup_5.4.3.exe": "342c243dd920120c81cd79c7215d2bc1ca14cada34e78aba7cb5fd0f527c8730"
+  },
+  "changes": [
+    "moving_train_support",
+    "moving_station_loot",
+    "walkable_deck_extensions",
+    "wide_external_armor"
+  ],
+  "verified": [
+    "installed_game",
+    "installed_editor",
+    "rider_support_at_89_kph",
+    "station_loot_while_moving",
+    "floor_and_shield_save_and_restore",
+    "resume_train_save"
+  ]
+}
