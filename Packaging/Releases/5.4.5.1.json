@@ -1,0 +1,39 @@
+{
+  "version": "5.4.5.1",
+  "system": "Windows x64",
+  "managed_assembly_sha256": "fa0fcab2f84ab8eb72a1b8b808d4ef71607a6a9759794287c3aef8069c3f90d8",
+  "assets_sha256": {
+    "EngineerDefense_5.4.5.1_Windows_x64.zip": "1d83a14d1fc4dce39b144607b203aa13cc206b21f928cda34d55b674014496fa",
+    "EngineerDefenseSetup_5.4.5.1.exe": "ee709efcb8605ce4add25d4e382d010499de28764219898977f9495ce9749512",
+    "EngineerDefenseMapEditorSetup_5.4.5.1.exe": "7c65481784e7895fdeb115a15d84b17ab4c7676b17d01c9e6b4a377d4be5944e",
+    "ReleaseNotes_5.4.5.1.txt": "e3ff345c2430c8bf9929ac4ec0f96a6f0ceb532e614f73e3de69613468fff310",
+    "ZombieShooterSetup_5.4.5.1.exe": "ee709efcb8605ce4add25d4e382d010499de28764219898977f9495ce9749512",
+    "ZombieShooterLauncher.exe": "360816ac6c4c9da9cac967ad6a708346eb6b81d57d109e3a9998b149eb1d9329"
+  },
+  "changes": [
+    "broken_bridge_18257m",
+    "resistance_bastion_65000m",
+    "train_length_zombie_spawns",
+    "dusk_solar_cutoff",
+    "automatic_boarding_ramps",
+    "five_route_landscapes"
+  ],
+  "verified": [
+    "game_installer_and_all_installed_files_sha256",
+    "editor_installer_and_all_installed_files_sha256",
+    "isolated_editor_launch",
+    "route-landscapes",
+    "solar-post",
+    "automatic-ramp",
+    "station",
+    "wind-generator",
+    "night-wave",
+    "broken-bridge",
+    "resistance-65km",
+    "junction",
+    "moving-loot",
+    "settlement",
+    "legacy",
+    "rocket-zombie"
+  ]
+}
