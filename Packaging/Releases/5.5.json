@@ -1,0 +1,30 @@
+{
+  "version": "5.5",
+  "system": "Windows x64",
+  "managed_assembly_sha256": "5f04460b196cc804a8941bf5ccb6ce774743b04ed757e1e66dcaa7ac404bdba1",
+  "assets_sha256": {
+    "EngineerDefense_5.5_Windows_x64.zip": "8c0ea0b44824de503b03bdc4f7ca481b9a5821dbfaad378eb3b88c169dd2addf",
+    "EngineerDefenseSetup_5.5.exe": "7a5a4163c15811894d8929db3ff4e82a9213852b23761d0baca72c7b227c0b7a",
+    "EngineerDefenseMapEditorSetup_5.5.exe": "044ee1a66beeae203a204b0f8ce9555a115cc2c2b29ecf8692897cf52eceb90a",
+    "ReleaseNotes_5.5.txt": "ff92771c46415f4999f9d312777522d8072f9cdbbfe1cf3c425a03a578224b63",
+    "ZombieShooterSetup_5.5.exe": "7a5a4163c15811894d8929db3ff4e82a9213852b23761d0baca72c7b227c0b7a",
+    "ZombieShooterLauncher.exe": "356268947293da837d082e674098dd50364eaaa1d11f6795547709e669cf167a",
+    "ZombieShooterLauncher.exe.sha256": "8f20ce21c6d1cf76f791ba9a234a9a05d3b90f7c605c60ecc2efbd07205d049a",
+    "EngineerDefense_5.5_Game_Windows_x64.exe": "328a420ac01f5674b6d5f9998bc7732990a7674404ec2bc5d6d70afd5af89cd7"
+  },
+  "changes": [
+    "traveler_10291_route",
+    "wood_harvesting_and_voxel_fortifications",
+    "twelve_weapons",
+    "traveler_hud"
+  ],
+  "verified": [
+    "game_installer_sha256_and_save_preservation",
+    "editor_installer_sha256_and_save_preservation",
+    "traveler",
+    "driver-start",
+    "broken-bridge",
+    "night-wave",
+    "installed_editor_gui"
+  ]
+}
