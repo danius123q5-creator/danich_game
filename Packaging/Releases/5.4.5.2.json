@@ -1,0 +1,33 @@
+{
+  "version": "5.4.5.2",
+  "system": "Windows x64",
+  "managed_assembly_sha256": "7cd53c4999c31860962f7b4d8c8d449501142519abd0ffbe91be481522840edf",
+  "assets_sha256": {
+    "EngineerDefense_5.4.5.2_Windows_x64.zip": "b355ac11eb5040b6642f0019614ed333e3dabb7521224f92ae30f6c5acf26463",
+    "EngineerDefenseSetup_5.4.5.2.exe": "21f8474e08b7bbcd78b4ca3a3408027d76db8ab9f5b2ba069500ab9b8c23ccc6",
+    "EngineerDefenseMapEditorSetup_5.4.5.2.exe": "29bd4d765c2630f617ba32488f76bdf32a7d9c6c926809862d5ccd616be67916",
+    "ReleaseNotes_5.4.5.2.txt": "5ae6d6a5f797ed195d128a62ec341ad059db4ef9611b4a9aebef6c85c89ee652",
+    "ZombieShooterSetup_5.4.5.2.exe": "21f8474e08b7bbcd78b4ca3a3408027d76db8ab9f5b2ba069500ab9b8c23ccc6",
+    "ZombieShooterLauncher.exe": "360816ac6c4c9da9cac967ad6a708346eb6b81d57d109e3a9998b149eb1d9329",
+    "ZombieShooterLauncher.exe.sha256": "7d491f9836693b88eab74142559c44d5f1b9876aeb917f6c8dd341b490bbe20a",
+    "EngineerDefense_5.4.5.2_Game_Windows_x64.exe": "328a420ac01f5674b6d5f9998bc7732990a7674404ec2bc5d6d70afd5af89cd7"
+  },
+  "changes": [
+    "square_0.9m_train_deck_tiles",
+    "adjacent_tiles_and_shields",
+    "legacy_long_train_decks_preserved"
+  ],
+  "verified": [
+    "game_installer_and_all_installed_files_sha256",
+    "editor_installer_and_all_installed_files_sha256",
+    "installed_game_launch_and_square_deck",
+    "installed_editor_launch",
+    "deck-building",
+    "night-wave",
+    "automatic-ramp",
+    "station",
+    "legacy",
+    "moving-loot",
+    "broken-bridge"
+  ]
+}
