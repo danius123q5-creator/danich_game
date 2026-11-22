@@ -1,0 +1,29 @@
+{
+  "version": "5.4.4",
+  "system": "Windows x64",
+  "managed_assembly_sha256": "c23505270c1a76269e2f893e5a0877e0611df5b9b3dba7996aa0d7296f0661a2",
+  "assets_sha256": {
+    "EngineerDefense_5.4.4_Windows_x64.zip": "7bb238c441f73191f17ed16aeda66fe3535190f332ef82cbce7d139bcff55950",
+    "EngineerDefenseSetup_5.4.4.exe": "b671fc0356137eb681ca8bf42a3ebd912b5d98ea4d55d8915c3c844cabcf6b1f",
+    "EngineerDefenseMapEditorSetup_5.4.4.exe": "e7883a2353830a7bd0e3c0bdf0c87c5b9b8882f40468d1edc46ffa65b60c8624",
+    "ReleaseNotes_5.4.4.txt": "b264ddd544ddfdeb45d6987b62734fbcb1ab8e9e957cb16c7119f81f2b58d122",
+    "ZombieShooterSetup_5.4.4.exe": "b671fc0356137eb681ca8bf42a3ebd912b5d98ea4d55d8915c3c844cabcf6b1f"
+  },
+  "changes": [
+    "rail_switches",
+    "manual_battery_selection",
+    "renewable_power",
+    "settlement_loot",
+    "night_waves",
+    "desert_serpent",
+    "460mm_artillery",
+    "wave_progression"
+  ],
+  "verified": [
+    "installed_game",
+    "installed_editor",
+    "legacy_train_save",
+    "train_inventory_table",
+    "wave_progression_and_reserve_switch"
+  ]
+}
