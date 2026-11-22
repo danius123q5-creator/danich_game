@@ -1,0 +1,34 @@
+{
+  "version": "5.5.2",
+  "system": "Windows x64",
+  "managed_assembly_sha256": "3c4f0dfc726713482c710d98195ddf5bc64e418c5cc60463e828de9979de2949",
+  "assets_sha256": {
+    "EngineerDefense_5.5.2_Windows_x64.zip": "48c3812b2656cd3fc4b7d23bc9c6900a1d585fb4aa84750006ecc5399db0d9db",
+    "EngineerDefenseSetup_5.5.2.exe": "37b5fa8b5bdd0f189f7c91837fd36cb2617bbe29233a631e4db75427a7c1bf85",
+    "EngineerDefenseMapEditorSetup_5.5.2.exe": "a0dc3bee800dd49acd23a69c95d71fcc1081faf911dba3870482a7226bfa780a",
+    "ReleaseNotes_5.5.2.txt": "d68b644fb713fd9aa32cd4fcc16ff328ab110ded9ca1d739feb88fae431cf4dc",
+    "ZombieShooterSetup_5.5.2.exe": "37b5fa8b5bdd0f189f7c91837fd36cb2617bbe29233a631e4db75427a7c1bf85",
+    "ZombieShooterLauncher.exe": "356268947293da837d082e674098dd50364eaaa1d11f6795547709e669cf167a",
+    "ZombieShooterLauncher.exe.sha256": "8f20ce21c6d1cf76f791ba9a234a9a05d3b90f7c605c60ecc2efbd07205d049a",
+    "EngineerDefense_5.5.2_Game_Windows_x64.exe": "328a420ac01f5674b6d5f9998bc7732990a7674404ec2bc5d6d70afd5af89cd7"
+  },
+  "changes": [
+    "traveler_sunrise_day_dusk_and_moonlight",
+    "nearby_settlement_lights",
+    "traveler_settlement_polish",
+    "roadside_vegetation_and_gravel",
+    "traveler_route_14491_m",
+    "traveler_overview_map_and_translucent_hud",
+    "traveler_persistent_building_breaches_and_bullet_holes"
+  ],
+  "verified": [
+    "game_installer_sha256_and_save_preservation",
+    "editor_installer_sha256_and_save_preservation",
+    "traveler",
+    "traveler-first-night",
+    "driver-start",
+    "broken-bridge",
+    "night-wave",
+    "installed_editor_gui"
+  ]
+}
