@@ -1,0 +1,27 @@
+{
+  "version": "5.4.5.3",
+  "system": "Windows x64",
+  "managed_assembly_sha256": "5bf4f53bcb42df23f749dc2036d70c1576ff18c803d26df69b11a99a525b9a96",
+  "assets_sha256": {
+    "EngineerDefense_5.4.5.3_Windows_x64.zip": "c4e52ba3c149b5e9aa13f88c9f5beb8138383a00fe038d5187ce09b1331bb7f7",
+    "EngineerDefenseSetup_5.4.5.3.exe": "b3e46c0cd9a8927f810baf4ac3e1a2e48f98ec52330c7171f180ad8ae58253b3",
+    "EngineerDefenseMapEditorSetup_5.4.5.3.exe": "99fe5e20473e7edd2ab23babf0ba97a188600ca1b038c25e16104717cd16e026",
+    "ReleaseNotes_5.4.5.3.txt": "b37b3e3a5737d28f0de51b5d3320cac82e400e96da565908f0f1f1c404afbff9",
+    "ZombieShooterSetup_5.4.5.3.exe": "b3e46c0cd9a8927f810baf4ac3e1a2e48f98ec52330c7171f180ad8ae58253b3",
+    "ZombieShooterLauncher.exe": "356268947293da837d082e674098dd50364eaaa1d11f6795547709e669cf167a",
+    "ZombieShooterLauncher.exe.sha256": "8f20ce21c6d1cf76f791ba9a234a9a05d3b90f7c605c60ecc2efbd07205d049a",
+    "EngineerDefense_5.4.5.3_Game_Windows_x64.exe": "328a420ac01f5674b6d5f9998bc7732990a7674404ec2bc5d6d70afd5af89cd7"
+  },
+  "changes": [
+    "departure_at_zero_after_ramps_stow",
+    "same_frame_cab_and_traction_input",
+    "arrow_keys_for_traction"
+  ],
+  "verified": [
+    "driver-start",
+    "automatic-ramp",
+    "broken-bridge",
+    "resistance-65km",
+    "editor_installer_checksums_and_launch"
+  ]
+}
