@@ -1,0 +1,35 @@
+{
+  "version": "5.4.5",
+  "system": "Windows x64",
+  "managed_assembly_sha256": "27c48549f671ab563847031109970f542d4e86f46a9c69eedfaf5a8912e5899d",
+  "assets_sha256": {
+    "EngineerDefense_5.4.5_Windows_x64.zip": "65518d6172bb7b9027249b5be4f96a852ca3ab15e00a709feb5bf9d6bff89115",
+    "EngineerDefenseSetup_5.4.5.exe": "bc868eb17585f9c5c414295336246839abd5ed751410792d0c26ebb63099b967",
+    "EngineerDefenseMapEditorSetup_5.4.5.exe": "d24d31801435c7f517a5e0c0c57c285352f05bd32a890830f293a303a7327091",
+    "ReleaseNotes_5.4.5.txt": "1b7ea5ad4d238e8edefa1a40bf8bee56e64af31ce355a85cb90d7c59bd166d28",
+    "ZombieShooterSetup_5.4.5.exe": "bc868eb17585f9c5c414295336246839abd5ed751410792d0c26ebb63099b967"
+  },
+  "changes": [
+    "animated_updater",
+    "rocket_zombies",
+    "metal_and_medkit_crates",
+    "physical_train_mount_limits",
+    "turrets_target_exposed_serpent_segments"
+  ],
+  "verified": [
+    "game_installer_and_all_installed_files_sha256",
+    "editor_installer_and_all_installed_files_sha256",
+    "installed_game_launch_and_40_parts_reload",
+    "installed_editor_launch",
+    "night-wave",
+    "serpent",
+    "rocket-zombie",
+    "construction-density",
+    "settlement",
+    "update-animation",
+    "moving-loot",
+    "wind-generator",
+    "legacy",
+    "progression"
+  ]
+}
