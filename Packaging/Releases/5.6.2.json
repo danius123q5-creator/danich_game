@@ -1,0 +1,23 @@
+{
+  "version": "5.6.2",
+  "runtime_sha256": "7175cb3e15c96b9ee899b6d551c8d9adbc40fcdf828c0a0395302aab515f4b1c",
+  "assets_sha256": {
+    "ZombieShooterSetup_5.6.2.exe": "4b49728acf277c8503695efdf3968a10a4e3be6a9c490ad95d0d248892f34515",
+    "EngineerDefense_5.6.2_Windows_x64.zip": "7b55d3e37f8ab1ff8e98320b3d73110ac2876ed0ca2d3580e3a9dee0f336e6e8",
+    "EngineerDefense_5.6.2_Game_Windows_x64.exe": "328a420ac01f5674b6d5f9998bc7732990a7674404ec2bc5d6d70afd5af89cd7",
+    "EngineerDefenseMapEditorSetup_5.6.2.exe": "835fc1147ecd8fa300084d585f38534796c3294227a19903acfb3058db7e73f8",
+    "ZombieShooterLauncher.exe": "356268947293da837d082e674098dd50364eaaa1d11f6795547709e669cf167a",
+    "ZombieShooterLauncher.exe.sha256": "8f20ce21c6d1cf76f791ba9a234a9a05d3b90f7c605c60ecc2efbd07205d049a",
+    "SHA256SUMS_5.6.2.txt": "6952213b9f0a0d0f449ba39c570775cfc3c17b49b8a19ba417c8096fee5f5c74"
+  },
+  "changes": [
+    "Layered vehicle explosion",
+    "Refundable train construction dismantling",
+    "Exposed zombies burn during daylight"
+  ],
+  "verified": [
+    "game and editor installers",
+    "train expansion and save archive",
+    "dismantling and visible vehicle explosion"
+  ]
+}
