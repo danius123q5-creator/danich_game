@@ -1,0 +1,22 @@
+{
+  "version": "5.5.2.1",
+  "runtime_sha256": "548d5c5e9769d405fd72a9db92567ecf6160148b37050b17da1aab2995eb6b13",
+  "assets_sha256": {
+    "ZombieShooterSetup_5.5.2.1.exe": "6cea6a6eb4da2cb7c1262105bef6d14abf7e60722cd29d360db9b8bc34476d92",
+    "EngineerDefense_5.5.2.1_Windows_x64.zip": "0323e81610bf7d8e56412d49129ea60698bfc22b57b51ee08291ca1eead872a1",
+    "EngineerDefense_5.5.2.1_Game_Windows_x64.exe": "328a420ac01f5674b6d5f9998bc7732990a7674404ec2bc5d6d70afd5af89cd7",
+    "EngineerDefenseMapEditorSetup_5.5.2.1.exe": "e12fe70b59d5e7b043f9ed065c4f38fb50b000fff56d8e15ef7ebff2830da846",
+    "ZombieShooterLauncher.exe": "356268947293da837d082e674098dd50364eaaa1d11f6795547709e669cf167a",
+    "ZombieShooterLauncher.exe.sha256": "8f20ce21c6d1cf76f791ba9a234a9a05d3b90f7c605c60ecc2efbd07205d049a",
+    "SHA256SUMS_5.5.2.1.txt": "a93897ab8b662cdde5f64cb4b0bec1b347a082258dc0f01d62ec693980d036ce"
+  },
+  "changes": [
+    "Train dynamite weapon and ammunition",
+    "Explosive Toy achievement"
+  ],
+  "verified": [
+    "ZIP manifest",
+    "game and editor installers",
+    "train dynamite in the installed game"
+  ]
+}
