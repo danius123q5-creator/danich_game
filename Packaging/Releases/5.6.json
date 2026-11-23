@@ -1,0 +1,28 @@
+{
+  "version": "5.6",
+  "runtime_sha256": "202518d10e99963957680ff20682378b95fb77ee7c397cadf53d429e43f2402f",
+  "assets_sha256": {
+    "ZombieShooterSetup_5.6.exe": "3a4463f11066eb0b74c3258eaaf323f43102f93418717a0fce3b7af9db57008d",
+    "EngineerDefense_5.6_Windows_x64.zip": "5e7c7abc962e903ce94cdcca9b7715173c40e5b378fe35dfee17566b72f9df7c",
+    "EngineerDefense_5.6_Game_Windows_x64.exe": "328a420ac01f5674b6d5f9998bc7732990a7674404ec2bc5d6d70afd5af89cd7",
+    "EngineerDefenseMapEditorSetup_5.6.exe": "22269f0390fffb0eaa4c71e9c7b55aa407706ec3ae148a4d215987374939e366",
+    "ZombieShooterLauncher.exe": "356268947293da837d082e674098dd50364eaaa1d11f6795547709e669cf167a",
+    "ZombieShooterLauncher.exe.sha256": "8f20ce21c6d1cf76f791ba9a234a9a05d3b90f7c605c60ecc2efbd07205d049a",
+    "SHA256SUMS_5.6.txt": "7c666bd0af202673a22a16fcec7032c439011c360464d07a049aa3d4fb97e20b"
+  },
+  "changes": [
+    "Reinforcements until dawn",
+    "Vehicle raids",
+    "Moving construction and gangways",
+    "Fuel stations",
+    "Rare supply villages",
+    "Purchasable train cars",
+    "Moon achievement"
+  ],
+  "verified": [
+    "ZIP manifest",
+    "game and editor installers",
+    "train expansion in the installed game",
+    "train weapon wheel and dynamite regression"
+  ]
+}
