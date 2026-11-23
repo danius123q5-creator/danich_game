@@ -1,0 +1,25 @@
+{
+  "version": "5.5.2.1.1",
+  "runtime_sha256": "42175128e76fa8c6f6567bbd5ce5fbf4a1910be94faf2297724678d8cd9a2c80",
+  "assets_sha256": {
+    "ZombieShooterSetup_5.5.2.1.1.exe": "48b46dff09dacd713b09fc7c1f9e9db8cc973cfe8b1319e4f0446da6e2197419",
+    "EngineerDefense_5.5.2.1.1_Windows_x64.zip": "6c565daf64fe3bb24babbfa6f3bc66f678a5e835447976a4fa882cab1073a8a0",
+    "EngineerDefense_5.5.2.1.1_Game_Windows_x64.exe": "328a420ac01f5674b6d5f9998bc7732990a7674404ec2bc5d6d70afd5af89cd7",
+    "EngineerDefenseMapEditorSetup_5.5.2.1.1.exe": "3ae3574ef82d501726022ca8d89eb58d00cd2a596c406fd4509e450ac4fc3207",
+    "ZombieShooterLauncher.exe": "356268947293da837d082e674098dd50364eaaa1d11f6795547709e669cf167a",
+    "ZombieShooterLauncher.exe.sha256": "8f20ce21c6d1cf76f791ba9a234a9a05d3b90f7c605c60ecc2efbd07205d049a",
+    "SHA256SUMS_5.5.2.1.1.txt": "ccfb0526f7321e4cd443c0060f463b7d9462959f96b769c8ad2a2a6f02a4daf7"
+  },
+  "changes": [
+    "Weapon selection with the mouse wheel",
+    "Five-part updater versions",
+    "Updated end-user license"
+  ],
+  "verified": [
+    "ZIP manifest",
+    "game and editor installers",
+    "train weapon wheel in the installed game",
+    "five-part launcher version",
+    "packaged license and original MIT notice"
+  ]
+}
