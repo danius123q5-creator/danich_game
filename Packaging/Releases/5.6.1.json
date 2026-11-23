@@ -1,0 +1,23 @@
+{
+  "version": "5.6.1",
+  "runtime_sha256": "91e67ac204c1fa75483250912e7d460806d1b3dc826dca00535bfa5cf20b1308",
+  "assets_sha256": {
+    "ZombieShooterSetup_5.6.1.exe": "867a4babdddc7d556467ff96f26b0dd22edfc75c5abd247ce0245b309e66ad96",
+    "EngineerDefense_5.6.1_Windows_x64.zip": "a3a9d32866d8537d157e0a90dc2ba09c8c0fdbe1c1d150754440e3145f5604d1",
+    "EngineerDefense_5.6.1_Game_Windows_x64.exe": "328a420ac01f5674b6d5f9998bc7732990a7674404ec2bc5d6d70afd5af89cd7",
+    "EngineerDefenseMapEditorSetup_5.6.1.exe": "c5a4908fd826a445f05c108d404c4efdf299cd28e61ebe1d26e9efaa1b87349c",
+    "ZombieShooterLauncher.exe": "356268947293da837d082e674098dd50364eaaa1d11f6795547709e669cf167a",
+    "ZombieShooterLauncher.exe.sha256": "8f20ce21c6d1cf76f791ba9a234a9a05d3b90f7c605c60ecc2efbd07205d049a",
+    "SHA256SUMS_5.6.1.txt": "55363aae3610f160e98ed06942bf97cbeedd6475a71dd5f7f3fc21ad8aeff16f"
+  },
+  "changes": [
+    "Manual 460 mm cannon",
+    "Individual wagon durability and train separation",
+    "Independent Death Train saves"
+  ],
+  "verified": [
+    "game and editor installers",
+    "train expansion regression",
+    "manual artillery and wagon loss in the installed game"
+  ]
+}
