@@ -1,0 +1,21 @@
+{
+  "version": "5.6.2.1",
+  "runtime_sha256": "4bb74bb8649d21c0b3cd467dd54ab04183c102dad73bb1c4a19f586709305132",
+  "assets_sha256": {
+    "ZombieShooterSetup_5.6.2.1.exe": "ed3f98643935d3bc995a4c143b5d648745dcc30e086993287b387561ad6cfa53",
+    "EngineerDefense_5.6.2.1_Windows_x64.zip": "d582db5d08de5d48dd5267c03ee89a7fab8ef3524be935f5e926185352934355",
+    "EngineerDefense_5.6.2.1_Game_Windows_x64.exe": "328a420ac01f5674b6d5f9998bc7732990a7674404ec2bc5d6d70afd5af89cd7",
+    "EngineerDefenseMapEditorSetup_5.6.2.1.exe": "afb15159e897f50e16180b155bc41fcd9006730187175fbafa1c0b1569c31d71",
+    "ZombieShooterLauncher.exe": "356268947293da837d082e674098dd50364eaaa1d11f6795547709e669cf167a",
+    "ZombieShooterLauncher.exe.sha256": "8f20ce21c6d1cf76f791ba9a234a9a05d3b90f7c605c60ecc2efbd07205d049a",
+    "SHA256SUMS_5.6.2.1.txt": "4cf279c2f2e035bb9dcd54a70273336a562142bbc1cb3995f608a1df715a89e0"
+  },
+  "changes": [
+    "Cab return shortcut and prompt"
+  ],
+  "verified": [
+    "game and editor installers",
+    "H shortcut and moving train floor support",
+    "repair and train save regressions"
+  ]
+}
