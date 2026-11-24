@@ -1,0 +1,23 @@
+{
+  "version": "5.6.3",
+  "runtime_sha256": "feb32ca3bbb5eb64b8edf0649517f3a10a39f96ab3dfb28fd370ebc3d22e8f91",
+  "assets_sha256": {
+    "ZombieShooterSetup_5.6.3.exe": "dbe9610ef1309dbe43e114bf4630c5e00e126e7d2e68a2f61d82ca68fa0c6e22",
+    "EngineerDefense_5.6.3_Windows_x64.zip": "ddc804acdc918dfe0932dc73107f3a2f7b64769bb59eb1ad701969dc3dc0a13f",
+    "EngineerDefense_5.6.3_Game_Windows_x64.exe": "328a420ac01f5674b6d5f9998bc7732990a7674404ec2bc5d6d70afd5af89cd7",
+    "EngineerDefenseMapEditorSetup_5.6.3.exe": "436936847d1c8777959928804eb6b823d45cbe7b0197546e75a37a350b076f40",
+    "ZombieShooterLauncher.exe": "356268947293da837d082e674098dd50364eaaa1d11f6795547709e669cf167a",
+    "ZombieShooterLauncher.exe.sha256": "8f20ce21c6d1cf76f791ba9a234a9a05d3b90f7c605c60ecc2efbd07205d049a",
+    "SHA256SUMS_5.6.3.txt": "ec4c66ea5a5b954699c625bfe4f5dcfbfaabc1b1ef84e93ac42fbb04b1ebc2a3"
+  },
+  "changes": [
+    "Wave-based construction prices across three solo modes",
+    "Dismantling returns the original paid resources"
+  ],
+  "verified": [
+    "game and editor installers",
+    "construction costs in Defense, Death Train and Traveler",
+    "train save, refunds and cab return",
+    "train dynamite regression"
+  ]
+}
