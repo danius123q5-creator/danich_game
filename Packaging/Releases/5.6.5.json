@@ -1,0 +1,34 @@
+{
+  "version": "5.6.5",
+  "runtime_sha256": "351c00f57a4acce470ba7a2e25c9e366262133f2d2c2c60b91c1a9723f28c5a9",
+  "assets_sha256": {
+    "ZombieShooterSetup_5.6.5.exe": "2f2470585f10ab76bb90543a48fd64fe72bc96ba4ef5494756a9b5d5ecc2170f",
+    "EngineerDefense_5.6.5_Windows_x64.zip": "6f249499fedb53f5ab6fc250a5a956bbe5d178198d9bf0ad5d5badef98a448f0",
+    "EngineerDefense_5.6.5_Game_Windows_x64.exe": "328a420ac01f5674b6d5f9998bc7732990a7674404ec2bc5d6d70afd5af89cd7",
+    "EngineerDefenseMapEditorSetup_5.6.5.exe": "d34e4a6278faf887055e49e361a40ef21d7a616f8e036b68db0ad5b1b54c5330",
+    "ZombieShooterLauncher.exe": "356268947293da837d082e674098dd50364eaaa1d11f6795547709e669cf167a",
+    "ZombieShooterLauncher.exe.sha256": "8f20ce21c6d1cf76f791ba9a234a9a05d3b90f7c605c60ecc2efbd07205d049a",
+    "SHA256SUMS_5.6.5.txt": "d3d27d05ab17d6c0216114ea4030f6b2c8d58e8b4220babb6f12855f8ce6127a"
+  },
+  "changes": [
+    "Fifteen original rotating menu backgrounds",
+    "Wagon and locomotive purchases in the train builder",
+    "Random 40-second sandstorm with equipment damage",
+    "Wider Traveler terrain with relief and new viewpoints",
+    "Random biplane supply drop",
+    "Improved regular graphics and lighting without changing the preset",
+    "Visible achievement-style train warnings with danger priorities"
+  ],
+  "verified": [
+    "both installers and ZIP checksums",
+    "33 menu backgrounds, including 15 new illustrations and 10 supplied images",
+    "locomotive purchase and save",
+    "sandstorm duration and persistence",
+    "Traveler geography, movement and bridges",
+    "train alerts, cab return, save archive and dynamite",
+    "supply drop, pickup and persistence",
+    "matched default graphics comparison",
+    "visible warning cards and queue ordering",
+    "five train regions and continuous track crossing"
+  ]
+}
