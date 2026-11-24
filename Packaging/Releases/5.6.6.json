@@ -1,0 +1,24 @@
+{
+  "version": "5.6.6",
+  "runtime_sha256": "692d7cec085a6c87dcbf9d448564189cd5b067d44866bcbacdaa84f5d9394ac6",
+  "assets_sha256": {
+    "ZombieShooterSetup_5.6.6.exe": "bbca6ebc56b9dc40c31fff874059bc32ef5c2678f9f62caebb8eea44794c3966",
+    "EngineerDefense_5.6.6_Windows_x64.zip": "d59830ac3bd4681fe0550ce780965dc000ef08f4263a4ba6627789bf6e4c8be2",
+    "EngineerDefense_5.6.6_Game_Windows_x64.exe": "328a420ac01f5674b6d5f9998bc7732990a7674404ec2bc5d6d70afd5af89cd7",
+    "EngineerDefenseMapEditorSetup_5.6.6.exe": "a6ee1017449de36e96799b28e5e73c6ee0dd49c132338d47df20c6afa25a0866",
+    "ZombieShooterLauncher.exe": "356268947293da837d082e674098dd50364eaaa1d11f6795547709e669cf167a",
+    "ZombieShooterLauncher.exe.sha256": "8f20ce21c6d1cf76f791ba9a234a9a05d3b90f7c605c60ecc2efbd07205d049a",
+    "SHA256SUMS_5.6.6.txt": "29f5439a7bdfc253baa8a3196f0f240a4d9efc598640bd1f38d79c6d69f1c883"
+  },
+  "changes": [
+    "Bright sunlight on the standard preset",
+    "Eroded canyon and new track materials",
+    "New underframe, wheels, tracks and locomotive detailing"
+  ],
+  "verified": [
+    "game and map editor installers",
+    "five train regions and broken bridge detour",
+    "locomotive shop, dynamite and sandstorm",
+    "bright daylight under standard settings"
+  ]
+}
