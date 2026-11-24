@@ -1,0 +1,22 @@
+{
+  "version": "5.6.4",
+  "runtime_sha256": "28e6d7e431c4657f21bfd0e540e40aaec5c088ce04aa325c269f6de60aa3562e",
+  "assets_sha256": {
+    "ZombieShooterSetup_5.6.4.exe": "13e9f6e64324c8a5630b3a3f0402e4a7e85765be4e1082f17e9b893d8ea4fb9b",
+    "EngineerDefense_5.6.4_Windows_x64.zip": "648eaa8671215643b2e66c99afccb1b064535774b372d68126125b16f5711c91",
+    "EngineerDefense_5.6.4_Game_Windows_x64.exe": "328a420ac01f5674b6d5f9998bc7732990a7674404ec2bc5d6d70afd5af89cd7",
+    "EngineerDefenseMapEditorSetup_5.6.4.exe": "adfef337a27cabdc5683c7f0d3cf3ce4d6394295faffc2a646dbecb01b2ab9e4",
+    "ZombieShooterLauncher.exe": "356268947293da837d082e674098dd50364eaaa1d11f6795547709e669cf167a",
+    "ZombieShooterLauncher.exe.sha256": "8f20ce21c6d1cf76f791ba9a234a9a05d3b90f7c605c60ecc2efbd07205d049a",
+    "SHA256SUMS_5.6.4.txt": "f53add4a6908882239821130ca0f8d35a2d7cada300fa653ce10fb1916319047"
+  },
+  "changes": [
+    "Actionable and prioritized Death Train warnings"
+  ],
+  "verified": [
+    "game and editor installers",
+    "live train warnings and expiration",
+    "train save and cab return",
+    "train dynamite regression"
+  ]
+}
