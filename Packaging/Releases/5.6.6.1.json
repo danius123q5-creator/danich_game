@@ -1,0 +1,24 @@
+{
+  "version": "5.6.6.1",
+  "runtime_sha256": "7a5cb2ce091490f2c1da8d19b29ad11d5aa99547b6e1deaa28b9470ca440e02a",
+  "assets_sha256": {
+    "ZombieShooterSetup_5.6.6.1.exe": "5f4e154f6808293ce788b94ed0081beb2b5bc82c5e2e3539732e2da3210a84c0",
+    "EngineerDefense_5.6.6.1_Windows_x64.zip": "99062ae7552fb399f03ac2c34b85d5d82364d16a02a31ed2ccf88018604e90ff",
+    "EngineerDefense_5.6.6.1_Game_Windows_x64.exe": "328a420ac01f5674b6d5f9998bc7732990a7674404ec2bc5d6d70afd5af89cd7",
+    "EngineerDefenseMapEditorSetup_5.6.6.1.exe": "d9f3b1d9768b006c392f9ac727c674010bb506536c8ad1cf3c6ca2cef08ead1f",
+    "ZombieShooterLauncher.exe": "356268947293da837d082e674098dd50364eaaa1d11f6795547709e669cf167a",
+    "ZombieShooterLauncher.exe.sha256": "8f20ce21c6d1cf76f791ba9a234a9a05d3b90f7c605c60ecc2efbd07205d049a",
+    "SHA256SUMS_5.6.6.1.txt": "7b07f0e2fd9e5ce3408731a36bdc85163143d597391d0879ff3b91c0f9e1475e"
+  },
+  "changes": [
+    "Sculpted canyon cliffs with talus and scrub",
+    "Weathered rock, gravel and steel",
+    "Dirt service road, trackside shrubs and locomotive detailing"
+  ],
+  "verified": [
+    "game and map editor installers",
+    "five train regions and broken bridge detour",
+    "locomotive shop, dynamite and sandstorm",
+    "bright daylight under standard settings"
+  ]
+}
